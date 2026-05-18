@@ -1,0 +1,15 @@
+# Jangan upload folder instalasi Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Jangan upload file build Golang
+backend/.exe
+backend/bin/
+
+# Jangan upload file rahasia/konfigurasi lokal
+*.env
+*.env.local
+.vscode/
+.kiro/
+.DS_Store
