@@ -29,8 +29,6 @@ export default function ProductManagementPage() {
   const { products, meta, loading, refresh, setSearch, setPage, setParams } = useProducts();
   const { deleteProduct, loading: mutationLoading } = useMutationProducts();
 
-  // ── Handlers Modal & Aksi ──────────────────────────────────────────────────
-
   const handleOpenAdd = () => {
     setSelectedProduct(null);
     setShowProductModal(true);
@@ -65,22 +63,19 @@ export default function ProductManagementPage() {
     setParams({ search: "", page: 1 });
   };
 
-  // ── Fitur Export CSV (Client-Side) ──────────────────────────────────────────
   const handleExportCSV = () => {
     if (!products || products.length === 0) {
       alert("Tidak ada data produk yang bisa diexport.");
       return;
     }
 
-    // 1. Definisikan header kolom CSV
     const headers = ["ID", "Nama Produk", "Barcode", "Harga Eceran", "Stok", "Min Stok", "Satuan"];
     
-    // 2. Petakan data produk menjadi baris string CSV
     const csvRows = [
-      headers.join(","), // Baris pertama (header)
+      headers.join(","), 
       ...products.map(p => [
         p.id,
-        `"${p.name.replace(/"/g, '""')}"`, // Bungkus dengan kutip dua jika nama produk mengandung koma
+        `"${p.name.replace(/"/g, '""')}"`, 
         `"${p.barcode ?? ""}"`,
         p.price,
         p.stock,
@@ -89,7 +84,6 @@ export default function ProductManagementPage() {
       ].join(","))
     ];
 
-    // 3. Buat file blob dan trigger unduhan di browser
     const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -100,12 +94,10 @@ export default function ProductManagementPage() {
     document.body.removeChild(link);
   };
 
-  // ── Fitur Import CSV Massal (Simulasi Form Data ke Backend) ─────────────────
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validasi ekstensi file harus .csv
     if (!file.name.endsWith(".csv")) {
       alert("Format file salah. Mohon unggah file dengan format .csv");
       return;
@@ -119,13 +111,6 @@ export default function ProductManagementPage() {
 
     setIsImporting(true);
     try {
-      // Di sini kamu tinggal sesuaikan dengan endpoint backend Go kamu jika sudah ada.
-      // Contoh implementasi FormData biasa:
-      // const formData = new FormData();
-      // formData.append("file", file);
-      // await api.post("/products/import", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      
-      // Simulasi loading transmisi data 1 detik
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
       alert("Berhasil mengimport data produk massal!");
@@ -184,7 +169,6 @@ export default function ProductManagementPage() {
                 {isImporting ? "Mengimport..." : "Import CSV"}
               </button>
 
-              {/* Tombol Export CSV */}
               <button
                 onClick={handleExportCSV}
                 disabled={loading || products.length === 0}
@@ -195,7 +179,6 @@ export default function ProductManagementPage() {
                 Export CSV
               </button>
 
-              {/* Tombol Tambah Manual */}
               <button
                 onClick={handleOpenAdd}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm transition-colors"
@@ -206,7 +189,6 @@ export default function ProductManagementPage() {
             </div>
           </div>
 
-          {/* Bar Pencarian */}
           <div className="bg-white border rounded-xl p-4 mb-6 flex gap-4 items-center">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
@@ -228,7 +210,6 @@ export default function ProductManagementPage() {
             )}
           </div>
 
-          {/* Tabel Kontainer */}
           <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b">
@@ -353,7 +334,6 @@ export default function ProductManagementPage() {
               </tbody>
             </table>
 
-            {/* Pagination Kontrol */}
             {meta && meta.total_pages > 1 && (
               <div className="px-6 py-4 border-t bg-slate-50/50 flex items-center justify-between">
                 <p className="text-xs text-slate-500">
@@ -382,7 +362,6 @@ export default function ProductManagementPage() {
         </div>
       </main>
 
-      {/* MODAL FORMS */}
       <ProductModal
         isOpen={showProductModal}
         onClose={() => setShowProductModal(false)}
@@ -390,7 +369,6 @@ export default function ProductManagementPage() {
         onSuccess={refresh}
       />
 
-      {/* MODAL CONFIRM DELETE KUSTOM */}
       <DeleteModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
