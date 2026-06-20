@@ -11,29 +11,70 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AddExpense godoc
+// @Summary      Record a new expense
+// @Description  Create a new business expense entry linked to the logged-in user
+// @Tags         Expenses
+// @Accept       json
+// @Produce      json
+// @Param        expense  body      models.Expense  true  "Expense Ledger Data"
+// @Success      201      {object}  map[string]interface{} "Expense successfully recorded"
+// @Failure      400      {object}  map[string]interface{} "Invalid data input syntax"
+// @Failure      500      {object}  map[string]interface{} "Database error saving ledger entry"
+// @Router       /api/v1/expenses [post]
 func AddExpense(c *gin.Context) {
-    var input models.Expense
-    if err := c.ShouldBindJSON(&input); err != nil {
-        utils.Fail(c, http.StatusBadRequest, "Data pengeluaran tidak valid", err.Error())
-        return
-    }
+	var input models.AddExpenseInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.Fail(c, http.StatusBadRequest, "Data pengeluaran tidak valid", err.Error())
+		return
+	}
 
-    
-    userID, _ := c.Get("user_id")
-    input.ID = uint(userID.(float64))
-    input.CreatedAt = time.Now()
-    database.DB.Create(&input)
+	rawUserID, _ := c.Get("user_id")
+	userID := uint(rawUserID.(float64))
 
-    if err := database.DB.Create(&input).Error; err != nil {
-        utils.Fail(c, http.StatusInternalServerError, "Gagal menyimpan pengeluaran", err.Error())
-        return
-    }
+	expense := models.Expense{
+		UserID:    userID,
+		Name:      input.Name,
+		Amount:    input.Amount,
+		Category:  input.Category,
+		CreatedAt: time.Now(),
+	}
 
-    utils.OK(c, "Pengeluaran berhasil dicatat", input)
+	if err := database.DB.Create(&expense).Error; err != nil {
+		utils.Fail(c, http.StatusInternalServerError, "Gagal menyimpan pengeluaran", err.Error())
+		return
+	}
+
+	utils.OK(c, "Pengeluaran berhasil dicatat", expense)
 }
 
+
+// GetExpenses godoc
+// @Summary      Retrieve list of expenses
+// @Description  Get all historical business expense data sorted by newest creation time
+// @Tags         Expenses
+// @Produce      json
+// @Success      200      {object}  map[string]interface{} "Successfully fetched expense records"
+// @Router       /api/v1/expenses [get]
+
 func GetExpenses(c *gin.Context) {
-    var expenses []models.Expense
-    database.DB.Order("created_at desc").Find(&expenses)
-    utils.OK(c, "Daftar pengeluaran", expenses)
+	page, limit, offset := utils.GetPagination(c)
+
+	var expenses []models.Expense
+	var total int64
+
+	database.DB.Model(&models.Expense{}).Count(&total)
+
+	if err := database.DB.Order("created_at desc").Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
+		utils.Fail(c, http.StatusInternalServerError, "Gagal mengambil data pengeluaran", err.Error())
+		return
+	}
+
+	utils.OK(c, "Daftar pengeluaran", gin.H{
+		"data":        expenses,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": (int(total) + limit - 1) / limit,
+	})
 }

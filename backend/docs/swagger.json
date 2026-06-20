@@ -1,0 +1,1150 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API for GoPOS Backend",
+        "title": "GoPOS API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/api/v1/admin/alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve low stock items, forgotten/hanging shifts, and severe cash discrepancies for admin dashboard.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Alerts"
+                ],
+                "summary": "Get proactive system alerts",
+                "responses": {
+                    "200": {
+                        "description": "Alerts successfully retrieved",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/shifts/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all cashier shifts that are still open across the store (Admin Only).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Shifts"
+                ],
+                "summary": "Get all currently active/open shifts",
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved active shifts",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/shifts/{id}/force-close": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin can force close a shift that was left open by a cashier, calculating discrepancy and recording an audit log.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Shifts"
+                ],
+                "summary": "Force close a hanging cashier shift",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Shift ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Actual Cash Data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ForceCloseInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shift successfully force-closed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Authenticate user with email and password to receive a JWT access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User Authentication",
+                "parameters": [
+                    {
+                        "description": "User Credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful with token payload",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid JSON payload",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "412": {
+                        "description": "Account is inactive or disabled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error while generating token",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/expenses": {
+            "post": {
+                "description": "Create a new business expense entry linked to the logged-in user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Record a new expense",
+                "parameters": [
+                    {
+                        "description": "Expense Ledger Data",
+                        "name": "expense",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Expense"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Expense successfully recorded",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid data input syntax",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database error saving ledger entry",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products": {
+            "get": {
+                "description": "Retrieve a paginated list of active products with optional search filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get list of products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by product name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by exact barcode",
+                        "name": "barcode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved products",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new product entry into the store database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Create a new product",
+                "parameters": [
+                    {
+                        "description": "Product Registration Data",
+                        "name": "product",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Product successfully created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input format or missing fields",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database error saving product",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Bulk import products into the database using a CSV file.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Import products via CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully imported products",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format or validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/restock-suggestions": {
+            "get": {
+                "description": "Calculate average sales from the last 7 days and predict items needing urgent restocking",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get low stock and high demand suggestions",
+                "responses": {
+                    "200": {
+                        "description": "Successfully calculated restock suggestions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to compute sales algorithms",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{id}": {
+            "put": {
+                "description": "Modify product details such as name, price, stock, and barcode by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Update an existing product",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated Product Object",
+                        "name": "product",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product successfully updated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid JSON payload",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database error updating product",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deactivate a product by setting its active status to false instead of hard deleting",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Soft delete a product",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product successfully deactivated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/dashboard-summary": {
+            "get": {
+                "description": "Retrieve structured statistics including daily revenue, monthly revenue, total sales count, and the 5 most recent transactions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports \u0026 Dashboard"
+                ],
+                "summary": "Get financial summary for analytics dashboard",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard data loaded successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/gross-profit": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve summary and product breakdown of gross profit within a specific date range",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Gross Profit Report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date in YYYY-MM-DD format (default: today)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date in YYYY-MM-DD format (default: today)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved gross profit report",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/shifts/close": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "End the current active shift, calculate total expected cash, and record physical cash discrepancy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shifts"
+                ],
+                "summary": "Close an active cashier shift",
+                "parameters": [
+                    {
+                        "description": "Closing Shift Data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CloseShiftInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shift successfully closed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "No active shift found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/shifts/open": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Start a new shift for the authenticated cashier by recording the initial drawer cash",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shifts"
+                ],
+                "summary": "Open a new cashier shift",
+                "parameters": [
+                    {
+                        "description": "Initial Shift Data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.OpenShiftInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Shift successfully opened",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Active shift already exists or invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions": {
+            "get": {
+                "description": "Fetch a historical data view of invoice logs with standard offset pagination parameters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Get list of transactions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page target number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max capacity per page response window",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully returned transaction lists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database mapping reading error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions/{id}": {
+            "get": {
+                "description": "Fetch all purchase rows and overall financial totals of a transaction by its numeric unique key identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Get invoice detail sheet",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Numeric Internal Transaction Database ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Target database row matched and loaded",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found matching specific identifier",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions/{id}/refund": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Refund specific items from a completed transaction, restore stock, deduct shift cash, and log the action.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Process a partial or full transaction refund",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Refund Data Payload",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RefundInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Refund processed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users": {
+            "get": {
+                "description": "Get a full list of registered accounts ordered by their unique database ID. Restricted to admin access only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Management"
+                ],
+                "summary": "Retrieve all users",
+                "responses": {
+                    "200": {
+                        "description": "Successfully fetched all system users",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register a new cashier (kasir) or administrator account. Restricted to admin access only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Management"
+                ],
+                "summary": "Create a new user account",
+                "parameters": [
+                    {
+                        "description": "User Creation Payload Data",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateUserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User successfully created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input request format or invalid role assignment",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Email address is already registered",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during password encryption",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/activate": {
+            "put": {
+                "description": "Restore account system operations by resetting the active status flag back to true. Restricted to admin access only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Management"
+                ],
+                "summary": "Re-activate a suspended user account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target Numeric User Database ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile successfully re-activated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "No user entry found matching the given target ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database connection error updating row state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/deactivate": {
+            "put": {
+                "description": "Set user active status flag to false to temporarily revoke platform access. Self-deactivation is prohibited. Restricted to admin access only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Management"
+                ],
+                "summary": "Deactivate a user account (Soft Disable)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target Numeric User Database ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile successfully disabled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Action rejected because an administrator cannot suspend their own session account",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "No user entry found matching the given target ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Database connection error modifying data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.CloseShiftInput": {
+            "type": "object",
+            "required": [
+                "total_cash_actual"
+            ],
+            "properties": {
+                "total_cash_actual": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "handlers.ForceCloseInput": {
+            "type": "object",
+            "required": [
+                "total_cash_actual"
+            ],
+            "properties": {
+                "total_cash_actual": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "handlers.OpenShiftInput": {
+            "type": "object",
+            "required": [
+                "start_cash"
+            ],
+            "properties": {
+                "start_cash": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "handlers.RefundInput": {
+            "type": "object",
+            "required": [
+                "items",
+                "reason"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/handlers.RefundItemInput"
+                    }
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RefundItemInput": {
+            "type": "object",
+            "required": [
+                "product_id",
+                "qty_refunded"
+            ],
+            "properties": {
+                "product_id": {
+                    "type": "integer"
+                },
+                "qty_refunded": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "models.CreateUserInput": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password",
+                "role"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Expense": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.LoginInput": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Product": {
+            "type": "object",
+            "properties": {
+                "barcode": {
+                    "type": "string"
+                },
+                "best_price": {
+                    "type": "integer"
+                },
+                "conversion": {
+                    "type": "integer"
+                },
+                "discount_amount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_promo": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "price_big": {
+                    "type": "integer"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "supplier_name": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "unit_big": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

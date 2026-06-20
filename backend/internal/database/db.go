@@ -7,6 +7,7 @@ import (
 
 	"gopos-backend/internal/models"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -40,12 +41,42 @@ func ConnectDB() {
 		&models.TransactionItem{},
 		&models.User{},
 		&models.Expense{},
+		&models.Shift{},
+		&models.ActivityLog{},
+		&models.Refund{},
+		&models.RefundItem{},
 	)
 	if err != nil {
 		log.Fatal("Gagal migrasi database: ", err)
 	}
 
 	createIndexes()
+}
+
+func SeedAdmin() {
+	var count int64
+	DB.Model(&models.User{}).Count(&count)
+
+	if count == 0 {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("Password123"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatal("Gagal melakukan hash password seeder:", err)
+		}
+
+		admin := models.User{
+			Name:     "Admin1",
+			Email:    "admin1@example.com",
+			Password: string(hashedPassword),
+			Role:     "admin",
+			IsActive: true,
+		}
+
+		if err := DB.Create(&admin).Error; err != nil {
+			log.Println("Gagal membuat seed admin:", err)
+		} else {
+			log.Println("Database kosong! Berhasil membuat akun Admin default: admin1@example.com / Admin123")
+		}
+	}
 }
 
 func createIndexes() {

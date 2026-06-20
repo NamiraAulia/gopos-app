@@ -1,0 +1,782 @@
+basePath: /api/v1
+definitions:
+  handlers.CloseShiftInput:
+    properties:
+      total_cash_actual:
+        minimum: 0
+        type: integer
+    required:
+    - total_cash_actual
+    type: object
+  handlers.ForceCloseInput:
+    properties:
+      total_cash_actual:
+        minimum: 0
+        type: integer
+    required:
+    - total_cash_actual
+    type: object
+  handlers.OpenShiftInput:
+    properties:
+      start_cash:
+        minimum: 0
+        type: integer
+    required:
+    - start_cash
+    type: object
+  handlers.RefundInput:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/handlers.RefundItemInput'
+        minItems: 1
+        type: array
+      reason:
+        type: string
+    required:
+    - items
+    - reason
+    type: object
+  handlers.RefundItemInput:
+    properties:
+      product_id:
+        type: integer
+      qty_refunded:
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - qty_refunded
+    type: object
+  models.CreateUserInput:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - role
+    type: object
+  models.Expense:
+    properties:
+      amount:
+        type: integer
+      category:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.LoginInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.Product:
+    properties:
+      barcode:
+        type: string
+      best_price:
+        type: integer
+      conversion:
+        type: integer
+      discount_amount:
+        type: integer
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      is_promo:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: integer
+      price_big:
+        type: integer
+      stock:
+        type: integer
+      supplier_name:
+        type: string
+      unit:
+        type: string
+      unit_big:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for GoPOS Backend
+  title: GoPOS API
+  version: "1.0"
+paths:
+  /api/v1/admin/alerts:
+    get:
+      description: Retrieve low stock items, forgotten/hanging shifts, and severe
+        cash discrepancies for admin dashboard.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alerts successfully retrieved
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get proactive system alerts
+      tags:
+      - Admin - Alerts
+  /api/v1/admin/shifts/{id}/force-close:
+    post:
+      consumes:
+      - application/json
+      description: Admin can force close a shift that was left open by a cashier,
+        calculating discrepancy and recording an audit log.
+      parameters:
+      - description: Shift ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Actual Cash Data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ForceCloseInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shift successfully force-closed
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Force close a hanging cashier shift
+      tags:
+      - Admin - Shifts
+  /api/v1/admin/shifts/active:
+    get:
+      description: Retrieve a list of all cashier shifts that are still open across
+        the store (Admin Only).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved active shifts
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all currently active/open shifts
+      tags:
+      - Admin - Shifts
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password to receive a JWT access
+        token
+      parameters:
+      - description: User Credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful with token payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid JSON payload
+          schema:
+            additionalProperties: true
+            type: object
+        "412":
+          description: Account is inactive or disabled
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error while generating token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: User Authentication
+      tags:
+      - Authentication
+  /api/v1/expenses:
+    post:
+      consumes:
+      - application/json
+      description: Create a new business expense entry linked to the logged-in user
+      parameters:
+      - description: Expense Ledger Data
+        in: body
+        name: expense
+        required: true
+        schema:
+          $ref: '#/definitions/models.Expense'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Expense successfully recorded
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid data input syntax
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database error saving ledger entry
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Record a new expense
+      tags:
+      - Expenses
+  /api/v1/products:
+    get:
+      description: Retrieve a paginated list of active products with optional search
+        filters
+      parameters:
+      - description: Search by product name
+        in: query
+        name: name
+        type: string
+      - description: Search by exact barcode
+        in: query
+        name: barcode
+        type: string
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved products
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get list of products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Add a new product entry into the store database
+      parameters:
+      - description: Product Registration Data
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product successfully created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input format or missing fields
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database error saving product
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new product
+      tags:
+      - Products
+  /api/v1/products/{id}:
+    delete:
+      description: Deactivate a product by setting its active status to false instead
+        of hard deleting
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product successfully deactivated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Soft delete a product
+      tags:
+      - Products
+    put:
+      consumes:
+      - application/json
+      description: Modify product details such as name, price, stock, and barcode
+        by its ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated Product Object
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product successfully updated
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid JSON payload
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database error updating product
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update an existing product
+      tags:
+      - Products
+  /api/v1/products/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Bulk import products into the database using a CSV file.
+      parameters:
+      - description: CSV file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully imported products
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid file format or validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import products via CSV
+      tags:
+      - Products
+  /api/v1/products/restock-suggestions:
+    get:
+      description: Calculate average sales from the last 7 days and predict items
+        needing urgent restocking
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully calculated restock suggestions
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to compute sales algorithms
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get low stock and high demand suggestions
+      tags:
+      - Products
+  /api/v1/reports/dashboard-summary:
+    get:
+      description: Retrieve structured statistics including daily revenue, monthly
+        revenue, total sales count, and the 5 most recent transactions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard data loaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get financial summary for analytics dashboard
+      tags:
+      - Reports & Dashboard
+  /api/v1/reports/gross-profit:
+    get:
+      description: Retrieve summary and product breakdown of gross profit within a
+        specific date range
+      parameters:
+      - description: 'Start date in YYYY-MM-DD format (default: today)'
+        in: query
+        name: start_date
+        type: string
+      - description: 'End date in YYYY-MM-DD format (default: today)'
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved gross profit report
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Gross Profit Report
+      tags:
+      - Reports
+  /api/v1/shifts/close:
+    post:
+      consumes:
+      - application/json
+      description: End the current active shift, calculate total expected cash, and
+        record physical cash discrepancy
+      parameters:
+      - description: Closing Shift Data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CloseShiftInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shift successfully closed
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: No active shift found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Close an active cashier shift
+      tags:
+      - Shifts
+  /api/v1/shifts/open:
+    post:
+      consumes:
+      - application/json
+      description: Start a new shift for the authenticated cashier by recording the
+        initial drawer cash
+      parameters:
+      - description: Initial Shift Data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OpenShiftInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Shift successfully opened
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Active shift already exists or invalid input
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Open a new cashier shift
+      tags:
+      - Shifts
+  /api/v1/transactions:
+    get:
+      description: Fetch a historical data view of invoice logs with standard offset
+        pagination parameters
+      parameters:
+      - description: Page target number
+        in: query
+        name: page
+        type: integer
+      - description: Max capacity per page response window
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully returned transaction lists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database mapping reading error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get list of transactions
+      tags:
+      - Transactions
+  /api/v1/transactions/{id}:
+    get:
+      description: Fetch all purchase rows and overall financial totals of a transaction
+        by its numeric unique key identifier
+      parameters:
+      - description: Numeric Internal Transaction Database ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Target database row matched and loaded
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Invoice not found matching specific identifier
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get invoice detail sheet
+      tags:
+      - Transactions
+  /api/v1/transactions/{id}/refund:
+    post:
+      consumes:
+      - application/json
+      description: Refund specific items from a completed transaction, restore stock,
+        deduct shift cash, and log the action.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Refund Data Payload
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RefundInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Refund processed successfully
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Process a partial or full transaction refund
+      tags:
+      - Transactions
+  /api/v1/users:
+    get:
+      description: Get a full list of registered accounts ordered by their unique
+        database ID. Restricted to admin access only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully fetched all system users
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Retrieve all users
+      tags:
+      - Users Management
+    post:
+      consumes:
+      - application/json
+      description: Register a new cashier (kasir) or administrator account. Restricted
+        to admin access only.
+      parameters:
+      - description: User Creation Payload Data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User successfully created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input request format or invalid role assignment
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Email address is already registered
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during password encryption
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new user account
+      tags:
+      - Users Management
+  /api/v1/users/{id}/activate:
+    put:
+      description: Restore account system operations by resetting the active status
+        flag back to true. Restricted to admin access only.
+      parameters:
+      - description: Target Numeric User Database ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile successfully re-activated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: No user entry found matching the given target ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database connection error updating row state
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Re-activate a suspended user account
+      tags:
+      - Users Management
+  /api/v1/users/{id}/deactivate:
+    put:
+      description: Set user active status flag to false to temporarily revoke platform
+        access. Self-deactivation is prohibited. Restricted to admin access only.
+      parameters:
+      - description: Target Numeric User Database ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile successfully disabled
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Action rejected because an administrator cannot suspend their
+            own session account
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: No user entry found matching the given target ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Database connection error modifying data
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Deactivate a user account (Soft Disable)
+      tags:
+      - Users Management
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

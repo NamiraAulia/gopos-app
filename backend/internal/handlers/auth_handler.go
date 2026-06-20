@@ -14,6 +14,18 @@ import (
 	"gopos-backend/internal/utils"
 )
 
+// Login godoc
+// @Summary      User Authentication
+// @Description  Authenticate user with email and password to receive a JWT access token
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      models.LoginInput  true  "User Credentials"
+// @Success      200          {object}  map[string]interface{} "Login successful with token payload"
+// @Failure      400          {object}  map[string]interface{} "Invalid JSON payload"
+// @Failure      412          {object}  map[string]interface{} "Account is inactive or disabled"
+// @Failure      500          {object}  map[string]interface{} "Internal server error while generating token"
+// @Router       /api/v1/auth/login [post]
 func Login(c *gin.Context) {
 	var input models.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {

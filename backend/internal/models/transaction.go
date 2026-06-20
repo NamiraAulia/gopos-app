@@ -3,9 +3,9 @@ package models
 import "time"
 
 type CheckoutInput struct {
-	ProductID uint  `json:"product_id" binding:"required"`
-	Qty       int   `json:"qty"        binding:"required,min=1"`
-	UnitPrice int64 `json:"unit_price" binding:"required"`
+	ProductID  uint  `json:"product_id" binding:"required"`
+	Qty        int   `json:"qty"        binding:"required,min=1"`
+	UnitChoice string `json:"unit_choice" binding:"required,oneof=small big"`
 }
 
 type CheckoutRequest struct {
@@ -13,6 +13,7 @@ type CheckoutRequest struct {
 	PaymentMethod string          `json:"payment_method" binding:"required,oneof=cash qris transfer"`
 	AmountPaid    int64           `json:"amount_paid"    binding:"required,min=1"`
 }
+
 type Transaction struct {
 	ID              uint              `gorm:"primaryKey" json:"id"`
 	TransactionCode string            `gorm:"uniqueIndex;size:50" json:"transaction_code"`
@@ -34,4 +35,6 @@ type TransactionItem struct {
 	UnitPrice     int64  `json:"unit_price"`
 	Qty           int    `json:"qty"`
 	Subtotal      int64  `json:"subtotal"`
+	ConversionUsed int    `gorm:"default:1" json:"conversion_used"` 
+	UnitChoice     string `gorm:"type:varchar(20);default:'small'" json:"unit_choice"` 
 }
