@@ -32,8 +32,11 @@ type CloseShiftInput struct {
 // @Failure      400    {object} map[string]interface{} "Active shift already exists or invalid input"
 // @Router       /api/v1/shifts/open [post]
 func OpenShift(c *gin.Context) {
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "user_id not found in context")
+		return
+	}
 
 	var activeShift models.Shift
 	err := database.DB.Where("user_id = ? AND status = 'open'", userID).First(&activeShift).Error
@@ -77,9 +80,11 @@ func OpenShift(c *gin.Context) {
 // @Failure      400    {object} map[string]interface{} "No active shift found"
 // @Router       /api/v1/shifts/close [post]
 func CloseShift(c *gin.Context) {
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
-
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "user_id not found in context")
+		return
+	}
 	var activeShift models.Shift
 	if err := database.DB.Where("user_id = ? AND status = 'open'", userID).First(&activeShift).Error; err != nil {
 		utils.Fail(c, http.StatusBadRequest, "Gagal menutup shift", "Tidak ada shift aktif yang ditemukan untuk akun Anda")
@@ -120,4 +125,43 @@ func CloseShift(c *gin.Context) {
 	)
 
 	utils.OK(c, "Shift berhasil ditutup", activeShift)
+}
+
+// GetActiveShift godoc
+// @Summary      Get current active shift
+// @Description  Check whether the authenticated cashier has an open shift
+// @Tags         Shifts
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200    {object} map[string]interface{} "Active shift found"
+// @Failure      404    {object} map[string]interface{} "No active shift"
+// @Router       /api/v1/shifts/active [get]
+func GetActiveShift(c *gin.Context) {
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "user_id not found in context")
+		return
+	}
+	var shift models.Shift
+	if err := database.DB.
+		Where("user_id = ? AND status = 'open'", userID).
+		First(&shift).Error; err != nil {
+		utils.Fail(c, http.StatusNotFound, "Tidak ada shift aktif", "no active shift")
+		return
+	}
+
+	utils.OK(c, "Shift aktif ditemukan", shift)
+}
+
+func GetShifts(c *gin.Context) {
+    page, limit, offset := utils.GetPagination(c)
+    var shifts []models.Shift
+    var total int64
+    database.DB.Model(&models.Shift{}).Count(&total)
+    database.DB.Order("created_at desc").Limit(limit).Offset(offset).Find(&shifts)
+    utils.OK(c, "Daftar shift", gin.H{
+        "data": shifts, "total": total,
+        "page": page, "limit": limit,
+        "total_pages": (int(total) + limit - 1) / limit,
+    })
 }

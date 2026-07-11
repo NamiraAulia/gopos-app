@@ -174,8 +174,11 @@ func ChangeOwnPassword(c *gin.Context) {
 		return
 	}
 
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+		return
+	}
 
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {

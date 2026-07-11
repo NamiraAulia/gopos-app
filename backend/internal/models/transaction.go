@@ -5,6 +5,7 @@ import "time"
 type CheckoutInput struct {
 	ProductID  uint  `json:"product_id" binding:"required"`
 	Qty        int   `json:"qty"        binding:"required,min=1"`
+	UnitPrice  int64  `json:"unit_price"`
 	UnitChoice string `json:"unit_choice" binding:"required,oneof=small big"`
 }
 
@@ -12,6 +13,8 @@ type CheckoutRequest struct {
 	Items         []CheckoutInput `json:"items"          binding:"required,min=1"`
 	PaymentMethod string          `json:"payment_method" binding:"required,oneof=cash qris transfer"`
 	AmountPaid    int64           `json:"amount_paid"    binding:"required,min=1"`
+	MemberID      *uint           `json:"member_id"`
+	DiscountAmount int64          `json:"discount_amount"`
 }
 
 type Transaction struct {
@@ -24,6 +27,9 @@ type Transaction struct {
 	ChangeAmount    int64             `json:"change_amount"`
 	Status          string            `gorm:"size:20;default:completed" json:"status"`
 	Items           []TransactionItem `gorm:"foreignKey:TransactionID" json:"items"`
+	MemberID        *uint             `json:"member_id"`
+	Member          *Member           `gorm:"foreignKey:MemberID" json:"member"`
+	DiscountAmount  int64             `gorm:"default:0" json:"discount_amount"`
 	CreatedAt       time.Time         `json:"created_at"`
 }
 

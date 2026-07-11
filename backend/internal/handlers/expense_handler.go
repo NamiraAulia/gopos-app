@@ -29,8 +29,11 @@ func AddExpense(c *gin.Context) {
 		return
 	}
 
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+		return
+	}
 
 	expense := models.Expense{
 		UserID:    userID,

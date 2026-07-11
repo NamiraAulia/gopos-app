@@ -14,6 +14,8 @@ import (
 	"gopos-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AddProductPayload struct {
@@ -30,6 +32,7 @@ type AddProductPayload struct {
 	SupplierName   string `json:"supplier_name"`
 	DiscountAmount int    `json:"discount_amount"`
 	IsPromo        bool   `json:"is_promo"`
+	PriceMember    int    `json:"price_member"`
 }
 
 // GetProducts godoc
@@ -106,17 +109,20 @@ func AddProducts(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Name:         input.Name,
-		Barcode:      input.Barcode,
-		BestPrice:    input.BestPrice,
-		Price:        input.Price,
-		PriceBig:     input.PriceBig,
-		Stock:        finalStock,
-		Unit:         input.Unit,
-		UnitBig:      input.UnitBig,
-		Conversion:   input.Conversion,
-		SupplierName: input.SupplierName,
-		IsActive:     true,
+		Name:           input.Name,
+		Barcode:        input.Barcode,
+		BestPrice:      input.BestPrice,
+		Price:          input.Price,
+		PriceBig:       input.PriceBig,
+		Stock:          finalStock,
+		Unit:           input.Unit,
+		UnitBig:        input.UnitBig,
+		Conversion:     input.Conversion,
+		SupplierName:   input.SupplierName,
+		IsActive:       true,
+		DiscountAmount: input.DiscountAmount,
+		IsPromo:        input.IsPromo,
+		PriceMember:    input.PriceMember,
 	}
 
 	if errDB := database.DB.Create(&product).Error; errDB != nil {
@@ -151,12 +157,21 @@ func EditProducts(c *gin.Context) {
 		return
 	}
 
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Sesi tidak valid"})
+		return
+	}
+
 	var product models.Product
 	if err := database.DB.First(&product, id).Error; err != nil {
 		response := utils.Error("Barang tidak ditemukan!", err.Error())
 		c.JSON(http.StatusNotFound, response)
 		return
 	}
+
+	oldPrice := product.Price
+	oldStock := product.Stock
 
 	product.Name = input.Name
 	product.Barcode = input.Barcode
@@ -170,11 +185,28 @@ func EditProducts(c *gin.Context) {
 	product.Conversion = input.Conversion
 	product.DiscountAmount = input.DiscountAmount
 	product.IsPromo = input.IsPromo
+	product.PriceMember = input.PriceMember
 
 	if err := database.DB.Save(&product).Error; err != nil {
 		response := utils.Error("Gagal mengupdate barang di database", err.Error())
 		c.JSON(http.StatusInternalServerError, response)
 		return
+	}
+
+	if oldPrice != input.Price {
+		oldVal := fmt.Sprintf("Price: %d", oldPrice)
+		newVal := fmt.Sprintf("Price: %d", input.Price)
+		_ = utils.RecordActivity(nil, userID, "CHANGE_PRICE", "products", product.ID, oldVal, newVal, c.ClientIP())
+	}
+	if oldStock != input.Stock {
+		oldVal := fmt.Sprintf("Stock: %d", oldStock)
+		newVal := fmt.Sprintf("Stock: %d", input.Stock)
+		_ = utils.RecordActivity(nil, userID, "MANUAL_STOCK_ADJUST", "products", product.ID, oldVal, newVal, c.ClientIP())
+	}
+	if oldPrice == input.Price && oldStock == input.Stock {
+		oldVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %d", product.Name, product.Price, product.Stock)
+		newVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %d", input.Name, input.Price, input.Stock)
+		_ = utils.RecordActivity(nil, userID, "EDIT_PRODUCT", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 
 	response := utils.Success("Barang berhasil diupdate!", product)
@@ -193,6 +225,12 @@ func EditProducts(c *gin.Context) {
 func DeleteProducts(c *gin.Context) {
 	id := c.Param("id")
 
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Sesi tidak valid"})
+		return
+	}
+
 	var product models.Product
 	if err := database.DB.First(&product, id).Error; err != nil {
 		response := utils.Error("Barang tidak ditemukan!", err.Error())
@@ -200,11 +238,17 @@ func DeleteProducts(c *gin.Context) {
 		return
 	}
 
-	database.DB.Model(&product).Update("is_active", false)
+	if err := database.DB.Model(&product).Update("is_active", false).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menghapus produk"})
+		return
+	}
+
+	oldVal := "IsActive: true"
+	newVal := "IsActive: false"
+	_ = utils.RecordActivity(nil, userID, "DELETE_PRODUCT", "products", product.ID, oldVal, newVal, c.ClientIP())
 
 	response := utils.Success("Barang berhasil dihapus!", product)
 	c.JSON(http.StatusOK, response)
-
 }
 
 // GetRestockSuggestions godoc
@@ -221,21 +265,24 @@ func GetRestockSuggestions(c *gin.Context) {
 	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
 
 	query := `
-		SELECT 
-			p.id as product_id, 
-			p.name as product_name, 
-			p.stock as current_stock,
-			COALESCE(SUM(ti.qty) / 7.0, 0) as avg_sales_per_day,
-			CASE 
-				WHEN COALESCE(SUM(ti.qty), 0) > 0 THEN p.stock / (SUM(ti.qty) / 7.0) 
-				ELSE 999 
-			END as days_remaining
-		FROM products p
-		LEFT JOIN transaction_items ti ON p.id = ti.product_id
-		LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.created_at >= ?
-		GROUP BY p.id, p.name, p.stock
-		HAVING days_remaining <= 3 OR current_stock <= 5
-		ORDER BY days_remaining ASC
+		SELECT product_id, product_name, current_stock, avg_sales_per_day, days_remaining
+		FROM (
+			SELECT 
+				p.id as product_id, 
+				p.name as product_name, 
+				p.stock as current_stock,
+				COALESCE(CAST(SUM(ti.qty) AS double precision) / 7.0, 0.0) as avg_sales_per_day,
+				CASE 
+					WHEN COALESCE(SUM(ti.qty), 0) > 0 THEN CAST(p.stock AS double precision) / (CAST(SUM(ti.qty) AS double precision) / 7.0) 
+					ELSE 999.0 
+				END as days_remaining
+			FROM products p
+			LEFT JOIN transaction_items ti ON p.id = ti.product_id
+			LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.created_at >= ?
+			GROUP BY p.id, p.name, p.stock
+		) sub
+		WHERE sub.days_remaining <= 3.0 OR sub.current_stock <= 5
+		ORDER BY sub.days_remaining ASC
 	`
 
 	if err := database.DB.Raw(query, sevenDaysAgo).Scan(&suggestions).Error; err != nil {
@@ -261,31 +308,29 @@ func GetRestockSuggestions(c *gin.Context) {
 func ImportProductsCSV(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		utils.Fail(c, http.StatusBadRequest, "Gagal memproses upload file", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Gorontalo upload gagal", "error": err.Error()})
 		return
 	}
 	defer file.Close()
 
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
-		utils.Fail(c, http.StatusBadRequest, "Format file salah", "File harus berupa ekstensi .csv")
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format file salah", "error": "File harus berupa ekstensi .csv"})
 		return
 	}
 
 	csvReader := csv.NewReader(file)
-
-	tx := database.DB.Begin()
-
-	var successCount int
 	isHeader := true
+	var productsToUpsert []models.Product
+	lineCount := 0
 
 	for {
+		lineCount++
 		record, err := csvReader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			tx.Rollback()
-			utils.Fail(c, http.StatusBadRequest, "Gagal membaca baris data CSV", err.Error())
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Gagal membaca baris ke-%d", lineCount), "error": err.Error()})
 			return
 		}
 
@@ -294,21 +339,17 @@ func ImportProductsCSV(c *gin.Context) {
 			continue
 		}
 
-		if len(record) < 10 {
-			tx.Rollback()
-			utils.Fail(c, http.StatusBadRequest, "Format kolom CSV tidak sesuai", "Pastikan CSV memiliki 10 kolom sesuai template")
+		if len(record) != 10 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false, 
+				"message": fmt.Sprintf("Format kolom tidak sesuai pada baris %d", lineCount), 
+				"error":   fmt.Sprintf("Terdeteksi %d kolom. Pastikan CSV memiliki tepat 10 kolom sesuai template", len(record)),
+			})
 			return
 		}
 
 		name := strings.TrimSpace(record[0])
 		barcode := strings.TrimSpace(record[1])
-
-		if name == "" {
-			tx.Rollback()
-			utils.Fail(c, http.StatusBadRequest, "Validasi gagal", "Ada nama produk yang kosong di dalam file")
-			return
-		}
-
 		bestPrice, _ := strconv.Atoi(record[2])
 		price, _ := strconv.Atoi(record[3])
 		priceBig, _ := strconv.Atoi(record[4])
@@ -318,21 +359,19 @@ func ImportProductsCSV(c *gin.Context) {
 		conversion, _ := strconv.Atoi(record[8])
 		supplierName := strings.TrimSpace(record[9])
 
-		if price <= 0 {
-			tx.Rollback()
-			utils.Fail(c, http.StatusBadRequest, "Validasi gagal", fmt.Sprintf("Harga produk '%s' harus lebih dari 0", name))
+		if name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal di baris %d", lineCount), "error": "Nama produk tidak boleh kosong"})
 			return
 		}
-
-		if barcode != "" {
-			var existingProduct models.Product
-			errCheck := tx.Where("barcode = ? AND is_active = true", barcode).First(&existingProduct).Error
-			if errCheck == nil {
-				continue
-			}
+		if price <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal pada produk '%s'", name), "error": "Harga jual retail (price) harus lebih besar dari 0"})
+			return
+		}
+		if conversion <= 0 {
+			conversion = 1 
 		}
 
-		product := models.Product{
+		productsToUpsert = append(productsToUpsert, models.Product{
 			Name:         name,
 			Barcode:      barcode,
 			BestPrice:    bestPrice,
@@ -344,20 +383,31 @@ func ImportProductsCSV(c *gin.Context) {
 			Conversion:   conversion,
 			SupplierName: supplierName,
 			IsActive:     true,
-		}
-
-		if err := tx.Create(&product).Error; err != nil {
-			tx.Rollback()
-			utils.Fail(c, http.StatusInternalServerError, "Gagal menyimpan produk dari CSV", err.Error())
-			return
-		}
-
-		successCount++
+		})
 	}
 
-	tx.Commit()
+	if len(productsToUpsert) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tidak ada data produk yang valid untuk diimpor"})
+		return
+	}
 
-	utils.OK(c, "Proses import file selesai", gin.H{
-		"inserted_count": successCount,
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		return tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "barcode"}},
+			DoUpdates: clause.AssignmentColumns([]string{"name", "best_price", "price", "price_big", "supplier_name"}),
+		}).Create(&productsToUpsert).Error
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menyimpan data ke database", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Berhasil memproses massal %d produk ke sistem GoPOS", len(productsToUpsert)),
+		"data": gin.H{
+			"processed_count": len(productsToUpsert),
+		},
 	})
 }

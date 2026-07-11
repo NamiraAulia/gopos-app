@@ -21,26 +21,35 @@ func GetReceiptData(c *gin.Context) {
 	}
 
 	type ReceiptItemResponse struct {
+		ID          uint   `json:"id"`
+		ProductID   uint   `json:"product_id"`
 		ProductName string `json:"product_name"`
 		Qty         int    `json:"qty"`
 		UnitPrice   int64  `json:"unit_price"`
 		Subtotal    int64  `json:"subtotal"`
+		UnitChoice  string `json:"unit_choice"`
 	}
 
 	var itemsResponse []ReceiptItemResponse
 	for _, item := range transaction.Items {
 		itemsResponse = append(itemsResponse, ReceiptItemResponse{
+			ID:          item.ID,
+			ProductID:   item.ProductID,
 			ProductName: item.ProductName,
 			Qty:         item.Qty,
 			UnitPrice:   item.UnitPrice,
 			Subtotal:    item.Subtotal,
+			UnitChoice:  item.UnitChoice,
 		})
 	}
 
 	utils.OK(c, "Data struk berhasil dibuat", gin.H{
+		"id":               transaction.ID,
+		"status":           transaction.Status,
 		"store_name":       "GoPOS Toko Sembako",
 		"transaction_code": transaction.TransactionCode,
 		"date":             transaction.CreatedAt.Format("2006-01-02 15:04:05"),
+		"created_at":       transaction.CreatedAt,
 		"payment_method":   transaction.PaymentMethod,
 		"cashier_id":       transaction.UserID,
 		"items":            itemsResponse,

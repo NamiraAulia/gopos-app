@@ -49,8 +49,11 @@ func GetActiveShifts(c *gin.Context) {
 // @Success      200    {object}  map[string]interface{} "Shift successfully force-closed"
 // @Router       /api/v1/admin/shifts/{id}/force-close [post]
 func ForceCloseShift(c *gin.Context) {
-	rawAdminID, _ := c.Get("user_id")
-	adminID := uint(rawAdminID.(float64))
+	adminID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "Admin ID tidak ditemukan")
+		return
+	}
 
 	shiftIDParam := c.Param("id")
 	shiftID, err := strconv.ParseUint(shiftIDParam, 10, 32)

@@ -17,6 +17,7 @@ type Product struct {
 	IsActive     bool   `json:"is_active" gorm:"default:true"`
 	DiscountAmount int  `json:"discount_amount" gorm:"default:0"`
 	IsPromo        bool `json:"is_promo" gorm:"default:false"`
+	PriceMember    int  `json:"price_member" gorm:"default:0"`
 }
 
 type RestockSuggestion struct {

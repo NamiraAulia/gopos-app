@@ -23,17 +23,20 @@ func GetDashboardSummary(c *gin.Context) {
 	var totalSales int64
 	var recentTransactions []models.Transaction
 
-	now := time.Now()
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	todayEnd := todayStart.Add(24 * time.Hour)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	monthEnd := monthStart.AddDate(0, 1, 0)
 
 	database.DB.Model(&models.Transaction{}).
-		Where("created_at >= ? AND status = ?", todayStart, "completed").
+		Where("created_at >= ? AND created_at < ? AND status = ?", todayStart, todayEnd, "completed").
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&todayRevenue)
 
 	database.DB.Model(&models.Transaction{}).
-		Where("created_at >= ? AND status = ?", monthStart, "completed").
+		Where("created_at >= ? AND created_at < ? AND status = ?", monthStart, monthEnd, "completed").
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&monthRevenue)
 
@@ -47,11 +50,33 @@ func GetDashboardSummary(c *gin.Context) {
 		Limit(5).
 		Find(&recentTransactions)
 
+	var todayTransactionCount int64
+	database.DB.Model(&models.Transaction{}).
+		Where("created_at >= ? AND created_at < ? AND status = ?", todayStart, todayEnd, "completed").
+		Count(&todayTransactionCount)
+
+	var todayExpense int64
+	database.DB.Model(&models.Expense{}).
+		Where("created_at >= ? AND created_at < ?", todayStart, todayEnd).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&todayExpense)
+
+	todayProfit := todayRevenue - todayExpense
+
+	var criticalStockCount int64
+	database.DB.Model(&models.Product{}).
+		Where("stock <= 5").
+		Count(&criticalStockCount)
+
 	utils.OK(c, "Data ringkasan dashboard", gin.H{
-		"today_revenue":       todayRevenue,
-		"month_revenue":       monthRevenue,
-		"total_sales":         totalSales,
-		"recent_transactions": recentTransactions,
+		"today_revenue":           todayRevenue,
+		"month_revenue":           monthRevenue,
+		"total_sales":             totalSales,
+		"recent_transactions":     recentTransactions,
+		"today_transaction_count": todayTransactionCount,
+		"today_expense":           todayExpense,
+		"today_profit":            todayProfit,
+		"critical_stock_count":    criticalStockCount,
 	})
 }
 
@@ -230,7 +255,8 @@ func GetGrossProfitReport(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
-	now := time.Now()
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
 	todayStr := now.Format("2006-01-02")
 
 	if startDateStr == "" {
@@ -240,8 +266,13 @@ func GetGrossProfitReport(c *gin.Context) {
 		endDateStr = todayStr
 	}
 
-	startDateTime := startDateStr + " 00:00:00"
-	endDateTime := endDateStr + " 23:59:59"
+	startT, err1 := time.ParseInLocation("2006-01-02 15:04:05", startDateStr+" 00:00:00", loc)
+	endT, err2 := time.ParseInLocation("2006-01-02 15:04:05", endDateStr+" 23:59:59", loc)
+
+	if err1 != nil || err2 != nil {
+		utils.Fail(c, http.StatusBadRequest, "Format tanggal tidak valid, gunakan YYYY-MM-DD", "invalid date format")
+		return
+	}
 
 	type ReportSummary struct {
 		TotalRevenue int64 `json:"total_revenue"`
@@ -262,7 +293,7 @@ func GetGrossProfitReport(c *gin.Context) {
 		WHERE t.status = 'completed' AND t.created_at BETWEEN ? AND ?
 	`
 
-	if err := database.DB.Raw(summaryQuery, startDateTime, endDateTime).Scan(&summary).Error; err != nil {
+	if err := database.DB.Raw(summaryQuery, startT, endT).Scan(&summary).Error; err != nil {
 		utils.Fail(c, http.StatusInternalServerError, "Gagal menghitung ringkasan laporan", err.Error())
 		return
 	}
@@ -294,8 +325,35 @@ func GetGrossProfitReport(c *gin.Context) {
 		ORDER BY profit DESC
 	`
 
-	if err := database.DB.Raw(breakdownQuery, startDateTime, endDateTime).Scan(&productsBreakdown).Error; err != nil {
+	if err := database.DB.Raw(breakdownQuery, startT, endT).Scan(&productsBreakdown).Error; err != nil {
 		utils.Fail(c, http.StatusInternalServerError, "Gagal menghitung rincian laporan per produk", err.Error())
+		return
+	}
+
+	type DailyProfit struct {
+		Date        string `json:"date"`
+		Revenue     int64  `json:"revenue"`
+		Cogs        int64  `json:"cogs"`
+		GrossProfit int64  `json:"gross_profit"`
+	}
+	var dailyProfits []DailyProfit
+
+	dailyQuery := `
+		SELECT 
+			DATE(t.created_at) as date,
+			COALESCE(SUM(ti.subtotal), 0) as revenue,
+			COALESCE(SUM(p.best_price * ti.qty), 0) as cogs,
+			COALESCE(SUM(ti.subtotal) - SUM(p.best_price * ti.qty), 0) as gross_profit
+		FROM transaction_items ti
+		JOIN transactions t ON ti.transaction_id = t.id
+		JOIN products p ON ti.product_id = p.id
+		WHERE t.status = 'completed' AND t.created_at BETWEEN ? AND ?
+		GROUP BY DATE(t.created_at)
+		ORDER BY date ASC
+	`
+
+	if err := database.DB.Raw(dailyQuery, startT, endT).Scan(&dailyProfits).Error; err != nil {
+		utils.Fail(c, http.StatusInternalServerError, "Gagal menghitung laporan laba harian", err.Error())
 		return
 	}
 
@@ -306,5 +364,6 @@ func GetGrossProfitReport(c *gin.Context) {
 		"total_cogs":    summary.TotalCogs,
 		"gross_profit":  summary.GrossProfit,
 		"products":      productsBreakdown,
+		"daily_profits": dailyProfits,
 	})
 }

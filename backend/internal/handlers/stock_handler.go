@@ -10,12 +10,11 @@ import (
 )
 
 func CreateStockAdjustment(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
+	userID, ok := utils.GetUserID(c)
+	if !ok {
 		utils.Fail(c, http.StatusUnauthorized, "User tidak terautentikasi", "unauthorized")
 		return
 	}
-	userID := userIDVal.(uint)
 
 	var input models.StockAdjustmentInput
 	if err := c.ShouldBindJSON(&input); err != nil {

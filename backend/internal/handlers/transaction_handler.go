@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,8 +33,17 @@ func Checkout(c *gin.Context) {
 		return
 	}
 
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
+	req.PaymentMethod = strings.ToLower(req.PaymentMethod)
+	if req.PaymentMethod != "cash" && req.PaymentMethod != "qris" && req.PaymentMethod != "transfer" {
+		utils.Fail(c, http.StatusBadRequest, "Metode pembayaran tidak valid", "payment_method harus 'cash', 'qris', atau 'transfer'")
+		return
+	}
+
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+		return
+	}
 
 	var activeShift models.Shift
 	if err := database.DB.Where("user_id = ? AND status = 'open'", userID).First(&activeShift).Error; err != nil {
@@ -57,17 +67,26 @@ func Checkout(c *gin.Context) {
 		productMap[p.ID] = p
 	}
 
+	var preflightTotal int64
+	type itemCalc struct {
+		unitPrice   int64
+		qtyToDeduct int
+		subtotal    int64
+	}
+	calcMap := make(map[uint]itemCalc, len(req.Items))
+
 	for _, item := range req.Items {
 		product, ok := productMap[item.ProductID]
 		if !ok {
 			utils.Fail(c, http.StatusBadRequest,
-				fmt.Sprintf("Produk ID %d tidak ditemukan atau tidak aktif", item.ProductID), "product not found")
+				fmt.Sprintf("Produk ID %d tidak ditemukan atau tidak aktif", item.ProductID),
+				"product not found")
 			return
 		}
 
 		qtyInBaseUnit := item.Qty
 		if item.UnitChoice == "big" && product.Conversion > 0 {
-			qtyInBaseUnit = item.Qty * product.Conversion // Contoh: 2 ikat telur -> 2 * 15 = 30 kg
+			qtyInBaseUnit = item.Qty * product.Conversion
 		}
 
 		if product.Stock < qtyInBaseUnit {
@@ -77,68 +96,95 @@ func Checkout(c *gin.Context) {
 				"insufficient stock")
 			return
 		}
+
+		unitPrice := int64(product.Price)
+		qtyToDeduct := item.Qty
+
+		if item.UnitChoice == "big" && product.Conversion > 0 {
+			unitPrice = int64(product.PriceBig)
+			qtyToDeduct = item.Qty * product.Conversion
+
+			if product.IsPromo && product.DiscountAmount > 0 {
+				discounted := product.PriceBig - product.DiscountAmount
+				if discounted < 0 {
+					discounted = 0
+				}
+				unitPrice = int64(discounted)
+			}
+		} else {
+			// Unit small / satuan eceran
+			if product.IsPromo && product.DiscountAmount > 0 {
+				discounted := product.Price - product.DiscountAmount
+				if discounted < 0 {
+					discounted = 0
+				}
+				unitPrice = int64(discounted)
+			}
+		}
+
+		subtotal := unitPrice * int64(item.Qty)
+		preflightTotal += subtotal
+		calcMap[item.ProductID] = itemCalc{
+			unitPrice:   unitPrice,
+			qtyToDeduct: qtyToDeduct,
+			subtotal:    subtotal,
+		}
+	}
+
+	netTotal := preflightTotal - req.DiscountAmount
+	if netTotal < 0 {
+		netTotal = 0
+	}
+
+	if req.PaymentMethod == "cash" && req.AmountPaid < netTotal {
+		utils.Fail(c, http.StatusBadRequest,
+			fmt.Sprintf("Uang diterima (Rp %d) kurang dari total belanja (Rp %d)", req.AmountPaid, netTotal),
+			"insufficient payment")
+		return
+	}
+
+	if req.PaymentMethod == "qris" || req.PaymentMethod == "transfer" {
+		req.AmountPaid = netTotal
 	}
 
 	var createdTransaction models.Transaction
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		var totalAmount int64
 		txItems := make([]models.TransactionItem, 0, len(req.Items))
 
 		for _, item := range req.Items {
 			product := productMap[item.ProductID]
-
-			unitPrice := int64(product.Price)
-			qtyToDeduct := item.Qty
-
-			if product.IsPromo && item.UnitChoice == "small" {
-				discountedPrice := product.Price - product.DiscountAmount
-				if discountedPrice < 0 {
-					discountedPrice = 0
-				}
-				unitPrice = int64(discountedPrice)
-			} else if item.UnitChoice == "big" && product.Conversion > 0 {
-				unitPrice = int64(product.PriceBig)
-				qtyToDeduct = item.Qty * product.Conversion
-			}
-
-			subtotal := unitPrice * int64(item.Qty)
-			totalAmount += subtotal
+			calc := calcMap[item.ProductID]
 
 			txItems = append(txItems, models.TransactionItem{
 				ProductID:      product.ID,
 				ProductName:    product.Name,
-				UnitPrice:      unitPrice,
+				UnitPrice:      calc.unitPrice,
 				Qty:            item.Qty,
-				Subtotal:       subtotal,
-				ConversionUsed: product.Conversion, 
+				Subtotal:       calc.subtotal,
+				ConversionUsed: product.Conversion,
 				UnitChoice:     item.UnitChoice,
 			})
 
 			if err := tx.Model(&models.Product{}).
 				Where("id = ?", product.ID).
-				UpdateColumn("stock", gorm.Expr("stock - ?", qtyToDeduct)).
+				UpdateColumn("stock", gorm.Expr("stock - ?", calc.qtyToDeduct)).
 				Error; err != nil {
 				return err
 			}
 		}
 
-		if req.AmountPaid < totalAmount {
-			return fmt.Errorf(
-				"uang diterima (Rp %d) kurang dari total belanja (Rp %d)",
-				req.AmountPaid, totalAmount,
-			)
-		}
-
-		changeAmount := req.AmountPaid - totalAmount
+		changeAmount := req.AmountPaid - netTotal
 
 		transaction := models.Transaction{
 			UserID:          userID,
 			TransactionCode: generateTrxCode(),
-			TotalAmount:     totalAmount,
+			TotalAmount:     netTotal,
 			PaymentMethod:   req.PaymentMethod,
 			AmountPaid:      req.AmountPaid,
 			ChangeAmount:    changeAmount,
 			Status:          "completed",
+			MemberID:        req.MemberID,
+			DiscountAmount:  req.DiscountAmount,
 			CreatedAt:       time.Now(),
 		}
 
@@ -157,7 +203,7 @@ func Checkout(c *gin.Context) {
 		if req.PaymentMethod == "cash" {
 			if err := tx.Model(&models.Shift{}).
 				Where("user_id = ? AND status = 'open'", userID).
-				UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected + ?", totalAmount)).
+				UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected + ?", netTotal)).
 				Error; err != nil {
 				return err
 			}
@@ -173,7 +219,7 @@ func Checkout(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("Items").First(&createdTransaction, createdTransaction.ID)
+	database.DB.Preload("Items").Preload("Member").First(&createdTransaction, createdTransaction.ID)
 	utils.OK(c, "Transaksi berhasil diselesaikan!", createdTransaction)
 }
 
@@ -202,7 +248,7 @@ func GetTransactions(c *gin.Context) {
 
 	database.DB.Model(&models.Transaction{}).Count(&total)
 
-	err := database.DB.Preload("Items").
+	err := database.DB.Preload("Items").Preload("Member").
 		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
@@ -234,7 +280,7 @@ func GetTransactions(c *gin.Context) {
 func GetTransactionByID(c *gin.Context) {
 	id := c.Param("id")
 	var transaction models.Transaction
-	if err := database.DB.Preload("Items").First(&transaction, id).Error; err != nil {
+	if err := database.DB.Preload("Items").Preload("Member").First(&transaction, id).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan", err.Error())
 		return
 	}
@@ -244,8 +290,14 @@ func GetTransactionByID(c *gin.Context) {
 func VoidTransaction(c *gin.Context) {
 	id := c.Param("id")
 
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+		return
+	}
+
 	var transaction models.Transaction
-	if err := database.DB.Preload("Items").First(&transaction, id).Error; err != nil {
+	if err := database.DB.Preload("Items").Preload("Member").First(&transaction, id).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan", err.Error())
 		return
 	}
@@ -257,15 +309,40 @@ func VoidTransaction(c *gin.Context) {
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		for _, item := range transaction.Items {
+			qtyToRestore := item.Qty
+			if item.UnitChoice == "big" && item.ConversionUsed > 0 {
+				qtyToRestore = item.Qty * item.ConversionUsed
+			}
 			if err := tx.Model(&models.Product{}).
 				Where("id = ?", item.ProductID).
-				UpdateColumn("stock", gorm.Expr("stock + ?", item.Qty)).
+				UpdateColumn("stock", gorm.Expr("stock + ?", qtyToRestore)).
 				Error; err != nil {
 				return err
 			}
 		}
 
-		return tx.Model(&transaction).Update("status", "voided").Error
+		// Update shift refund total if active shift exists and payment is cash
+		if strings.ToLower(transaction.PaymentMethod) == "cash" {
+			var activeShift models.Shift
+			if err := tx.Where("user_id = ? AND status = 'open'", transaction.UserID).First(&activeShift).Error; err == nil {
+				if err := tx.Model(&activeShift).UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", transaction.TotalAmount)).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := tx.Model(&transaction).Update("status", "voided").Error; err != nil {
+			return err
+		}
+
+		oldVal := fmt.Sprintf("Status: %s, TotalAmount: %d", transaction.Status, transaction.TotalAmount)
+		newVal := "Status: voided"
+		errLog := utils.RecordActivity(tx, userID, "VOID_TRANSACTION", "transactions", transaction.ID, oldVal, newVal, c.ClientIP())
+		if errLog != nil {
+			return errLog
+		}
+
+		return nil
 	})
 
 	if err != nil {

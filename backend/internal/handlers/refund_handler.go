@@ -35,8 +35,11 @@ type RefundInput struct {
 // @Success      201    {object}  map[string]interface{} "Refund processed successfully"
 // @Router       /api/v1/transactions/{id}/refund [post]
 func ProcessRefund(c *gin.Context) {
-	rawUserID, _ := c.Get("user_id")
-	userID := uint(rawUserID.(float64))
+	userID, ok := utils.GetUserID(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+		return
+	}
 
 	var activeShift models.Shift
 	if err := database.DB.Where("user_id = ? AND status = 'open'", userID).First(&activeShift).Error; err != nil {
@@ -137,6 +140,13 @@ func ProcessRefund(c *gin.Context) {
 		if err := tx.Model(&models.Shift{}).
 			Where("id = ?", activeShift.ID).
 			UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", totalRefundAmount)).
+			Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&models.Transaction{}).
+			Where("id = ?", transaction.ID).
+			Update("status", "partially_refunded").
 			Error; err != nil {
 			return err
 		}
