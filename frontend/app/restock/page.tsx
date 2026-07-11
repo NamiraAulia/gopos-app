@@ -69,7 +69,7 @@ export default function RestockPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
-              <p className="text-slate-500 font-bold text-lg">Stok aman terkendali! 🎉</p>
+              <p className="text-slate-500 font-bold text-lg">Stok aman terkendali!</p>
               <p className="text-slate-400 text-sm mt-2">Tidak ada produk yang mendekati batas kritis.</p>
             </div>
           ) : (

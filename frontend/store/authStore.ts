@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
           token: string;
           user: User;
         }>(
-          api.post('/auth/login', { username, password })
+          api.post('/auth/login', { email: username, password })
         );
 
         if (ok && data) {

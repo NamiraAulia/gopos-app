@@ -1,182 +1,605 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MonitorSmartphone, Plus, Minus, X, CreditCard, LogOut, Package, Trash2 } from "lucide-react";
-import { useCartStore, Product } from "../../store/useCartStore";
-
-import { PaymentModal } from "../../features/cashier/components/PaymentModal";
-import { ReceiptModal } from "../../features/cashier/components/ReceiptModal";
-import { ProductModal } from "../../features/products/components/ProductModal";
+import {
+  Search,
+  Plus,
+  Minus,
+  X,
+  CreditCard,
+  Trash2,
+  Wallet,
+  Package,
+  PackagePlus,
+  Check,
+  Edit,
+} from "lucide-react";
+import { useCartStore } from "../../store/useCartStore";
+import { useAuthStore } from "@/store/authStore";
+import { PaymentModal } from "@/features/cashier/components/PaymentModal";
+import { ReceiptModal } from "@/features/cashier/components/ReceiptModal";
+import { useCashierProducts, useActiveShift } from "@/features/cashier/hooks";
+import { OpenShiftModal } from "@/features/cashier/components/OpenShiftModal";
+import { ProductModal } from "@/features/products/components/ProductModal";
+import Navbar from "@/features/cashier/components/Navbar";
+import { memberApi } from "@/features/member/api";
+import type { Member } from "@/features/member/types";
 
 export default function CashierPage() {
   const router = useRouter();
-  const { cart, addToCart, decreaseQty, removeFromCart, clearCart, updatePrice } = useCartStore();
+  const { user: currentUser, isHydrated } = useAuthStore();
+  const {
+    cart,
+    addToCart,
+    decreaseQty,
+    removeFromCart,
+    clearCart,
+    toggleUnitChoice,
+    selectedMember,
+    setSelectedMember,
+    setQty,
+    setCustomPrice,
+  } = useCartStore();
+  const { products, loading, searchQuery, triggerSearch, refetch } =
+    useCashierProducts();
+  const { shift, isShiftActive, checkShift } = useActiveShift();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<any>(null);
 
-  const grandTotal = cart.reduce((total, item) => total + item.price * item.qty, 0);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const [showOpenShiftModal, setShowOpenShiftModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
+  const [tempPrice, setTempPrice] = useState("");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = useCallback(async (keyword = "") => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const fetchMembers = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const url = keyword ? `${API_URL}/api/v1/products?name=${encodeURIComponent(keyword)}` : `${API_URL}/api/v1/products`;
-
-      const response = await fetch(url, {
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 401) router.push("/login");
-
-      const result = await response.json();
-      if (result.success && result.data && result.data.data) {
-        setProducts(result.data.data);
+      const res = await memberApi.getMembers();
+      if (res.success) {
+        setMembers(res.data || []);
       }
-    } catch (error) {
-      console.error("Gagal ambil data produk:", error);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    if (confirm("Yakin ingin mengakhiri sesi kasir?")) {
-      localStorage.removeItem("token");
-      router.push("/login");
+    } catch (err) {
+      console.error("Gagal mengambil data member", err);
     }
   };
 
+  useEffect(() => {
+    if (isHydrated && currentUser) {
+      fetchMembers();
+    }
+  }, [isHydrated, currentUser]);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" || e.key === "F2") {
+        if (e.key === "/" && (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA")) {
+          return;
+        }
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+
+      if (e.key === "Enter") {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "BUTTON" || target.tagName === "TEXTAREA") {
+          return;
+        }
+        
+        if (
+          cart.length > 0 &&
+          isShiftActive &&
+          !showPaymentModal &&
+          !showReceipt &&
+          !showOpenShiftModal &&
+          !showProductModal &&
+          !showClearConfirm
+        ) {
+          e.preventDefault();
+          setShowPaymentModal(true);
+        }
+      }
+
+      if (e.key === "Escape") {
+        if (showPaymentModal) {
+          setShowPaymentModal(false);
+        } else if (showReceipt) {
+          setShowReceipt(false);
+        } else if (showOpenShiftModal) {
+          setShowOpenShiftModal(false);
+        } else if (showProductModal) {
+          setShowProductModal(false);
+        } else if (showClearConfirm) {
+          setShowClearConfirm(false);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    cart.length,
+    isShiftActive,
+    showPaymentModal,
+    showReceipt,
+    showOpenShiftModal,
+    showProductModal,
+    showClearConfirm,
+  ]);
+
+  const totalNormal = cart.reduce((total, item) => {
+    const isBig = item.unit_choice === "big" && item.price_big > 0;
+    const harga = isBig ? item.price_big : item.price;
+    return total + harga * item.qty;
+  }, 0);
+
+  const totalNet = cart.reduce((total, item) => {
+    if (item.custom_price != null && item.custom_price > 0) {
+      return total + item.custom_price * item.qty;
+    }
+    const isBig = item.unit_choice === "big" && item.price_big > 0;
+    const harga = isBig 
+      ? item.price_big 
+      : (selectedMember && item.price_member > 0 ? item.price_member : item.price);
+    return total + harga * item.qty;
+  }, 0);
+
+  const discountAmount = totalNormal - totalNet;
+  const grandTotal = totalNet;
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 font-sans text-slate-900">
-      {/* --- HEADER (Bisa dipisah jadi komponen layout/Header.tsx nanti) --- */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <MonitorSmartphone className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">GoPOS</h1>
-          </div>
-          <div className="h-6 w-px bg-slate-200 hidden md:block" />
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-500">
-            <a className="text-blue-600 font-bold" href="/cashier">Kasir</a>
-            <a className="hover:text-slate-900 transition-colors" href="/products">Gudang</a>
-          </nav>
-        </div>
-        <button onClick={handleLogout} className="flex h-10 w-10 items-center justify-center rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
-          <LogOut className="h-4 w-4" />
-        </button>
-      </header>
+      <Navbar
+        isShiftActive={isShiftActive}
+        onOpenShiftClick={() => setShowOpenShiftModal(true)}
+        onCloseShiftClick={() => router.push("/cashier/cashSummary")}
+      />
 
       <main className="flex flex-1 overflow-hidden flex-col lg:flex-row">
-        {/* --- KIRI: DAFTAR PRODUK --- */}
         <section className="flex flex-[0.65] flex-col overflow-hidden border-r border-slate-200">
           <div className="bg-slate-50 p-6 z-10">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-              <input type="text" autoFocus value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                  debounceTimer.current = setTimeout(() => fetchProducts(e.target.value), 300);
-                }}
-                className="h-12 w-full max-w-sm rounded-xl border-2 border-slate-200 bg-white pl-12 pr-4 text-sm font-bold focus:border-blue-600 outline-none"
-                placeholder="Cari barang..."
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  autoFocus
+                  defaultValue={searchQuery}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (debounceTimer.current)
+                      clearTimeout(debounceTimer.current);
+                    debounceTimer.current = setTimeout(
+                      () => triggerSearch(val),
+                      300,
+                    );
+                  }}
+                  className="h-12 w-full rounded-xl border-2 border-slate-200 bg-white pl-12 pr-4 text-sm font-bold focus:border-blue-600 outline-none"
+                  placeholder="Cari barang..."
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowProductModal(true)}
+                title="Tambah produk baru ke sistem"
+                className="h-12 px-4 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-wider hover:bg-blue-100 transition-colors flex items-center gap-2 shrink-0"
+              >
+                <PackagePlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Produk Baru</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 pt-0 grid grid-cols-2 md:grid-cols-3 gap-4">
-            {products.map((product) => {
-              const isOutOfStock = Number(product.stock) <= 0;
-              return (
-                <div key={product.id} onClick={() => !isOutOfStock && addToCart(product)}
-                  className={`flex flex-col justify-between p-4 rounded-2xl border transition-all ${isOutOfStock ? "border-red-200 bg-red-50" : "border-slate-200 bg-white hover:border-blue-600 cursor-pointer"}`}>
-                  <div className="mb-4">
-                    <h3 className="text-base font-bold line-clamp-2">{product.name}</h3>
-                    <p className="text-blue-600 font-bold mt-1 text-sm">Rp {product.price.toLocaleString("id-ID")}</p>
+          <div className="overflow-y-auto p-6 grid grid-cols-3 gap-4">
+            {!isShiftActive ? (
+              <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center gap-3">
+                <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center">
+                  <Wallet className="h-6 w-6 text-amber-500" />
+                </div>
+                <p className="font-black text-slate-700">Kasir Belum Dibuka</p>
+                <p className="text-xs text-slate-400 font-medium max-w-xs">
+                  Buka shift kasir terlebih dahulu untuk melihat dan menjual
+                  produk
+                </p>
+                <button
+                  onClick={() => setShowOpenShiftModal(true)}
+                  className="mt-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-colors"
+                >
+                  Buka Shift Sekarang
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="col-span-3 flex justify-center py-24">
+                <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : products.length === 0 ? (
+              <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center gap-3">
+                <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <PackagePlus className="h-6 w-6 text-slate-400" />
+                </div>
+                <p className="font-black text-slate-700">
+                  {searchQuery
+                    ? `"${searchQuery}" tidak ditemukan`
+                    : "Belum Ada Produk"}
+                </p>
+                <p className="text-xs text-slate-400 font-medium max-w-xs">
+                  {searchQuery
+                    ? "Produk ini belum ada di sistem. Mau tambahkan sekarang?"
+                    : "Tambahkan produk pertama ke sistem kasir kamu"}
+                </p>
+                <button
+                  onClick={() => setShowProductModal(true)}
+                  className="mt-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <PackagePlus className="h-3.5 w-3.5" /> Tambah Produk Baru
+                </button>
+              </div>
+            ) : (
+              products.map((product) => {
+                const cartItem = cart.find((item) => item.id === product.id);
+                const inCartQty = cartItem ? cartItem.qty : 0;
+                
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => {
+                      // Check if already out of stock before adding
+                      const isOutOfStock = cartItem
+                        ? (cartItem.unit_choice === "big"
+                          ? cartItem.qty * cartItem.conversion >= product.stock
+                          : cartItem.qty >= product.stock)
+                        : product.stock <= 0;
+                        
+                      if (!isOutOfStock) {
+                        addToCart(product, "small");
+                      }
+                    }}
+                    className={`p-4 bg-white border rounded-xl cursor-pointer flex flex-col justify-between transition-all relative ${
+                      inCartQty > 0
+                        ? "border-blue-600 ring-2 ring-blue-600/20 shadow-sm"
+                        : "border-slate-200 hover:border-blue-600"
+                    }`}
+                  >
+                    {inCartQty > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-black h-6 w-6 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                        {inCartQty}
+                      </span>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800 line-clamp-2">
+                        {product.name}
+                      </h3>
+                      <p className="text-blue-600 font-extrabold text-xs mt-1">
+                        Rp {product.price.toLocaleString("id-ID")}
+                      </p>
+                      {product.unit_big && (
+                        <p className="text-[10px] text-amber-600 font-mono mt-0.5 flex items-center gap-1">
+                          <Package className="h-3.5 w-3.5" /> Grosir: 1 {product.unit_big} = {product.conversion}{" "}
+                          {product.unit}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded mt-3 w-max ${
+                        product.stock <= (product.min_stock ?? 5)
+                          ? "bg-red-50 text-red-500"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      Stok: {product.stock}
+                    </span>
                   </div>
-                  <button className={`w-full py-2 font-bold rounded-xl text-sm flex items-center justify-center gap-2 pointer-events-none ${isOutOfStock ? "bg-red-600 text-white" : "bg-blue-600 text-white"}`}>
-                    <Plus className="h-4 w-4" /> Tambah
-                  </button>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        <section className="flex flex-[0.35] flex-col bg-slate-50 relative z-20">
+          <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
+            <h2 className="font-black text-sm text-slate-800">
+              Keranjang Belanja
+            </h2>
+            {cart.length > 0 && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="text-xs text-red-500 font-bold flex items-center gap-1 hover:text-red-700 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" /> Bersihkan
+              </button>
+            )}
+          </div>
+
+          {/* Member Selection Panel */}
+          {cart.length > 0 && (
+            <div className="px-4 py-3 bg-white border-b border-slate-200">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Pilih Member / Pelanggan
+              </label>
+              <select
+                value={selectedMember?.id || ""}
+                onChange={(e) => {
+                  const id = parseInt(e.target.value);
+                  const found = members.find((m) => m.id === id);
+                  setSelectedMember(found || null);
+                }}
+                className="w-full h-10 px-3 text-xs font-bold border-2 border-slate-200 rounded-xl outline-none focus:border-blue-600 transition-all bg-white text-slate-700 cursor-pointer"
+              >
+                <option value="">-- Umum (Bukan Member) --</option>
+                {members.map((mbr) => (
+                  <option key={mbr.id} value={mbr.id}>
+                    {mbr.name} ({mbr.member_code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {cart.map((item) => {
+              const isBig = item.unit_choice === "big" && item.price_big > 0;
+              const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
+              const hargaTampil = item.custom_price != null && item.custom_price > 0
+                ? item.custom_price
+                : (isBig 
+                  ? item.price_big 
+                  : (isMemberPrice ? item.price_member : item.price));
+              
+              const isOutOfStock = item.unit_choice === "big" 
+                ? (item.qty * item.conversion >= item.stock) 
+                : (item.qty >= item.stock);
+              
+              return (
+                <div
+                  key={item.id}
+                  className="p-3 bg-white border rounded-xl flex flex-col gap-2 shadow-sm border-slate-200"
+                >
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-bold text-xs text-slate-800 truncate max-w-[180px]">
+                      {item.name}
+                    </h4>
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    {item.unit_big ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleUnitChoice(item.id)}
+                        className={`text-[10px] font-black px-2 py-1 rounded border transition-all ${
+                          isBig
+                            ? "bg-amber-500 border-amber-600 text-white"
+                            : "bg-slate-100 border-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {isBig
+                          ? `GROSIR (${item.unit_big})`
+                          : `ECERAN (${item.unit})`}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        Satuan: {item.unit}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-3">
+                      {isOutOfStock && (
+                        <span className="text-[10px] font-bold text-red-500 animate-pulse">
+                          Stok habis
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 border border-slate-200 rounded-lg bg-slate-50 p-0.5">
+                        <button
+                          onClick={() => decreaseQty(item.id)}
+                          className="p-1 hover:bg-white rounded transition-colors text-slate-600"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <input
+                          type="text"
+                          value={item.qty === 0 ? "" : item.qty}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value.replace(/\D/g, "")) || 0;
+                            setQty(item.id, val);
+                          }}
+                          className="font-mono text-xs font-bold w-8 text-center bg-transparent border-b border-slate-200 outline-none focus:border-blue-600 text-slate-800"
+                        />
+                        <button
+                          onClick={() =>
+                            addToCart(item as any, item.unit_choice)
+                          }
+                          disabled={isOutOfStock}
+                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                      {editingPriceId === item.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400 text-[10px] font-bold">Rp</span>
+                          <input
+                            type="text"
+                            value={tempPrice}
+                            onChange={(e) => setTempPrice(e.target.value.replace(/\D/g, ""))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const newPrice = parseInt(tempPrice) || 0;
+                                setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
+                                setEditingPriceId(null);
+                              } else if (e.key === "Escape") {
+                                setEditingPriceId(null);
+                              }
+                            }}
+                            className="w-16 h-7 px-1 text-[10px] font-bold border border-blue-400 rounded outline-none bg-white text-slate-800"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => {
+                              const newPrice = parseInt(tempPrice) || 0;
+                              setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
+                              setEditingPriceId(null);
+                            }}
+                            className="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
+                          >
+                            <Check className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => setEditingPriceId(null)}
+                            className="p-1 bg-slate-100 text-slate-500 rounded hover:bg-slate-200 transition-colors cursor-pointer"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="font-black text-xs text-blue-600">
+                            {isMemberPrice && !item.custom_price && (
+                              <span className="text-[10px] line-through text-slate-400 font-bold mr-1">
+                                Rp {(item.price * item.qty).toLocaleString("id-ID")}
+                              </span>
+                            )}
+                            {item.custom_price ? (
+                              <span className="text-[9px] text-amber-600 font-bold mr-1 bg-amber-50 px-1 rounded border border-amber-200">
+                                Pas
+                              </span>
+                            ) : null}
+                            Rp {(hargaTampil * item.qty).toLocaleString("id-ID")}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingPriceId(item.id);
+                              setTempPrice(hargaTampil.toString());
+                            }}
+                            className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Edit Harga Satuan"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
-        </section>
 
-        {/* --- KANAN: KERANJANG BELANJA --- */}
-        <section className="flex flex-[0.35] flex-col bg-slate-50 relative z-20">
-          <div className="flex items-center justify-between border-b border-slate-200 bg-white p-5">
-            <h2 className="text-base font-bold text-blue-600">Keranjang Belanja</h2>
-            {cart.length > 0 && (
-              <button onClick={clearCart} className="text-xs font-bold text-red-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /> Kosongkan</button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {cart.map((item) => (
-              <div key={item.id} className="flex flex-col bg-white p-4 rounded-xl border border-blue-100">
-                <div className="flex justify-between mb-3">
-                  <h4 className="font-bold text-slate-900">{item.name}</h4>
-                  <button onClick={() => removeFromCart(item.id)} className="text-slate-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+          <div className="border-t border-slate-200 bg-slate-50 p-5 space-y-3.5">
+            {discountAmount > 0 && (
+              <div className="space-y-1.5 text-xs font-semibold text-slate-500 border-b border-slate-200/60 pb-3">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>Rp {totalNormal.toLocaleString("id-ID")}</span>
                 </div>
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => decreaseQty(item.id)} className="p-1 border rounded"><Minus className="h-4 w-4" /></button>
-                    <span className="font-bold">{item.qty}</span>
-                    <button onClick={() => addToCart(item)} className="p-1 border rounded"><Plus className="h-4 w-4" /></button>
-                  </div>
-                  <span className="font-black text-blue-600">Rp {(item.price * item.qty).toLocaleString("id-ID")}</span>
+                <div className="flex justify-between text-red-500 font-black">
+                  <span>Diskon Member</span>
+                  <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="border-t border-slate-200 bg-white p-5 space-y-4">
+            )}
             <div className="flex justify-between items-center">
-              <p className="text-xs font-semibold text-slate-500">Total Pembayaran</p>
-              <h2 className="text-2xl font-black">Rp {grandTotal.toLocaleString("id-ID")}</h2>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Total Pembayaran
+              </p>
+              <h2 className="text-2xl font-black text-slate-900">
+                Rp {grandTotal.toLocaleString("id-ID")}
+              </h2>
             </div>
-            <button onClick={() => setShowPaymentModal(true)} disabled={cart.length === 0}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 text-lg font-black text-white hover:bg-blue-700 disabled:opacity-50">
-              <CreditCard className="h-6 w-6" /> Bayar Sekarang
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              disabled={cart.length === 0 || !isShiftActive}
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 text-base font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200 cursor-pointer"
+            >
+              <CreditCard className="h-5 w-5" /> Bayar Sekarang
             </button>
           </div>
         </section>
       </main>
 
-      <PaymentModal 
-        isOpen={showPaymentModal} 
-        onClose={() => setShowPaymentModal(false)} 
+      <OpenShiftModal
+        isOpen={showOpenShiftModal}
+        onClose={() => setShowOpenShiftModal(false)}
+        onSuccess={() => { setShowOpenShiftModal(false); checkShift(); refetch(); }}
+      />
+
+
+
+      <ProductModal
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        onSuccess={() => {
+          setShowProductModal(false);
+          refetch();
+        }}
+        existingProduct={null}
+      />
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
         grandTotal={grandTotal}
+        memberId={selectedMember?.id}
+        discountAmount={discountAmount}
         onSuccess={(data) => {
           setShowPaymentModal(false);
           setLastTransaction(data);
-          setShowReceipt(true); 
-          fetchProducts();      
-        }} 
+          setShowReceipt(true);
+          refetch();
+          checkShift();
+        }}
+        onShiftRequired={() => {
+          setShowPaymentModal(false);
+          setShowOpenShiftModal(true);
+        }}
       />
 
-      <ReceiptModal 
-        isOpen={showReceipt} 
-        onClose={() => setShowReceipt(false)} 
-        transaction={lastTransaction} 
+      <ReceiptModal
+        isOpen={showReceipt}
+        onClose={() => setShowReceipt(false)}
+        transaction={lastTransaction}
       />
 
+      {/* Confirmation Modal for Clearing Cart */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl text-center">
+            <h3 className="font-black text-slate-900 text-lg">Yakin hapus semua item?</h3>
+            <p className="text-xs text-slate-400 font-medium mt-2">
+              Keranjang belanja Anda akan dikosongkan sepenuhnya.
+            </p>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors"
+              >
+                Tidak
+              </button>
+              <button
+                onClick={() => {
+                  clearCart();
+                  setShowClearConfirm(false);
+                }}
+                className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

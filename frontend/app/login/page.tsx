@@ -7,6 +7,7 @@ import { User, Lock, Loader2, MonitorSmartphone } from "lucide-react";
 // 👇 IMPORT KOMPONEN UI GLOBAL YANG SUDAH DIPISAH
 import { Alert } from "../../components/ui/Alert";
 import { InputField } from "../../components/ui/InputField";
+import { useAuthStore } from "@/store/authStore";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,6 +41,9 @@ export default function LoginPage() {
         if (result.data && result.data.token) {
           const token = result.data.token;
           localStorage.setItem("token", token);
+          
+          // Populate the client-side authentication store
+          useAuthStore.setState({ user: result.data.user, token: token });
 
           const days = rememberMe ? 30 : 1;
           const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();

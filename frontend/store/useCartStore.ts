@@ -1,63 +1,96 @@
-import { create } from 'zustand';
+import { create } from "zustand";
+import type { Product } from "@/types/api";
+import type { Member } from "@/features/member/types";
 
-export interface Product {
-  min_stock: number;
+export interface CartItem {
   id: number;
   name: string;
-  price: number;
+  price: number;      
+  price_big: number;   
+  price_member: number;
+  qty: number;        
+  unit: string;       
+  unit_big: string;    
+  conversion: number;
+  unit_choice: "small" | "big"; 
   stock: number;
+  custom_price?: number;
 }
 
-export interface CartItem extends Product {
-  qty: number;
-}
-
-interface CartStore {
+interface CartState {
   cart: CartItem[];
-  addToCart: (product: Product) => void;
-  decreaseQty: (productId: number) => void;
-  removeFromCart: (productId: number) => void;
+  selectedMember: Member | null;
+  addToCart: (product: Product, choice?: "small" | "big") => void;
+  decreaseQty: (id: number) => void;
+  toggleUnitChoice: (id: number) => void;
+  removeFromCart: (id: number) => void;
   clearCart: () => void;
-  updatePrice: (productId: number, newPrice: number) => void; // 👈 Fitur baru
+  setSelectedMember: (member: Member | null) => void;
+  setQty: (id: number, qty: number) => void;
+  setCustomPrice: (id: number, price: number | undefined) => void;
 }
 
-export const useCartStore = create<CartStore>((set) => ({
+export const useCartStore = create<CartState>((set) => ({
   cart: [],
-
-  addToCart: (product) => set((state) => {
-    const existingItem = state.cart.find((item) => item.id === product.id);
-    if (existingItem) {
-      return {
-        cart: state.cart.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
-        ),
-      };
-    } else {
-      return { cart: [...state.cart, { ...product, qty: 1 }] };
+  selectedMember: null,
+  
+  addToCart: (product, choice = "small") => set((state) => {
+    const existingIndex = state.cart.findIndex((item) => item.id === product.id);
+    
+    if (existingIndex > -1) {
+      const newCart = [...state.cart];
+      newCart[existingIndex].qty += 1;
+      return { cart: newCart };
     }
+
+    return {
+      cart: [
+        ...state.cart,
+        {
+          id: product.id!,
+          name: product.name,
+          price: product.price,
+          price_big: (product as any).price_big || 0,
+          price_member: product.price_member || 0,
+          qty: 1,
+          unit: product.unit || "pcs",
+          unit_big: product.unit_big || "",
+          conversion: product.conversion || 1,
+          unit_choice: choice,
+          stock: product.stock,
+        },
+      ],
+    };
   }),
 
-  decreaseQty: (productId) => set((state) => {
-    const existingItem = state.cart.find((item) => item.id === productId);
-    if (existingItem && existingItem.qty > 1) {
-      return {
-        cart: state.cart.map((item) =>
-          item.id === productId ? { ...item, qty: item.qty - 1 } : item
-        ),
-      };
-    }
-    return { cart: state.cart.filter((item) => item.id !== productId) };
-  }),
-
-  removeFromCart: (productId) => set((state) => ({
-    cart: state.cart.filter((item) => item.id !== productId)
+  decreaseQty: (id) => set((state) => ({
+    cart: state.cart
+      .map((item) => (item.id === id ? { ...item, qty: item.qty - 1 } : item))
+      .filter((item) => item.qty > 0),
   })),
 
-  clearCart: () => set({ cart: [] }),
+  toggleUnitChoice: (id) => set((state) => ({
+    cart: state.cart.map((item) => {
+      if (item.id === id) {
+        const nextChoice = item.unit_choice === "small" ? "big" : "small";
+        return { ...item, unit_choice: nextChoice };
+      }
+      return item;
+    }),
+  })),
 
-  updatePrice: (productId, newPrice) => set((state) => ({
-    cart: state.cart.map((item) =>
-      item.id === productId ? { ...item, price: newPrice } : item
-    ),
+  removeFromCart: (id) => set((state) => ({
+    cart: state.cart.filter((item) => item.id !== id),
+  })),
+
+  clearCart: () => set({ cart: [], selectedMember: null }),
+  setSelectedMember: (member) => set({ selectedMember: member }),
+  setQty: (id, qty) => set((state) => ({
+    cart: state.cart
+      .map((item) => (item.id === id ? { ...item, qty: Math.max(0, qty) } : item))
+      .filter((item) => item.qty > 0),
+  })),
+  setCustomPrice: (id, price) => set((state) => ({
+    cart: state.cart.map((item) => (item.id === id ? { ...item, custom_price: price } : item)),
   })),
 }));

@@ -21,4 +21,14 @@ export const productsApi = {
 
   softDelete: (id: number) =>
     api.delete<ApiResponse<Product>>(`/products/${id}`).then((res) => res.data),
+
+  importCsv: (file: File) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return api.post<ApiResponse<any>>('/products/import', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        }).then((res) => res.data);
+    }
 };

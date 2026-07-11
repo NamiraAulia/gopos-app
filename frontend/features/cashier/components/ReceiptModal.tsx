@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Printer, ShoppingCart } from "lucide-react";
 
 type ReceiptModalProps = {
   isOpen: boolean;
@@ -25,41 +25,76 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
             <span className="font-bold text-slate-500">Nomor Struk</span>
             <span className="font-bold text-slate-900">{transaction.transaction_code}</span>
           </div>
-          <div className="flex justify-between text-sm mb-4">
+          {transaction.member && (
+            <div className="flex justify-between text-sm mb-3">
+              <span className="font-bold text-slate-500">Member</span>
+              <span className="font-bold text-slate-900">{transaction.member.name}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm mb-3">
             <span className="font-bold text-slate-500">Metode</span>
             <span className="font-bold text-slate-900 uppercase">{transaction.payment_method}</span>
           </div>
+          {transaction.discount_amount > 0 && (
+            <div className="flex justify-between text-sm mb-3">
+              <span className="font-bold text-slate-500">Diskon Member</span>
+              <span className="font-bold text-red-600">-Rp {transaction.discount_amount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
           <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
             <span className="text-sm font-bold text-slate-500">Total Bayar</span>
             <span className="text-2xl font-black text-blue-600">Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
           </div>
+          {transaction.change_amount > 0 && (
+            <div className="border-t border-slate-200 pt-3 mt-3 flex justify-between items-center">
+              <span className="text-sm font-bold text-slate-500">Kembalian</span>
+              <span className="text-xl font-black text-emerald-600">Rp {transaction.change_amount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
         </div>
 
         <div className="px-6 pb-6 space-y-3 print:hidden">
-          <button onClick={() => window.print()} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-blue-700 hover:bg-slate-50">
-            🖨️ Cetak Struk Fisik
+          <button onClick={() => window.print()} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+            <Printer className="h-4 w-4" /> Cetak Struk Fisik
           </button>
-          <button onClick={onClose} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50">
-            🛒 Tutup & Transaksi Baru
+          <button onClick={onClose} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+            <ShoppingCart className="h-4 w-4" /> Tutup & Transaksi Baru
           </button>
         </div>
 
         {/* Print Content Area */}
         <div className="hidden print:block text-black font-mono text-sm p-4">
           <h1 className="text-center font-bold text-lg mb-2">GoPOS</h1>
-          <p className="text-center mb-4">{transaction.transaction_code}</p>
+          <p className="text-center mb-2">{transaction.transaction_code}</p>
+          {transaction.member && (
+            <div className="text-xs mb-3 text-slate-700">
+              <span>MEMBER: {transaction.member.name}</span>
+            </div>
+          )}
           <div className="border-b border-dashed border-black mb-2"></div>
-          {transaction.items?.map((item: any) => (
-            <div key={item.id} className="flex justify-between mb-1">
+          {transaction.items?.map((item: any, index: number) => (
+            <div key={item.id || `${item.product_name}-${index}`} className="flex justify-between mb-1">
               <span>{item.qty}x {item.product_name}</span>
               <span>{item.subtotal.toLocaleString("id-ID")}</span>
             </div>
           ))}
           <div className="border-b border-dashed border-black my-2"></div>
+          {transaction.discount_amount > 0 && (
+            <div className="flex justify-between mb-1 text-xs">
+              <span>DISKON MEMBER</span>
+              <span>-Rp {transaction.discount_amount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>TOTAL</span>
             <span>Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
           </div>
+          {transaction.change_amount > 0 && (
+            <div className="flex justify-between font-bold mt-1">
+              <span>KEMBALIAN</span>
+              <span>Rp {transaction.change_amount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

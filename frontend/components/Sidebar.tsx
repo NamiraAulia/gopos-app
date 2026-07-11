@@ -13,22 +13,31 @@ import {
   MonitorSmartphone,
   ChevronLeft,
   ChevronRight,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
+import { useIsAdmin } from "@/store/authStore";
 
-const menuItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Terminal Kasir", href: "/cashier", icon: ShoppingCart },
-  { name: "Gudang & Stok", href: "/products", icon: Package },
-  { name: "Keuangan", href: "/finance", icon: Wallet },
-  { name: "Data Member", href: "/member", icon: Users },
-  { name: "Asumsi Restock", href: "/restock", icon: AlertTriangle },
-];
+
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isAdmin = useIsAdmin();
+
+  const activeMenuItems = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Terminal Kasir", href: "/cashier", icon: ShoppingCart },
+    { name: "Gudang & Stok", href: "/products", icon: Package },
+    // { name: "Keuangan", href: "/finance", icon: Wallet },
+    { name: "Data Member", href: "/member", icon: Users },
+    { name: "Asumsi Restock", href: "/restock", icon: AlertTriangle },
+    ...(isAdmin ? [
+      { name: "Kelola Kasir", href: "/admin/users", icon: Users },
+      { name: "Log Aktivitas", href: "/admin/audit-logs", icon: Shield }
+    ] : []),
+  ];
 
   const handleLogout = () => {
     if (confirm("Yakin ingin keluar dari sistem?")) {
@@ -58,7 +67,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-        {menuItems.map((item) => {
+        {activeMenuItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link

@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { productsApi } from "./api";
 import type { Product, ApiMeta } from "@/types/api";
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 export function useProducts(initialParams?: {
   page?: number;
   limit?: number;
@@ -13,11 +22,16 @@ export function useProducts(initialParams?: {
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState(initialParams ?? {});
 
+  const debouncedSearch = useDebounce(params.search, 300);
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await productsApi.getAll(params);
+      const res = await productsApi.getAll({
+        ...params,
+        search: debouncedSearch 
+      });
 
       if (res?.success && res.data) {
         setProducts(res.data.products ?? []);
@@ -93,5 +107,14 @@ export function useMutationProducts() {
     }
   };
 
-  return { createProduct, updateProduct, deleteProduct, loading };
+  const uploadCsv = async (file: File) => {
+    try {
+      setLoading(true);
+      return await productsApi.importCsv(file);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { createProduct, updateProduct, deleteProduct, uploadCsv, loading };
 }

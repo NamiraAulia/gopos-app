@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, AlertTriangle } from "lucide-react";
 import type { Product } from "@/types/api";
 
 interface DeleteModalProps {
@@ -36,8 +36,9 @@ export function DeleteModal({ isOpen, onClose, onConfirm, product, isDeleting }:
           <p className="text-sm text-slate-600 leading-relaxed">
             Apakah Anda yakin ingin menghapus produk <span className="font-black text-slate-900">"{product.name}"</span> dari sistem inventori?
           </p>
-          <p className="text-xs text-red-500 mt-2 bg-red-50 px-3 py-2 rounded-lg border border-red-100/50">
-            ⚠ Tindakan ini bersifat permanen dan data stok yang berkaitan akan dihapus dari sistem kasir.
+          <p className="text-xs text-red-500 mt-2 bg-red-50 px-3 py-2 rounded-lg border border-red-100/50 flex items-start gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>Tindakan ini bersifat permanen dan data stok yang berkaitan akan dihapus dari sistem kasir.</span>
           </p>
         </div>
 

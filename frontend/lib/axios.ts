@@ -17,27 +17,34 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token'); 
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`; 
+      config.headers.Authorization = `Bearer ${token}`;
     }
   }
   return config;
-});
+})
 
 
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response) => response,
+  (error) => {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
 
-  (error: AxiosError<ApiErrorResponse>) => {
-    const backendError = error.response?.data;
-
-    if (backendError?.error?.code) {
-      handleErrorByCode(backendError.error.code, backendError.message);
-    } else if (error.code === 'ECONNABORTED') {
-      showToast('error', 'Koneksi timeout. Periksa jaringan Anda.');
-    } else if (!error.response) {
+    if (error.response?.status === 401) {
+      clearStoredToken();
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    }
+    if (!error.response) {
       showToast('error', 'Tidak dapat terhubung ke server. Periksa koneksi Anda.');
+    } else {
+      const serverMsg = error.response.data?.message || 'Terjadi kesalahan sistem.';
+      showToast('error', serverMsg);
     }
 
     return Promise.reject(error);
@@ -114,20 +121,18 @@ function handleErrorByCode(code: ErrorCode, message: string): void {
 
 // HELPERS
 
-export function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('gopos_token');
+export function getStoredToken() {
+  return typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 }
-
-export function setStoredToken(token: string): void {
-  localStorage.setItem('gopos_token', token);
+export function setStoredToken(token: string) {
+  localStorage.setItem('token', token);
 }
-
-export function clearStoredToken(): void {
-  localStorage.removeItem('gopos_token');
-  localStorage.removeItem('gopos_user');
+export function clearStoredToken() {
+  localStorage.removeItem('token');
+  if (typeof window !== 'undefined') {
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+  }
 }
-
 
 function redirectTo(path: string): void {
   if (typeof window !== 'undefined') {

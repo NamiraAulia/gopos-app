@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Product } from "@/types/api";
 import { useMutationProducts } from "../hooks";
-
-// ─────────────────────────────────────────────────────────────
-// TYPES & CONSTANTS
-// ─────────────────────────────────────────────────────────────
+import { Calculator, Lightbulb } from "lucide-react";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -20,33 +17,44 @@ const UNIT_OPTIONS = [
   { value: "bks", label: "Bungkus" },
   { value: "dus", label: "Dus / Karton" },
   { value: "pack", label: "Pack / Pak" },
+  { value: "kg", label: "Kg" },
+  { value: "ltr", label: "Liter" },
 ];
 
 const UNIT_BIG_OPTIONS = [
   { value: "dus", label: "Dus / Karton" },
   { value: "pack", label: "Pack Besar" },
   { value: "krat", label: "Krat" },
+  { value: "lusin", label: "Lusin" },
+  { value: "ikat", label: "Ikat" },
 ];
 
-// Unit label yang pendek untuk tampilan dinamis
-const unitLabel = (val: string) =>
-  UNIT_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
+// const unitLabel = (val: string) =>
+//   UNIT_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
 
-const unitBigLabel = (val: string) =>
-  UNIT_BIG_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
+// const unitBigLabel = (val: string) =>
+//   UNIT_BIG_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
 
-// Format angka ke Rupiah tanpa simbol
+const unitLabel = (val: string) => {
+  if (!val) return "pcs"; // Fallback default jika unit kosong
+  const found = UNIT_OPTIONS.find((o) => o.value === val.toLowerCase().trim());
+  if (!found || !found.label) return val;
+  return found.label.split(" ")[0];
+};
+
+const unitBigLabel = (val: string) => {
+  if (!val) return "dus"; // Fallback default jika unit grosir kosong
+  const found = UNIT_BIG_OPTIONS.find((o) => o.value === val.toLowerCase().trim());
+  if (!found || !found.label) return val;
+  return found.label.split(" ")[0];
+};
+
 const formatRupiah = (n: number) => (n > 0 ? n.toLocaleString("id-ID") : "");
 
-// Parse input rupiah → integer
 const parseNumber = (val: string): number => {
   const raw = val.replace(/\D/g, "");
   return raw ? parseInt(raw, 10) : 0;
 };
-
-// ─────────────────────────────────────────────────────────────
-// INITIAL FORM STATE
-// ─────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: Partial<Product> = {
   barcode: "",
@@ -60,10 +68,6 @@ const EMPTY_FORM: Partial<Product> = {
   conversion: 0,
   price_big: 0,
 };
-
-// ─────────────────────────────────────────────────────────────
-// SUB-COMPONENTS
-// ─────────────────────────────────────────────────────────────
 
 interface FieldProps {
   label: string;
@@ -94,9 +98,6 @@ const inputMoneyClass =
 const disabledClass =
   "w-full border border-slate-100 rounded-lg px-3 py-2.5 text-sm bg-slate-50 text-slate-300 cursor-not-allowed";
 
-// ─────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────
 
 export const ProductModal = ({
   isOpen,
@@ -106,9 +107,8 @@ export const ProductModal = ({
 }: ProductModalProps) => {
   const [formData, setFormData] = useState<Partial<Product>>(EMPTY_FORM);
 
-  // State lokal stok grosir — hanya dipakai di UI, tidak dikirim ke backend
-  const [parentStock, setParentStock] = useState(0); // jumlah dus/karton
-  const [childStock, setChildStock] = useState(0); // sisa eceran
+  const [parentStock, setParentStock] = useState(0);
+  const [childStock, setChildStock] = useState(0);
 
   const {
     createProduct,
@@ -119,15 +119,11 @@ export const ProductModal = ({
   const isGrosirActive = !!(formData.unit_big && formData.unit_big !== "");
   const conversion = formData.conversion ?? 0;
 
-  // ── INIT: Reset form setiap modal dibuka ──────────────────────────────────
-
   useEffect(() => {
     if (!isOpen) return;
 
     if (existingProduct) {
       setFormData(existingProduct);
-
-      // REVERSE ENGINEERING stok saat mode edit
       const conv = existingProduct.conversion ?? 0;
       const hasGrosir = !!existingProduct.unit_big && conv > 0;
 
@@ -145,7 +141,6 @@ export const ProductModal = ({
     }
   }, [existingProduct, isOpen]);
 
-  // ── LIVE CALCULATOR: Hitung total stok saat mode grosir aktif ─────────────
 
   useEffect(() => {
     if (!isGrosirActive || conversion <= 0) return;
@@ -154,13 +149,11 @@ export const ProductModal = ({
     setFormData((prev) => ({ ...prev, stock: totalStock }));
   }, [parentStock, childStock, conversion, isGrosirActive]);
 
-  // ── Reset stok lokal saat grosir dimatikan ───────────────────────────────
 
   useEffect(() => {
     if (!isGrosirActive) {
       setParentStock(0);
       setChildStock(0);
-      // Jika grosir dimatikan, bersihkan field terkait
       setFormData((prev) => ({
         ...prev,
         unit_big: "",
@@ -170,7 +163,6 @@ export const ProductModal = ({
     }
   }, [isGrosirActive]);
 
-  // ── Derived: preview harga grosir ────────────────────────────────────────
 
   const totalEceranNormal = (formData.price ?? 0) * conversion;
   const selisihHemat = totalEceranNormal - (formData.price_big ?? 0);
@@ -180,7 +172,6 @@ export const ProductModal = ({
     (formData.price ?? 0) > 0 &&
     (formData.price_big ?? 0) > 0;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const setField = useCallback(
     <K extends keyof Product>(field: K, value: Product[K]) => {
@@ -198,9 +189,6 @@ export const ProductModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // 1. Ambil semua data dari form
-    // 2. Paksa unit_choice bernilai "small" agar backend Go tidak mengalikan stok lagi!
     const payload = {
       ...formData,
       unit_choice: "small",
@@ -215,7 +203,7 @@ export const ProductModal = ({
       }
 
       if (res?.success) {
-        onSuccess(); // Ini akan memicu fetch ulang list produk di halaman utama
+        onSuccess();
         onClose();
       } else {
         alert(`Gagal menyimpan: ${res?.message ?? "Terjadi kesalahan."}`);
@@ -227,17 +215,12 @@ export const ProductModal = ({
 
   if (!isOpen) return null;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(3px)" }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100">
-        {/* ── HEADER ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex-shrink-0">
           <div>
             <h2 className="text-base font-bold text-slate-800">
@@ -258,13 +241,11 @@ export const ProductModal = ({
           </button>
         </div>
 
-        {/* ── SCROLLABLE BODY ── */}
         <form
           onSubmit={handleSubmit}
           className="overflow-y-auto flex-1 px-6 py-5 space-y-5"
           id="product-form"
         >
-          {/* ── SEKSI 1: IDENTITAS PRODUK ── */}
           <div>
             <SectionLabel>Identitas Produk</SectionLabel>
             <div className="grid grid-cols-2 gap-3 mt-3">
@@ -290,13 +271,11 @@ export const ProductModal = ({
             </div>
           </div>
 
-          {/* ── DIVIDER ── */}
           <Divider />
 
-          {/* ── SEKSI 2: HARGA ── */}
           <div>
             <SectionLabel>Harga</SectionLabel>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-3 gap-3 mt-3">
               <Field label="Harga Jual Eceran (Rp)" required>
                 <input
                   type="text"
@@ -305,6 +284,15 @@ export const ProductModal = ({
                   required
                   value={formatRupiah(formData.price ?? 0)}
                   onChange={(e) => setMoney("price", e.target.value)}
+                />
+              </Field>
+              <Field label="Harga Khusus Member (Rp)">
+                <input
+                  type="text"
+                  className={inputClass}
+                  placeholder="0"
+                  value={formatRupiah(formData.price_member ?? 0)}
+                  onChange={(e) => setMoney("price_member", e.target.value)}
                 />
               </Field>
               <Field label="Harga Modal / HPP (Rp)">
@@ -319,14 +307,11 @@ export const ProductModal = ({
             </div>
           </div>
 
-          {/* ── DIVIDER ── */}
           <Divider />
 
-          {/* ── SEKSI 3: STOK & SATUAN ── */}
           <div>
             <SectionLabel>Stok & Satuan</SectionLabel>
             <div className="grid grid-cols-2 gap-3 mt-3">
-              {/* Satuan eceran — selalu tampil */}
               <Field label="Satuan Eceran">
                 <select
                   className={inputClass + " bg-white"}
@@ -341,7 +326,6 @@ export const ProductModal = ({
                 </select>
               </Field>
 
-              {/* Min stok — selalu tampil, dipisah dari stok input */}
               <Field
                 label="Min. Stok (Notifikasi)"
                 helper="Baris tabel berubah merah jika stok di bawah angka ini."
@@ -356,10 +340,8 @@ export const ProductModal = ({
               </Field>
             </div>
 
-            {/* ─ INPUT STOK: kondisional ─ */}
             <div className="mt-3">
               {!isGrosirActive ? (
-                /* MODE ECERAN: satu input stok saja */
                 <Field
                   label={`Total Stok (${unitLabel(formData.unit ?? "pcs")})`}
                   required
@@ -374,7 +356,6 @@ export const ProductModal = ({
                   />
                 </Field>
               ) : (
-                /* MODE GROSIR: dua input stok + live calculator */
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-3">
                     <Field
@@ -407,10 +388,9 @@ export const ProductModal = ({
                     </Field>
                   </div>
 
-                  {/* Live total yang dihitung otomatis */}
                   {conversion > 0 && (
                     <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                      <span className="text-blue-400 text-sm">🧮</span>
+                      <Calculator className="h-4 w-4 text-blue-500 shrink-0" />
                       <p className="text-xs text-blue-700">
                         <span className="font-bold">Total stok tersimpan:</span>{" "}
                         ({parentStock} × {conversion}) + {childStock} ={" "}
@@ -429,10 +409,8 @@ export const ProductModal = ({
             </div>
           </div>
 
-          {/* ── DIVIDER ── */}
           <Divider />
 
-          {/* ── SEKSI 4: PENGATURAN GROSIR ── */}
           <div>
             <div className="flex items-center justify-between">
               <SectionLabel>Pengaturan Grosir</SectionLabel>
@@ -442,7 +420,6 @@ export const ProductModal = ({
             </div>
 
             <div className="mt-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 space-y-4">
-              {/* Baris 1: Satuan besar + Isi per satuan besar + Harga grosir */}
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Satuan Besar">
                   <select
@@ -452,7 +429,6 @@ export const ProductModal = ({
                       const val = e.target.value;
                       setField("unit_big", val);
                       if (!val) {
-                        // Reset semua field grosir jika satuan besar dihapus
                         setFormData((prev) => ({
                           ...prev,
                           unit_big: "",
@@ -504,11 +480,10 @@ export const ProductModal = ({
                 </Field>
               </div>
 
-              {/* Live price preview — muncul jika semua data terisi */}
               {showPricePreview ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">
-                    <span className="text-base mt-0.5">💡</span>
+                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                     <div className="text-xs text-amber-800 leading-relaxed space-y-0.5">
                       <p className="font-bold text-amber-900">
                         Analisis Harga Grosir
@@ -566,7 +541,6 @@ export const ProductModal = ({
           </div>
         </form>
 
-        {/* ── FOOTER: ACTIONS ── */}
         <div className="px-6 py-4 border-t border-slate-100 bg-white flex-shrink-0 flex gap-3">
           <button
             type="button"
@@ -598,9 +572,6 @@ export const ProductModal = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// MICRO COMPONENTS
-// ─────────────────────────────────────────────────────────────
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">

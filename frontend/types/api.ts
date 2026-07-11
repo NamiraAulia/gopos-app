@@ -63,6 +63,7 @@ export interface Product {
   is_active: boolean;
   discount_amount: number;
   is_promo: boolean;
+  price_member: number;
 }
 
 export type UnitChoice = 'small' | 'big';

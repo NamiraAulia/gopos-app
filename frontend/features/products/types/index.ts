@@ -9,6 +9,7 @@ export interface Product {
   unit?: string;
   image_url?: string;
   is_active?: boolean;
+  price_member?: number;
 }
 
 export interface ProductModalProps {

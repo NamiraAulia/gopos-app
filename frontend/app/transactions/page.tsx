@@ -27,21 +27,27 @@ export default function TransactionsPage() {
         headers: getAuthHeaders(),
       });
       const result = await response.json();
-      if (result.success && result.data) {
-        setTransactions(result.data);
+      
+      if (result.success) {
+        setTransactions(Array.isArray(result.data) ? result.data : []);
+      } else {
+        setTransactions([]);
       }
     } catch (error) {
       console.error("Gagal ambil data transaksi:", error);
+      setTransactions([]); 
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filtered = transactions.filter(
-    (t) =>
-      t.transaction_code?.toLowerCase().includes(search.toLowerCase()) ||
-      t.status?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = Array.isArray(transactions)
+    ? transactions.filter(
+        (t) =>
+          t.transaction_code?.toLowerCase().includes(search.toLowerCase()) ||
+          t.status?.toLowerCase().includes(search.toLowerCase()),
+      )
+    : [];
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
@@ -53,7 +59,9 @@ export default function TransactionsPage() {
           <div className="flex items-center gap-2 text-slate-500">
             <Receipt className="h-4 w-4" />
             <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Riwayat Sales</span>
+            <span className="text-sm font-bold text-slate-900">
+              Riwayat Sales
+            </span>
           </div>
         </header>
 
@@ -61,8 +69,12 @@ export default function TransactionsPage() {
         <div className="flex-1 overflow-y-auto p-8">
           {/* Title */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Riwayat Transaksi</h2>
-            <p className="text-slate-500 text-sm mt-1">Semua riwayat penjualan tercatat di sini.</p>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+              Riwayat Transaksi
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">
+              Semua riwayat penjualan tercatat di sini.
+            </p>
           </div>
 
           {/* Search */}
@@ -80,7 +92,6 @@ export default function TransactionsPage() {
           </div>
 
           <TransactionTable transactions={filtered} isLoading={isLoading} />
-          
         </div>
       </main>
     </div>

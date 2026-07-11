@@ -28,9 +28,26 @@ export const TransactionTable = ({ transactions, isLoading }: TransactionTablePr
       case "sukses":
         return "bg-emerald-50 text-emerald-600 border border-emerald-100";
       case "pending":
+      case "partially_refunded":
         return "bg-amber-50 text-amber-600 border border-amber-100";
       default:
         return "bg-red-50 text-red-600 border border-red-100";
+    }
+  };
+
+  const statusLabel = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+      case "sukses":
+        return "Selesai";
+      case "pending":
+        return "Pending";
+      case "partially_refunded":
+        return "Diretur Sebagian";
+      case "voided":
+        return "Dibatalkan";
+      default:
+        return status || "Selesai";
     }
   };
 
@@ -75,7 +92,7 @@ export const TransactionTable = ({ transactions, isLoading }: TransactionTablePr
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${statusStyle(trx.status)}`}>
-                        {trx.status || "completed"}
+                        {statusLabel(trx.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
