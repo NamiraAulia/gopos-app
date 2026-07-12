@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Users, 
@@ -17,104 +17,30 @@ import {
   Calendar
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import { memberApi } from "@/features/member/api";
 import { MemberModal } from "@/features/member/components/MemberModal";
-import type { Member } from "@/features/member/types";
-import { useAuthStore } from "@/store/authStore";
+import { useMemberManagement } from "@/features/member/hooks/useMemberManagement";
 
 export default function MemberPage() {
   const router = useRouter();
-  const { user: currentUser, isHydrated } = useAuthStore();
-
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-
-  // Modal State
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-
-  const fetchMembers = async () => {
-    setLoading(true);
-    setErrorMsg("");
-    try {
-      const res = await memberApi.getMembers();
-      if (res.success) {
-        setMembers(res.data || []);
-      } else {
-        setErrorMsg(res.message || "Gagal mengambil daftar member.");
-      }
-    } catch (err: any) {
-      setErrorMsg("Gagal terhubung ke server atau API.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isHydrated) {
-      if (!currentUser) {
-        router.push("/login");
-      } else {
-        fetchMembers();
-      }
-    }
-  }, [isHydrated, currentUser, router]);
-
-  const handleCopyCode = (id: number, code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleEditClick = (member: Member) => {
-    setSelectedMember(member);
-    setModalOpen(true);
-  };
-
-  const handleCreateClick = () => {
-    setSelectedMember(null);
-    setModalOpen(true);
-  };
-
-  const handleDeleteClick = async (member: Member) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus data member "${member.name}" dari database? Tindakan ini permanen.`)) {
-      try {
-        const res = await memberApi.deleteMember(member.id);
-        if (res.success) {
-          fetchMembers();
-        } else {
-          alert(res.message || "Gagal menghapus member.");
-        }
-      } catch (err) {
-        alert("Terjadi kesalahan saat menghapus member.");
-      }
-    }
-  };
-
-  const handleModalSuccess = () => {
-    setModalOpen(false);
-    fetchMembers();
-  };
-
-  // Filtered members based on name, phone, or member code
-  const filteredMembers = members.filter(
-    (mbr) =>
-      mbr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mbr.phone.includes(searchQuery) ||
-      mbr.member_code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
+  const {
+    currentUser,
+    isHydrated,
+    loading,
+    errorMsg,
+    searchQuery,
+    setSearchQuery,
+    copiedId,
+    modalOpen,
+    setModalOpen,
+    selectedMember,
+    handleCopyCode,
+    handleEditClick,
+    handleCreateClick,
+    handleDeleteClick,
+    handleModalSuccess,
+    filteredMembers,
+    formatDate,
+  } = useMemberManagement();
 
   if (!isHydrated || !currentUser) {
     return (
@@ -206,7 +132,7 @@ export default function MemberPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredMembers.map((member, index) => (
+                      {filteredMembers.map((member: any, index: any) => (
                         <tr key={member.id} className="hover:bg-slate-50/30 transition-colors">
                           {/* No */}
                           <td className="px-6 py-4 text-xs font-bold text-slate-400 text-center">

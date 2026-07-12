@@ -219,7 +219,7 @@ func Checkout(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("Items").Preload("Member").First(&createdTransaction, createdTransaction.ID)
+	database.DB.Preload("Items").Preload("Member").Preload("User").First(&createdTransaction, createdTransaction.ID)
 	utils.OK(c, "Transaksi berhasil diselesaikan!", createdTransaction)
 }
 
@@ -248,7 +248,7 @@ func GetTransactions(c *gin.Context) {
 
 	database.DB.Model(&models.Transaction{}).Count(&total)
 
-	err := database.DB.Preload("Items").Preload("Member").
+	err := database.DB.Preload("Items").Preload("Member").Preload("User").
 		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
@@ -280,7 +280,7 @@ func GetTransactions(c *gin.Context) {
 func GetTransactionByID(c *gin.Context) {
 	id := c.Param("id")
 	var transaction models.Transaction
-	if err := database.DB.Preload("Items").Preload("Member").First(&transaction, id).Error; err != nil {
+	if err := database.DB.Preload("Items").Preload("Member").Preload("User").First(&transaction, id).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan", err.Error())
 		return
 	}
@@ -297,7 +297,7 @@ func VoidTransaction(c *gin.Context) {
 	}
 
 	var transaction models.Transaction
-	if err := database.DB.Preload("Items").Preload("Member").First(&transaction, id).Error; err != nil {
+	if err := database.DB.Preload("Items").Preload("Member").Preload("User").First(&transaction, id).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan", err.Error())
 		return
 	}

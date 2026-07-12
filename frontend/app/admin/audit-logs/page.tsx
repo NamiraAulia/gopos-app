@@ -1,91 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Shield, 
   ChevronRight, 
   Loader2, 
   AlertCircle,
-  Clock,
-  User,
-  Activity,
-  Terminal,
-  Database,
-  ArrowRight
+  Clock
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import api from "@/lib/axios";
-import { useAuthStore } from "@/store/authStore";
-
-interface ActivityLogUser {
-  id: number;
-  name: string;
-  email: string;
-}
-
-interface ActivityLog {
-  id: number;
-  user_id: number;
-  user: ActivityLogUser;
-  action: string;
-  target_table: string;
-  target_id: number;
-  old_value: string;
-  new_value: string;
-  ip_address: string;
-  created_at: string;
-}
-
-interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  total_pages: number;
-}
+import { useAuditLogs } from "@/features/audit-logs/hooks/useAuditLogs";
 
 export default function AuditLogsPage() {
   const router = useRouter();
-  const { user: currentUser, isHydrated } = useAuthStore();
-
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const fetchAuditLogs = async (targetPage: number) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api.get("/admin/audit-logs", {
-        params: { 
-          page: targetPage, 
-          limit: 12,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined
-        },
-      });
-      if (res.data?.success) {
-        setLogs(res.data.data || []);
-        setMeta(res.data.meta);
-      } else {
-        setError(res.data?.message || "Gagal memuat log aktivitas.");
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Gagal menghubungi server.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetFilters = () => {
-    setStartDate("");
-    setEndDate("");
-    setPage(1);
-  };
+  const {
+    currentUser,
+    isHydrated,
+    logs,
+    meta,
+    page,
+    setPage,
+    loading,
+    error,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    handleResetFilters,
+    formatDate,
+    getActionBadgeStyle,
+    getFriendlyActionName,
+    parseLogValue,
+  } = useAuditLogs();
 
   useEffect(() => {
     if (isHydrated) {
@@ -93,188 +40,9 @@ export default function AuditLogsPage() {
         router.push("/login");
       } else if (currentUser.role !== "admin") {
         router.push("/cashier");
-      } else {
-        fetchAuditLogs(page);
       }
     }
-  }, [isHydrated, currentUser, page, startDate, endDate, router]);
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
-  const getActionBadgeStyle = (action: string) => {
-    const act = action.toUpperCase();
-    if (act.includes("VOID") || act.includes("DELETE")) {
-      return "bg-red-50 text-red-600 border border-red-200";
-    }
-    if (act.includes("PRICE") || act.includes("STOCK") || act.includes("ADJUST")) {
-      return "bg-amber-50 text-amber-600 border border-amber-200";
-    }
-    if (act.includes("REFUND")) {
-      return "bg-purple-50 text-purple-600 border border-purple-200";
-    }
-    if (act.includes("CLOSE")) {
-      return "bg-indigo-50 text-indigo-600 border border-indigo-200";
-    }
-    if (act.includes("OPEN")) {
-      return "bg-emerald-50 text-emerald-600 border border-emerald-200";
-    }
-    return "bg-slate-50 text-slate-600 border border-slate-200";
-  };
-
-  const getFriendlyActionName = (action: string) => {
-    switch (action.toUpperCase()) {
-      case "VOID_TRANSACTION":
-        return "Void Transaksi";
-      case "DELETE_PRODUCT":
-        return "Hapus Produk";
-      case "CHANGE_PRICE":
-        return "Ubah Harga";
-      case "MANUAL_STOCK_ADJUST":
-        return "Penyesuaian Stok";
-      case "EDIT_PRODUCT":
-        return "Edit Produk";
-      case "PROCESS_REFUND":
-        return "Retur Barang";
-      case "OPEN_SHIFT":
-        return "Buka Shift";
-      case "CLOSE_SHIFT":
-        return "Tutup Shift";
-      default:
-        return action;
-    }
-  };
-
-  const parseLogValue = (val: string) => {
-    if (!val) return null;
-
-    // 1. Process Refund
-    if (val.includes("TxCode:") && val.includes("TotalOrig:")) {
-      const txCodeMatch = val.match(/TxCode:\s*([^\s,]+)/);
-      const totalOrigMatch = val.match(/TotalOrig:\s*(\d+)/);
-      return (
-        <div className="space-y-0.5 font-sans">
-          {txCodeMatch && (
-            <div>Kode Transaksi: <span className="font-black text-slate-800">{txCodeMatch[1]}</span></div>
-          )}
-          {totalOrigMatch && (
-            <div>Total Belanja Awal: <span className="font-black text-slate-800">Rp {parseInt(totalOrigMatch[1]).toLocaleString("id-ID")}</span></div>
-          )}
-        </div>
-      );
-    }
-
-    if (val.includes("REFUND EXECUTED")) {
-      const refundIdMatch = val.match(/RefundID:\s*(\d+)/);
-      const cashMatch = val.match(/CashDeducted:\s*(\d+)/);
-      const reasonMatch = val.match(/Reason:\s*(.+)/);
-      return (
-        <div className="space-y-0.5 font-sans">
-          <div className="text-purple-700 font-bold">Proses Retur Berhasil {refundIdMatch ? `(ID: ${refundIdMatch[1]})` : ""}</div>
-          {cashMatch && (
-            <div>Kas Dikembalikan: <span className="font-black text-slate-800">Rp {parseInt(cashMatch[1]).toLocaleString("id-ID")}</span></div>
-          )}
-          {reasonMatch && (
-            <div>Alasan: <span className="font-semibold text-slate-700 italic">"{reasonMatch[1]}"</span></div>
-          )}
-        </div>
-      );
-    }
-
-    // 2. Void Transaction
-    if (val.includes("Status:completed") || (val.includes("Status:") && val.includes("TotalAmount:"))) {
-      const statusMatch = val.match(/Status:\s*([^\s,]+)/);
-      const totalMatch = val.match(/TotalAmount:\s*(\d+)/);
-      const statusLabel = statusMatch && statusMatch[1] === "completed" ? "Selesai" : (statusMatch ? statusMatch[1] : "Selesai");
-      return (
-        <div className="space-y-0.5 font-sans">
-          <div>Status Awal: <span className="font-black text-slate-800">{statusLabel}</span></div>
-          {totalMatch && (
-            <div>Total Transaksi: <span className="font-black text-slate-800">Rp {parseInt(totalMatch[1]).toLocaleString("id-ID")}</span></div>
-          )}
-        </div>
-      );
-    }
-
-    if (val === "Status: voided" || val === "Status:voided") {
-      return (
-        <div className="font-sans text-red-600 font-bold">
-          Status Baru: Dibatalkan (Void)
-        </div>
-      );
-    }
-
-    // 3. Price change
-    if (val.startsWith("Price:") && !val.includes(",")) {
-      const priceMatch = val.match(/Price:\s*(\d+)/);
-      if (priceMatch) {
-        return (
-          <div className="font-sans">
-            Harga: <span className="font-black text-slate-800">Rp {parseInt(priceMatch[1]).toLocaleString("id-ID")}</span>
-          </div>
-        );
-      }
-    }
-
-    // 4. Stock adjust
-    if (val.startsWith("Stock:") && !val.includes(",")) {
-      const stockMatch = val.match(/Stock:\s*(\d+)/);
-      if (stockMatch) {
-        return (
-          <div className="font-sans">
-            Stok: <span className="font-black text-slate-800">{stockMatch[1]} pcs</span>
-          </div>
-        );
-      }
-    }
-
-    // 5. Delete product
-    if (val === "IsActive: true") {
-      return <div className="font-sans text-emerald-600 font-semibold">Status: Aktif</div>;
-    }
-    if (val === "IsActive: false") {
-      return <div className="font-sans text-red-500 font-semibold">Status: Nonaktif (Dihapus)</div>;
-    }
-
-    // Fallback: split by comma and display as items
-    if (val.includes(",") || val.includes(":")) {
-      const parts = val.split(/,\s*/);
-      return (
-        <div className="space-y-0.5 font-sans text-slate-700">
-          {parts.map((p, idx) => {
-            const splitCol = p.split(/:\s*/);
-            if (splitCol.length === 2) {
-              let value = splitCol[1];
-              // Format if number
-              if (/^\d+$/.test(value)) {
-                const num = parseInt(value);
-                if (num > 1000 && (splitCol[0].toLowerCase().includes("price") || splitCol[0].toLowerCase().includes("total") || splitCol[0].toLowerCase().includes("amount"))) {
-                  value = `Rp ${num.toLocaleString("id-ID")}`;
-                }
-              }
-              return (
-                <div key={idx}>
-                  <span className="text-slate-400 font-normal capitalize">{splitCol[0].replace(/_/g, " ")}:</span>{" "}
-                  <span className="font-bold text-slate-800">{value}</span>
-                </div>
-              );
-            }
-            return <div key={idx}>{p}</div>;
-          })}
-        </div>
-      );
-    }
-
-    return <span className="font-mono">{val}</span>;
-  };
+  }, [isHydrated, currentUser, router]);
 
   if (!isHydrated || !currentUser || currentUser.role !== "admin") {
     return (
@@ -381,7 +149,7 @@ export default function AuditLogsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {logs.map((log) => {
+                      {logs.map((log: any) => {
                         return (
                           <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
                             {/* Waktu */}
@@ -468,13 +236,13 @@ export default function AuditLogsPage() {
                   </span>
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setPage((prev: any) => Math.max(1, prev - 1))}
                       disabled={page === 1}
                       className="px-3 py-1.5 border border-slate-200 rounded-lg text-[11px] font-bold bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       Sebelumnya
                     </button>
-                    {Array.from({ length: meta.total_pages }, (_, i) => i + 1).map((p) => (
+                    {Array.from({ length: meta.total_pages }, (_, i) => i + 1).map((p: any) => (
                       <button
                         key={p}
                         onClick={() => setPage(p)}
@@ -488,7 +256,7 @@ export default function AuditLogsPage() {
                       </button>
                     ))}
                     <button
-                      onClick={() => setPage(prev => Math.min(meta.total_pages, prev + 1))}
+                      onClick={() => setPage((prev: any) => Math.min(meta.total_pages, prev + 1))}
                       disabled={page === meta.total_pages}
                       className="px-3 py-1.5 border border-slate-200 rounded-lg text-[11px] font-bold bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
                     >

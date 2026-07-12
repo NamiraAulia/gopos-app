@@ -1,27 +1,26 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
-  ChevronRight,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-  TrendingUp,
-  TrendingDown,
-  Plus,
   X,
   Loader2,
-  CreditCard,
-  Banknote,
-  QrCode,
   AlertTriangle,
   BadgeCheck,
-  Clock,
-  MonitorSmartphone,
-  LogOut,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  Banknote,
+  QrCode,
+  CreditCard,
+  Plus,
+  LogOut
 } from "lucide-react";
-import { ExpenseModal } from "../../../features/cashier/components/ExpenseModal"
+import { ExpenseModal } from "@/features/cashier/components/ExpenseModal";
 import Navbar from "@/features/cashier/components/Navbar";
 import { useCashSummary } from "@/features/cashier/hooks";
+import { useAuthStore } from "@/store/authStore";
 
 const formatRp = (n: number) => "Rp " + Math.abs(n).toLocaleString("id-ID");
 
@@ -30,14 +29,6 @@ const formatTime = (s: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-
-const formatDuration = (start: string, end: string | null) => {
-  if (!end) return "Sedang berjalan";
-  const diff = new Date(end).getTime() - new Date(start).getTime();
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  return `${h}j ${m}m`;
-};
 
 const PaymentRow = ({
   icon,
@@ -66,6 +57,8 @@ const PaymentRow = ({
 );
 
 export default function FinancialPage() {
+  const router = useRouter();
+  const { user: currentUser, isHydrated } = useAuthStore();
   const {
     transactions,
     expenses,
@@ -90,21 +83,32 @@ export default function FinancialPage() {
     actualCashNum,
     selisih,
     netProfit,
-    handleVoidTransaction,
     fetchData,
     isClosingShift,
     handleCloseShift,
   } = useCashSummary();
 
+  useEffect(() => {
+    if (isHydrated && !currentUser) {
+      router.push("/login");
+    }
+  }, [isHydrated, currentUser, router]);
+
+  if (!isHydrated || !currentUser) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
   return (
-
-
     <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 print:bg-white print:h-auto print:overflow-visible">
       <Navbar isShiftActive={activeShift?.status === "open"} />
       <main className="flex-1 overflow-y-auto p-6 print:hidden">
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="flex justify-center items-center h-full">
+            <div className="flex justify-center items-center h-full py-24">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             </div>
           ) : (
@@ -305,7 +309,7 @@ export default function FinancialPage() {
                                   e.target.value.replace(/\D/g, ""),
                                 )
                               }
-                              className="w-full h-10 rounded-xl border-2 border-slate-200 pl-8 pr-3 text-sm font-black text-slate-900 focus:border-blue-600 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                              className="w-full h-10 rounded-xl border-2 border-slate-200 pl-8 pr-3 text-sm font-black text-slate-900 focus:border-blue-600 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed bg-white"
                             />
                           </div>
                         </div>
@@ -393,7 +397,7 @@ export default function FinancialPage() {
                       </h3>
                       <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm shadow-red-200"
+                        className="flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm shadow-red-200 cursor-pointer"
                       >
                         <Plus className="h-3 w-3" /> Catat
                       </button>

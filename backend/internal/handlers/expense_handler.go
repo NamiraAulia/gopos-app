@@ -68,7 +68,7 @@ func GetExpenses(c *gin.Context) {
 
 	database.DB.Model(&models.Expense{}).Count(&total)
 
-	if err := database.DB.Order("created_at desc").Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
+	if err := database.DB.Preload("User").Order("created_at desc").Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
 		utils.Fail(c, http.StatusInternalServerError, "Gagal mengambil data pengeluaran", err.Error())
 		return
 	}

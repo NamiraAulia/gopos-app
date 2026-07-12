@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -15,21 +15,18 @@ import {
   Check,
   Edit,
 } from "lucide-react";
-import { useCartStore } from "../../store/useCartStore";
-import { useAuthStore } from "@/store/authStore";
 import { PaymentModal } from "@/features/cashier/components/PaymentModal";
 import { ReceiptModal } from "@/features/cashier/components/ReceiptModal";
-import { useCashierProducts, useActiveShift } from "@/features/cashier/hooks";
 import { OpenShiftModal } from "@/features/cashier/components/OpenShiftModal";
 import { ProductModal } from "@/features/products/components/ProductModal";
 import Navbar from "@/features/cashier/components/Navbar";
-import { memberApi } from "@/features/member/api";
-import type { Member } from "@/features/member/types";
+import { useCashierPage } from "@/features/cashier/hooks/useCashierPage";
 
 export default function CashierPage() {
   const router = useRouter();
-  const { user: currentUser, isHydrated } = useAuthStore();
   const {
+    currentUser,
+    isHydrated,
     cart,
     addToCart,
     decreaseQty,
@@ -40,120 +37,50 @@ export default function CashierPage() {
     setSelectedMember,
     setQty,
     setCustomPrice,
-  } = useCartStore();
-  const { products, loading, searchQuery, triggerSearch, refetch } =
-    useCashierProducts();
-  const { shift, isShiftActive, checkShift } = useActiveShift();
-
-  const [members, setMembers] = useState<Member[]>([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [lastTransaction, setLastTransaction] = useState<any>(null);
-
-  const [showOpenShiftModal, setShowOpenShiftModal] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
-  const [tempPrice, setTempPrice] = useState("");
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const fetchMembers = async () => {
-    try {
-      const res = await memberApi.getMembers();
-      if (res.success) {
-        setMembers(res.data || []);
-      }
-    } catch (err) {
-      console.error("Gagal mengambil data member", err);
-    }
-  };
-
-  useEffect(() => {
-    if (isHydrated && currentUser) {
-      fetchMembers();
-    }
-  }, [isHydrated, currentUser]);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" || e.key === "F2") {
-        if (e.key === "/" && (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA")) {
-          return;
-        }
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-
-      if (e.key === "Enter") {
-        const target = e.target as HTMLElement;
-        if (target.tagName === "INPUT" || target.tagName === "BUTTON" || target.tagName === "TEXTAREA") {
-          return;
-        }
-        
-        if (
-          cart.length > 0 &&
-          isShiftActive &&
-          !showPaymentModal &&
-          !showReceipt &&
-          !showOpenShiftModal &&
-          !showProductModal &&
-          !showClearConfirm
-        ) {
-          e.preventDefault();
-          setShowPaymentModal(true);
-        }
-      }
-
-      if (e.key === "Escape") {
-        if (showPaymentModal) {
-          setShowPaymentModal(false);
-        } else if (showReceipt) {
-          setShowReceipt(false);
-        } else if (showOpenShiftModal) {
-          setShowOpenShiftModal(false);
-        } else if (showProductModal) {
-          setShowProductModal(false);
-        } else if (showClearConfirm) {
-          setShowClearConfirm(false);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [
-    cart.length,
+    products,
+    loading,
+    searchQuery,
+    triggerSearch,
+    refetch,
     isShiftActive,
+    checkShift,
+    members,
     showPaymentModal,
+    setShowPaymentModal,
     showReceipt,
+    setShowReceipt,
+    lastTransaction,
+    setLastTransaction,
     showOpenShiftModal,
+    setShowOpenShiftModal,
     showProductModal,
+    setShowProductModal,
     showClearConfirm,
-  ]);
+    setShowClearConfirm,
+    editingPriceId,
+    setEditingPriceId,
+    tempPrice,
+    setTempPrice,
+    searchInputRef,
+    debounceTimer,
+    totalNormal,
+    discountAmount,
+    grandTotal,
+  } = useCashierPage();
 
-  const totalNormal = cart.reduce((total, item) => {
-    const isBig = item.unit_choice === "big" && item.price_big > 0;
-    const harga = isBig ? item.price_big : item.price;
-    return total + harga * item.qty;
-  }, 0);
-
-  const totalNet = cart.reduce((total, item) => {
-    if (item.custom_price != null && item.custom_price > 0) {
-      return total + item.custom_price * item.qty;
+  useEffect(() => {
+    if (isHydrated && !currentUser) {
+      router.push("/login");
     }
-    const isBig = item.unit_choice === "big" && item.price_big > 0;
-    const harga = isBig 
-      ? item.price_big 
-      : (selectedMember && item.price_member > 0 ? item.price_member : item.price);
-    return total + harga * item.qty;
-  }, 0);
+  }, [isHydrated, currentUser, router]);
 
-  const discountAmount = totalNormal - totalNet;
-  const grandTotal = totalNet;
+  if (!isHydrated || !currentUser) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+        <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 font-sans text-slate-900">
@@ -178,7 +105,7 @@ export default function CashierPage() {
                     const val = e.target.value;
                     if (debounceTimer.current)
                       clearTimeout(debounceTimer.current);
-                    debounceTimer.current = setTimeout(
+                    (debounceTimer as any).current = setTimeout(
                       () => triggerSearch(val),
                       300,
                     );
@@ -192,7 +119,7 @@ export default function CashierPage() {
                 type="button"
                 onClick={() => setShowProductModal(true)}
                 title="Tambah produk baru ke sistem"
-                className="h-12 px-4 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-wider hover:bg-blue-100 transition-colors flex items-center gap-2 shrink-0"
+                className="h-12 px-4 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-wider hover:bg-blue-100 transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
               >
                 <PackagePlus className="h-4 w-4" />
                 <span className="hidden sm:inline">Produk Baru</span>
@@ -213,7 +140,7 @@ export default function CashierPage() {
                 </p>
                 <button
                   onClick={() => setShowOpenShiftModal(true)}
-                  className="mt-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-colors"
+                  className="mt-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-colors cursor-pointer"
                 >
                   Buka Shift Sekarang
                 </button>
@@ -239,21 +166,20 @@ export default function CashierPage() {
                 </p>
                 <button
                   onClick={() => setShowProductModal(true)}
-                  className="mt-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="mt-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <PackagePlus className="h-3.5 w-3.5" /> Tambah Produk Baru
                 </button>
               </div>
             ) : (
-              products.map((product) => {
-                const cartItem = cart.find((item) => item.id === product.id);
+              products.map((product: any) => {
+                const cartItem = cart.find((item: any) => item.id === product.id);
                 const inCartQty = cartItem ? cartItem.qty : 0;
                 
                 return (
                   <div
                     key={product.id}
                     onClick={() => {
-                      // Check if already out of stock before adding
                       const isOutOfStock = cartItem
                         ? (cartItem.unit_choice === "big"
                           ? cartItem.qty * cartItem.conversion >= product.stock
@@ -313,7 +239,7 @@ export default function CashierPage() {
             {cart.length > 0 && (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="text-xs text-red-500 font-bold flex items-center gap-1 hover:text-red-700 transition-colors"
+                className="text-xs text-red-500 font-bold flex items-center gap-1 hover:text-red-700 transition-colors cursor-pointer"
               >
                 <Trash2 className="h-3 w-3" /> Bersihkan
               </button>
@@ -330,13 +256,13 @@ export default function CashierPage() {
                 value={selectedMember?.id || ""}
                 onChange={(e) => {
                   const id = parseInt(e.target.value);
-                  const found = members.find((m) => m.id === id);
+                  const found = members.find((m: any) => m.id === id);
                   setSelectedMember(found || null);
                 }}
                 className="w-full h-10 px-3 text-xs font-bold border-2 border-slate-200 rounded-xl outline-none focus:border-blue-600 transition-all bg-white text-slate-700 cursor-pointer"
               >
                 <option value="">-- Umum (Bukan Member) --</option>
-                {members.map((mbr) => (
+                {members.map((mbr: any) => (
                   <option key={mbr.id} value={mbr.id}>
                     {mbr.name} ({mbr.member_code})
                   </option>
@@ -346,7 +272,7 @@ export default function CashierPage() {
           )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cart.map((item) => {
+            {cart.map((item: any) => {
               const isBig = item.unit_choice === "big" && item.price_big > 0;
               const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
               const hargaTampil = item.custom_price != null && item.custom_price > 0
@@ -370,7 +296,7 @@ export default function CashierPage() {
                     </h4>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="text-slate-400 hover:text-red-500 transition-colors"
+                      className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -380,7 +306,7 @@ export default function CashierPage() {
                       <button
                         type="button"
                         onClick={() => toggleUnitChoice(item.id)}
-                        className={`text-[10px] font-black px-2 py-1 rounded border transition-all ${
+                        className={`text-[10px] font-black px-2 py-1 rounded border transition-all cursor-pointer ${
                           isBig
                             ? "bg-amber-500 border-amber-600 text-white"
                             : "bg-slate-100 border-slate-200 text-slate-600"
@@ -404,7 +330,7 @@ export default function CashierPage() {
                       <div className="flex items-center gap-2 border border-slate-200 rounded-lg bg-slate-50 p-0.5">
                         <button
                           onClick={() => decreaseQty(item.id)}
-                          className="p-1 hover:bg-white rounded transition-colors text-slate-600"
+                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 cursor-pointer"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
@@ -422,7 +348,7 @@ export default function CashierPage() {
                             addToCart(item as any, item.unit_choice)
                           }
                           disabled={isOutOfStock}
-                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -521,7 +447,7 @@ export default function CashierPage() {
             <button
               onClick={() => setShowPaymentModal(true)}
               disabled={cart.length === 0 || !isShiftActive}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 text-base font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200 cursor-pointer"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 text-base font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200 cursor-pointer disabled:cursor-not-allowed"
             >
               <CreditCard className="h-5 w-5" /> Bayar Sekarang
             </button>
@@ -534,8 +460,6 @@ export default function CashierPage() {
         onClose={() => setShowOpenShiftModal(false)}
         onSuccess={() => { setShowOpenShiftModal(false); checkShift(); refetch(); }}
       />
-
-
 
       <ProductModal
         isOpen={showProductModal}
@@ -583,7 +507,7 @@ export default function CashierPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors"
+                className="flex-1 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Tidak
               </button>
@@ -592,7 +516,7 @@ export default function CashierPage() {
                   clearCart();
                   setShowClearConfirm(false);
                 }}
-                className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors"
+                className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Ya, Hapus
               </button>

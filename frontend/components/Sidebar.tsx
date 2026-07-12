@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import { useIsAdmin } from "@/store/authStore";
@@ -35,6 +36,8 @@ export default function Sidebar() {
     { name: "Asumsi Restock", href: "/restock", icon: AlertTriangle },
     ...(isAdmin ? [
       { name: "Kelola Kasir", href: "/admin/users", icon: Users },
+      { name: "Riwayat Transaksi", href: "/admin/transactions", icon: Receipt },
+      { name: "Kelola Pengeluaran", href: "/admin/expenses", icon: Wallet },
       { name: "Log Aktivitas", href: "/admin/audit-logs", icon: Shield }
     ] : []),
   ];

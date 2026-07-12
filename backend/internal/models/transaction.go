@@ -21,6 +21,7 @@ type Transaction struct {
 	ID              uint              `gorm:"primaryKey" json:"id"`
 	TransactionCode string            `gorm:"uniqueIndex;size:50" json:"transaction_code"`
 	UserID          uint              `json:"user_id"`
+	User            *User             `gorm:"foreignKey:UserID" json:"user"`
 	TotalAmount     int64             `json:"total_amount"`
 	PaymentMethod   string            `gorm:"size:30" json:"payment_method"`
 	AmountPaid      int64             `json:"amount_paid"`

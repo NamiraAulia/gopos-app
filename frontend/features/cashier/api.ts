@@ -48,6 +48,8 @@ export interface Transaction {
   transaction_code: string;
   payment_method: string;
   total_amount: number;
+  amount_paid: number;
+  change_amount: number;
   status: string;
   created_at: string;
   items?: any[];
@@ -59,9 +61,18 @@ export interface Expense {
   amount: number;
   category: string;
   created_at: string;
+  user_id?: number;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
 }
 
 export const cashierApi = {
+  getMembers: () =>
+    api.get<ApiResponse<any[]>>("/members").then((res) => res.data),
+
   getProducts: (search?: string) =>
     api
       .get<

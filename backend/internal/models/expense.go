@@ -3,8 +3,9 @@ package models
 import "time"
 
 type Expense struct {
-    ID        uint      `gorm:"primaryKey" json:"id"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
 	UserID    uint      `json:"user_id"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user"`
 	Name      string    `json:"name"`
 	Amount    int64     `json:"amount"`
 	Category  string    `json:"category"`

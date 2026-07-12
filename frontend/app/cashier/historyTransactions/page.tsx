@@ -1,11 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
-  MonitorSmartphone,
-  LogOut,
-  Search,
   Receipt,
   ChevronLeft,
   ChevronRight,
@@ -16,32 +11,11 @@ import {
   CalendarDays,
   AlertTriangle,
   RotateCcw,
+  Search
 } from "lucide-react";
-import api from "@/lib/axios";
 import Navbar from "@/features/cashier/components/Navbar";
 import { RefundModal } from "@/features/cashier/components/RefundModal";
-
-type TransactionItem = {
-  id: number;
-  product_id: number;
-  product_name: string;
-  unit_price: number;
-  qty: number;
-  subtotal: number;
-  unit_choice: string;
-};
-
-type Transaction = {
-  id: number;
-  transaction_code: string;
-  payment_method: string;
-  total_amount: number;
-  amount_paid: number;
-  change_amount: number;
-  status: string;
-  created_at: string;
-  items: TransactionItem[];
-};
+import { useCashierHistory } from "@/features/cashier/hooks/useCashierHistory";
 
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-emerald-50 text-emerald-600 border-emerald-200",
@@ -56,108 +30,30 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function TransactionHistoryPage() {
-  const router = useRouter();
-
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [searchCode, setSearchCode] = useState("");
-
-  const [selected, setSelected] = useState<Transaction | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const [voidTarget, setVoidTarget] = useState<Transaction | null>(null);
-  const [voidLoading, setVoidLoading] = useState(false);
-  const [voidError, setVoidError] = useState("");
-
-  const [showOpenShiftModal, setShowOpenShiftModal] = useState(false);
-
-
-  const [isShiftActive, setIsShiftActive] = useState(false);
-  const [showRefundModal, setShowRefundModal] = useState(false);
-
-  const handleRefundSuccess = () => {
-    setShowRefundModal(false);
-    alert("Retur barang berhasil diproses!");
-    fetchTransactions(page);
-    setSelected(null);
-  };
-
-  const fetchTransactions = useCallback(async (targetPage: number) => {
-    try {
-      setLoading(true);
-      const res = await api.get("/transactions", {
-        params: { page: targetPage, limit: 15 },
-      });
-      const payload = res.data?.data;
-      setTransactions(payload?.data || []);
-      setTotalPages(payload?.total_pages || 1);
-    } catch (err) {
-      console.error("Gagal memuat riwayat transaksi:", err);
-      setTransactions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    fetchTransactions(page);
-  }, [page, fetchTransactions, router]);
-
-  const openDetail = async (trx: Transaction) => {
-    setDetailLoading(true);
-    setSelected(trx);
-    try {
-      const res = await api.get(`/transactions/${trx.id}/receipt`);
-      const full = res.data?.data;
-      if (full) setSelected(full);
-    } catch (err) {
-      console.error("Gagal memuat detail transaksi:", err);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const confirmVoid = async () => {
-    if (!voidTarget) return;
-    try {
-      setVoidLoading(true);
-      setVoidError("");
-      await api.post(`/transactions/${voidTarget.id}/void`);
-      setVoidTarget(null);
-      setSelected(null);
-      fetchTransactions(page);
-    } catch (err: any) {
-      setVoidError(
-        err.response?.data?.message || "Gagal membatalkan transaksi.",
-      );
-    } finally {
-      setVoidLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    if (confirm("Yakin ingin mengakhiri sesi kasir?")) {
-      localStorage.removeItem("token");
-      router.push("/login");
-    }
-  };
-
-  const filteredTransactions = searchCode
-    ? transactions.filter((t) =>
-      t.transaction_code.toLowerCase().includes(searchCode.toLowerCase()),
-    )
-    : transactions;
+  const {
+    router,
+    loading,
+    page,
+    setPage,
+    totalPages,
+    searchCode,
+    setSearchCode,
+    selected,
+    setSelected,
+    detailLoading,
+    voidTarget,
+    setVoidTarget,
+    voidLoading,
+    voidError,
+    isShiftActive,
+    showRefundModal,
+    setShowRefundModal,
+    handleRefundSuccess,
+    openDetail,
+    handlePrint,
+    confirmVoid,
+    filteredTransactions,
+  } = useCashierHistory();
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 print:bg-white print:h-auto print:overflow-visible">
@@ -234,7 +130,7 @@ export default function TransactionHistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((trx) => (
+                  {filteredTransactions.map((trx: any) => (
                     <tr
                       key={trx.id}
                       onClick={() => openDetail(trx)}
@@ -284,16 +180,16 @@ export default function TransactionHistoryPage() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage((p: any) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                  className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p: any) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                  className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -320,7 +216,7 @@ export default function TransactionHistoryPage() {
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"
+                className="h-8 w-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -347,8 +243,8 @@ export default function TransactionHistoryPage() {
                   </div>
 
                   <div className="space-y-2 mb-4">
-                    {selected.items?.map((item, index) => (
-                      <div key={`${item.id || 'print'}-${index}`} className="flex justify-between mb-1">
+                    {selected.items?.map((item: any, index: any) => (
+                      <div key={`${item.id || 'print'}-${index}`} className="flex justify-between mb-1 text-xs">
                         <span>
                           {item.qty}x {item.product_name}
                         </span>
@@ -389,7 +285,7 @@ export default function TransactionHistoryPage() {
               <button
                 onClick={handlePrint}
                 disabled={detailLoading}
-                className="w-full h-11 rounded-xl border-2 border-slate-200 text-xs font-black text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full h-11 rounded-xl border-2 border-slate-200 text-xs font-black text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 <Printer className="h-4 w-4" /> Cetak Struk
               </button>
@@ -398,11 +294,10 @@ export default function TransactionHistoryPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setVoidError("");
                       setVoidTarget(selected);
                     }}
                     disabled={detailLoading}
-                    className="flex-1 h-11 rounded-xl border-2 border-red-200 text-xs font-black text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 h-11 rounded-xl border-2 border-red-200 text-xs font-black text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <XCircle className="h-4 w-4" /> Void
                   </button>
@@ -410,7 +305,7 @@ export default function TransactionHistoryPage() {
                     type="button"
                     onClick={() => setShowRefundModal(true)}
                     disabled={detailLoading}
-                    className="flex-1 h-11 rounded-xl border-2 border-amber-200 text-xs font-black text-amber-600 hover:bg-amber-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 h-11 rounded-xl border-2 border-amber-200 text-xs font-black text-amber-600 hover:bg-amber-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <RotateCcw className="h-4 w-4" /> Retur Barang
                   </button>
@@ -432,8 +327,8 @@ export default function TransactionHistoryPage() {
             })}
           </p>
           <div className="border-b border-dashed border-black mb-2" />
-          {selected.items?.map((item) => (
-            <div key={item.id} className="flex justify-between mb-1">
+          {selected.items?.map((item: any, idx: any) => (
+            <div key={`${item.id || 'pr'}-${idx}`} className="flex justify-between mb-1">
               <span>
                 {item.qty}x {item.product_name}
               </span>
@@ -490,14 +385,14 @@ export default function TransactionHistoryPage() {
               <button
                 onClick={() => setVoidTarget(null)}
                 disabled={voidLoading}
-                className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors"
+                className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Tidak
               </button>
               <button
                 onClick={confirmVoid}
                 disabled={voidLoading}
-                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {voidLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

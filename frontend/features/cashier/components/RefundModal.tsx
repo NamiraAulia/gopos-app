@@ -24,7 +24,7 @@ interface Transaction {
   change_amount: number;
   status: string;
   created_at: string;
-  items: TransactionItem[];
+  items?: any[];
 }
 
 interface RefundModalProps {
@@ -50,7 +50,7 @@ export const RefundModal = ({
     if (isOpen && transaction) {
       setSelectedItems({});
       const initialQtys: Record<number, number> = {};
-      transaction.items.forEach((item) => {
+      (transaction.items || []).forEach((item) => {
         initialQtys[item.product_id] = 1;
       });
       setRefundQtys(initialQtys);
@@ -80,7 +80,7 @@ export const RefundModal = ({
     e.preventDefault();
     setErrorMsg("");
 
-    const itemsToRefund = transaction.items
+    const itemsToRefund = (transaction.items || [])
       .filter((item) => selectedItems[item.product_id])
       .map((item) => ({
         product_id: item.product_id,
@@ -154,7 +154,7 @@ export const RefundModal = ({
                 Pilih Item Yang Diretur
               </label>
               <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden bg-slate-50/30">
-                {transaction.items.map((item) => {
+                {(transaction.items || []).map((item) => {
                   const isChecked = !!selectedItems[item.product_id];
                   const currentQty = refundQtys[item.product_id] || 1;
 

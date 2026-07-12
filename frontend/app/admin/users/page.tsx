@@ -1,143 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Users, 
-  Plus, 
-  ChevronRight, 
-  Shield, 
-  Mail, 
-  User, 
-  Key, 
-  UserCheck, 
-  UserX, 
-  Loader2, 
+import {
+  Users,
+  Plus,
+  ChevronRight,
+  Shield,
+  Mail,
+  User,
+  Key,
+  UserCheck,
+  UserX,
+  Loader2,
   AlertCircle,
   X
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import api from "@/lib/axios";
-import { useAuthStore } from "@/store/authStore";
-
-interface DBUser {
-  id: number;
-  name: string;
-  email: string;
-  role: "admin" | "kasir";
-  is_active: boolean;
-}
+import { useUserManagement } from "@/features/users/hooks/useUserManagement";
 
 export default function UserManagementPage() {
   const router = useRouter();
-  const { user: currentUser, isHydrated } = useAuthStore();
-
-  const [users, setUsers] = useState<DBUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // Modal State
-  const [showModal, setShowModal] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "kasir">("kasir");
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createError, setCreateError] = useState("");
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api.get("/admin/users");
-      if (res.data?.success) {
-        setUsers(res.data.data || []);
-      } else {
-        setError(res.data?.message || "Gagal memuat data kasir.");
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Gagal menghubungi server.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    currentUser,
+    isHydrated,
+    users,
+    loading,
+    error,
+    showModal,
+    setShowModal,
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    role,
+    setRole,
+    createLoading,
+    createError,
+    fetchUsers,
+    handleToggleStatus,
+    handleCreateUser,
+  } = useUserManagement();
 
   useEffect(() => {
     if (isHydrated) {
       if (!currentUser) {
         router.push("/login");
       } else if (currentUser.role !== "admin") {
-        // Redirect if not admin
         router.push("/cashier");
       } else {
         fetchUsers();
       }
     }
-  }, [isHydrated, currentUser, router]);
+  }, [isHydrated, currentUser, router, fetchUsers]);
 
-  const handleToggleStatus = async (user: DBUser) => {
-    if (user.email === (currentUser as any)?.email) {
-      alert("Anda tidak dapat menonaktifkan akun admin Anda sendiri.");
-      return;
-    }
-
-    const action = user.is_active ? "deactivate" : "activate";
-    const confirmMsg = user.is_active
-      ? `Nonaktifkan akun ${user.name}? Kasir ini tidak akan bisa login ke kasir.`
-      : `Aktifkan kembali akun ${user.name}?`;
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await api.put(`/admin/users/${user.id}/${action}`);
-      if (res.data?.success) {
-        fetchUsers();
-      } else {
-        alert(res.data?.message || "Gagal memperbarui status user.");
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Gagal menghubungi server.");
-    }
-  };
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateError("");
-
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setCreateError("Semua field wajib diisi.");
-      return;
-    }
-
-    setCreateLoading(true);
-    try {
-      const res = await api.post("/admin/users", {
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        role,
-      });
-
-      if (res.data?.success) {
-        alert("Kasir baru berhasil ditambahkan!");
-        setShowModal(false);
-        // Reset form
-        setName("");
-        setEmail("");
-        setPassword("");
-        setRole("kasir");
-        fetchUsers();
-      } else {
-        setCreateError(res.data?.message || "Gagal membuat user.");
-      }
-    } catch (err: any) {
-      setCreateError(err.response?.data?.message || "Gagal mendaftarkan user.");
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  // If not hydrated or not admin, show simple loader to avoid flash of content
   if (!isHydrated || !currentUser || currentUser.role !== "admin") {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
@@ -163,7 +81,7 @@ export default function UserManagementPage() {
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
           <div className="max-w-6xl mx-auto space-y-6">
-            
+
             {/* Action Bar */}
             <div className="flex justify-between items-center">
               <div>
@@ -212,7 +130,7 @@ export default function UserManagementPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {users.map((u) => {
+                      {users.map((u: any) => {
                         const isSelf = u.email === (currentUser as any).email;
                         const initial = u.name ? u.name.charAt(0).toUpperCase() : "?";
 
@@ -239,21 +157,19 @@ export default function UserManagementPage() {
                               <span className="text-sm text-slate-500 font-medium">{u.email}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${
-                                u.role === "admin" 
-                                  ? "bg-purple-50 text-purple-600 border border-purple-100" 
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${u.role === "admin"
+                                  ? "bg-purple-50 text-purple-600 border border-purple-100"
                                   : "bg-blue-50 text-blue-600 border border-blue-100"
-                              }`}>
+                                }`}>
                                 <Shield className="size-3.5" />
                                 {u.role}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
-                                u.is_active 
-                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200" 
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${u.is_active
+                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
                                   : "bg-red-50 text-red-500 border-red-200"
-                              }`}>
+                                }`}>
                                 {u.is_active ? "Aktif" : "Nonaktif"}
                               </span>
                             </td>
@@ -265,11 +181,10 @@ export default function UserManagementPage() {
                               ) : (
                                 <button
                                   onClick={() => handleToggleStatus(u)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer border ${
-                                    u.is_active
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer border ${u.is_active
                                       ? "border-red-200 hover:border-red-300 text-red-600 bg-white hover:bg-red-50"
                                       : "border-emerald-200 hover:border-emerald-300 text-emerald-600 bg-white hover:bg-emerald-50"
-                                  }`}
+                                    }`}
                                 >
                                   {u.is_active ? (
                                     <span className="flex items-center gap-1"><UserX className="size-3.5" /> Nonaktifkan</span>
@@ -296,7 +211,7 @@ export default function UserManagementPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-[2px]">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2 text-blue-600">
@@ -383,22 +298,20 @@ export default function UserManagementPage() {
                   <button
                     type="button"
                     onClick={() => setRole("kasir")}
-                    className={`h-11 rounded-xl border-2 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      role === "kasir"
+                    className={`h-11 rounded-xl border-2 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${role === "kasir"
                         ? "border-blue-600 bg-blue-50 text-blue-600"
                         : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Staf Kasir
                   </button>
                   <button
                     type="button"
                     onClick={() => setRole("admin")}
-                    className={`h-11 rounded-xl border-2 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      role === "admin"
+                    className={`h-11 rounded-xl border-2 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${role === "admin"
                         ? "border-blue-600 bg-blue-50 text-blue-600"
                         : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Administrator
                   </button>
