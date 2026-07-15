@@ -246,10 +246,39 @@ func GetTransactions(c *gin.Context) {
 	var transactions []models.Transaction
 	var total int64
 
-	database.DB.Model(&models.Transaction{}).Count(&total)
+	query := database.DB.Model(&models.Transaction{}).Select("transactions.id, transactions.transaction_code, transactions.user_id, transactions.total_amount, transactions.payment_method, transactions.amount_paid, transactions.change_amount, transactions.status, transactions.member_id, transactions.discount_amount, transactions.created_at")
 
-	err := database.DB.Preload("Items").Preload("Member").Preload("User").
-		Order("created_at desc").
+	// Filters
+	status := c.Query("status")
+	if status != "" && status != "all" {
+		query = query.Where("transactions.status = ?", status)
+	}
+
+	search := c.Query("search")
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Joins("LEFT JOIN users ON users.id = transactions.user_id").
+			Joins("LEFT JOIN members ON members.id = transactions.member_id").
+			Where("transactions.transaction_code LIKE ? OR users.name LIKE ? OR members.name LIKE ?", searchPattern, searchPattern, searchPattern)
+	}
+
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	if startDate != "" {
+		if t, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("transactions.created_at >= ?", t)
+		}
+	}
+	if endDate != "" {
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("transactions.created_at <= ?", t.AddDate(0, 0, 1).Add(-time.Second))
+		}
+	}
+
+	query.Count(&total)
+
+	err := query.Preload("Items").Preload("Member").Preload("User").
+		Order("transactions.created_at desc").
 		Limit(limit).
 		Offset(offset).
 		Find(&transactions).Error
