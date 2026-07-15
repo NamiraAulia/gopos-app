@@ -17,9 +17,18 @@ export interface CartItem {
   custom_price?: number;
 }
 
+export interface HeldCart {
+  id: string;
+  note: string;
+  items: CartItem[];
+  selectedMember: Member | null;
+  heldAt: string;
+}
+
 interface CartState {
   cart: CartItem[];
   selectedMember: Member | null;
+  heldCarts: HeldCart[];
   addToCart: (product: Product, choice?: "small" | "big") => void;
   decreaseQty: (id: number) => void;
   toggleUnitChoice: (id: number) => void;
@@ -28,6 +37,10 @@ interface CartState {
   setSelectedMember: (member: Member | null) => void;
   setQty: (id: number, qty: number) => void;
   setCustomPrice: (id: number, price: number | undefined) => void;
+  holdCurrentCart: (note: string) => void;
+  recallCart: (id: string) => void;
+  deleteHeldCart: (id: string) => void;
+  loadHeldCarts: () => void;
 }
 
 export const useCartStore = create<CartState>((set) => ({
@@ -93,4 +106,63 @@ export const useCartStore = create<CartState>((set) => ({
   setCustomPrice: (id, price) => set((state) => ({
     cart: state.cart.map((item) => (item.id === id ? { ...item, custom_price: price } : item)),
   })),
+
+  heldCarts: [],
+
+  loadHeldCarts: () => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("gopos-held-carts");
+      if (stored) {
+        try {
+          set({ heldCarts: JSON.parse(stored) });
+        } catch (e) {
+          console.error("Gagal memuat held carts:", e);
+        }
+      }
+    }
+  },
+
+  holdCurrentCart: (note) => set((state) => {
+    if (state.cart.length === 0) return {};
+    const newHeld: HeldCart = {
+      id: Date.now().toString(),
+      note,
+      items: state.cart,
+      selectedMember: state.selectedMember,
+      heldAt: new Date().toISOString(),
+    };
+    const updated = [...state.heldCarts, newHeld];
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gopos-held-carts", JSON.stringify(updated));
+    }
+    return {
+      heldCarts: updated,
+      cart: [],
+      selectedMember: null,
+    };
+  }),
+
+  recallCart: (id) => set((state) => {
+    const target = state.heldCarts.find((c) => c.id === id);
+    if (!target) return {};
+    const updated = state.heldCarts.filter((c) => c.id !== id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gopos-held-carts", JSON.stringify(updated));
+    }
+    return {
+      heldCarts: updated,
+      cart: target.items,
+      selectedMember: target.selectedMember,
+    };
+  }),
+
+  deleteHeldCart: (id) => set((state) => {
+    const updated = state.heldCarts.filter((c) => c.id !== id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gopos-held-carts", JSON.stringify(updated));
+    }
+    return {
+      heldCarts: updated,
+    };
+  }),
 }));

@@ -76,7 +76,7 @@ export const RecentTransactionsTable = ({
           <h3 className="font-black text-sm text-slate-800">Transaksi Terakhir</h3>
         </div>
         <Link 
-          href="/transactions" 
+          href="/admin/transactions" 
           className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
         >
           Lihat Semua

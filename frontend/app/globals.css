@@ -119,7 +119,37 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  @page {
+    size: 58mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .struk-thermal,
+  .struk-thermal * {
+    visibility: visible;
+  }
+
+  .struk-thermal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm !important;
+    max-width: 58mm !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    background: white !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
   }
 }

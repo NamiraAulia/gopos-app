@@ -19,6 +19,11 @@ export function useCashierPage() {
     setSelectedMember,
     setQty,
     setCustomPrice,
+    heldCarts,
+    holdCurrentCart,
+    recallCart,
+    deleteHeldCart,
+    loadHeldCarts,
   } = useCartStore();
 
   const { products, loading, searchQuery, triggerSearch, refetch } =
@@ -56,6 +61,7 @@ export function useCashierPage() {
     }
   }, [isHydrated, currentUser, checkShift]);
 
+
   const totalNormal = cart.reduce((sum, item) => {
     const isBig = item.unit_choice === "big" && item.price_big > 0;
     const harga =
@@ -83,6 +89,38 @@ export function useCashierPage() {
 
   const discountAmount = totalNormal - totalNet;
   const grandTotal = totalNet;
+
+  // Sync state to Dual-Screen Customer Facing Display via BroadcastChannel API
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const channel = new BroadcastChannel("gopos-customer-display");
+
+    const sendUpdate = () => {
+      channel.postMessage({
+        type: "CART_UPDATE",
+        cart,
+        totalNormal,
+        discountAmount,
+        grandTotal,
+        selectedMember,
+        lastTransaction,
+      });
+    };
+
+    // Broadcast current state
+    sendUpdate();
+
+    // Listen for state requests from new customer display sessions
+    channel.onmessage = (event) => {
+      if (event.data?.type === "REQUEST_CURRENT_STATE") {
+        sendUpdate();
+      }
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, [cart, totalNormal, discountAmount, grandTotal, selectedMember, lastTransaction]);
 
   return {
     router,
@@ -129,5 +167,10 @@ export function useCashierPage() {
     totalNet,
     discountAmount,
     grandTotal,
+    heldCarts,
+    holdCurrentCart,
+    recallCart,
+    deleteHeldCart,
+    loadHeldCarts,
   };
 }

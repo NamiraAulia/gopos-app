@@ -22,6 +22,7 @@ import {
 import Sidebar from "@/components/Sidebar";
 import { RefundModal } from "@/features/cashier/components/RefundModal";
 import { useAdminTransactions } from "../hooks/useAdminTransactions";
+import { PrintableReceipt } from "@/features/cashier/components/PrintableReceipt";
 
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -477,76 +478,30 @@ export function TransactionHistoryView() {
 
       {/* Reprint Receipt Layout - Rendered only on physical print */}
       {selectedTransaction && (
-        <div className="hidden print:block text-black font-mono text-xs p-6 w-[80mm] mx-auto">
-          <h1 className="text-center font-bold text-base mb-1">GoPOS Store</h1>
-          <p className="text-center text-[10px] mb-2">Riwayat Transaksi Admin (Salinan)</p>
-          <div className="border-b border-dashed border-black mb-2" />
-          <div className="space-y-0.5 mb-2">
-            <p>Nota: {selectedTransaction.transaction_code}</p>
-            <p>Tanggal: {new Date(selectedTransaction.created_at).toLocaleString("id-ID")}</p>
-            <p>Kasir: {selectedTransaction.user?.name || "Kasir"}</p>
-            <p>Metode: {selectedTransaction.payment_method.toUpperCase()}</p>
-            {selectedTransaction.member && <p>Member: {selectedTransaction.member.name}</p>}
-          </div>
-          <div className="border-b border-dashed border-black mb-2" />
-          
-          <div className="space-y-1 mb-2">
-            {selectedTransaction.items?.map((item: any) => (
-              <div key={item.id} className="flex justify-between">
-                <div>
-                  <p>{item.product_name}</p>
-                  <p className="text-[10px] text-slate-600 pl-2">
-                    {item.qty}x Rp {item.unit_price.toLocaleString("id-ID")}
-                  </p>
-                </div>
-                <span>Rp {item.subtotal.toLocaleString("id-ID")}</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="border-b border-dashed border-black my-2" />
-          
-          <div className="space-y-1">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>Rp {((selectedTransaction.total_amount || 0) + (selectedTransaction.discount_amount || 0)).toLocaleString("id-ID")}</span>
-            </div>
-            {selectedTransaction.discount_amount > 0 && (
-              <div className="flex justify-between font-bold">
-                <span>Diskon Member:</span>
-                <span>-Rp {selectedTransaction.discount_amount.toLocaleString("id-ID")}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-black text-sm pt-1">
-              <span>TOTAL:</span>
-              <span>Rp {selectedTransaction.total_amount.toLocaleString("id-ID")}</span>
-            </div>
-            <div className="flex justify-between text-[10px] pt-1">
-              <span>Dibayar:</span>
-              <span>Rp {selectedTransaction.amount_paid.toLocaleString("id-ID")}</span>
-            </div>
-            {selectedTransaction.change_amount > 0 && (
-              <div className="flex justify-between text-[10px]">
-                <span>Kembalian:</span>
-                <span>Rp {selectedTransaction.change_amount.toLocaleString("id-ID")}</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="border-b border-dashed border-black my-2" />
-          <p className="text-center text-[10px] mt-4 font-bold">Terima Kasih Atas Kunjungan Anda</p>
-          
-          {selectedTransaction.status === "voided" && (
-            <div className="text-center font-bold text-red-600 mt-2 border border-red-500 p-1 uppercase">
-              *** TRANSAKSI DIBATALKAN (VOID) ***
-            </div>
-          )}
-          {selectedTransaction.status === "partially_refunded" && (
-            <div className="text-center font-bold text-amber-600 mt-2 border border-amber-500 p-1 uppercase">
-              *** TRANSAKSI DIRETER (REFUNDED) ***
-            </div>
-          )}
-        </div>
+        <PrintableReceipt
+          transaction={{
+            transaction_code: selectedTransaction.transaction_code,
+            created_at: selectedTransaction.created_at,
+            payment_method: selectedTransaction.payment_method,
+            amount_paid: selectedTransaction.amount_paid,
+            total_amount: selectedTransaction.total_amount,
+            change_amount: selectedTransaction.change_amount,
+            discount_amount: selectedTransaction.discount_amount,
+            items: selectedTransaction.items?.map((item) => ({
+              id: item.id,
+              product_name: item.product_name,
+              qty: item.qty,
+              price: item.unit_price,
+              subtotal: item.subtotal,
+            })),
+            member: selectedTransaction.member
+              ? {
+                  name: selectedTransaction.member.name,
+                  member_code: selectedTransaction.member.phone || `#${selectedTransaction.member.id}`,
+                }
+              : null,
+          }}
+        />
       )}
 
       {/* Return/Refund Modal */}

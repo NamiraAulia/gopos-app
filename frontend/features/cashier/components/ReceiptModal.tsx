@@ -62,40 +62,7 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
           </button>
         </div>
 
-        {/* Print Content Area */}
-        <div className="hidden print:block text-black font-mono text-sm p-4">
-          <h1 className="text-center font-bold text-lg mb-2">GoPOS</h1>
-          <p className="text-center mb-2">{transaction.transaction_code}</p>
-          {transaction.member && (
-            <div className="text-xs mb-3 text-slate-700">
-              <span>MEMBER: {transaction.member.name}</span>
-            </div>
-          )}
-          <div className="border-b border-dashed border-black mb-2"></div>
-          {transaction.items?.map((item: any, index: number) => (
-            <div key={item.id || `${item.product_name}-${index}`} className="flex justify-between mb-1">
-              <span>{item.qty}x {item.product_name}</span>
-              <span>{item.subtotal.toLocaleString("id-ID")}</span>
-            </div>
-          ))}
-          <div className="border-b border-dashed border-black my-2"></div>
-          {transaction.discount_amount > 0 && (
-            <div className="flex justify-between mb-1 text-xs">
-              <span>DISKON MEMBER</span>
-              <span>-Rp {transaction.discount_amount.toLocaleString("id-ID")}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold">
-            <span>TOTAL</span>
-            <span>Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
-          </div>
-          {transaction.change_amount > 0 && (
-            <div className="flex justify-between font-bold mt-1">
-              <span>KEMBALIAN</span>
-              <span>Rp {transaction.change_amount.toLocaleString("id-ID")}</span>
-            </div>
-          )}
-        </div>
+
       </div>
     </div>
   );

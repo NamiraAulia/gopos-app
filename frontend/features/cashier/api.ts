@@ -53,6 +53,13 @@ export interface Transaction {
   status: string;
   created_at: string;
   items?: any[];
+  discount_amount?: number;
+  member?: {
+    id: number;
+    name: string;
+    phone?: string;
+    member_code?: string;
+  } | null;
 }
 
 export interface Expense {

@@ -7,24 +7,29 @@ import {
   LogOut,
   Wallet,
   LockKeyholeOpen,
+  FolderOpen,
 } from "lucide-react";
 
 import { useAuthStore } from "@/store/authStore";
+import { useCartStore } from "@/store/useCartStore";
 
 type NavbarProps = {
   isShiftActive?: boolean;
   onOpenShiftClick?: () => void;
   onCloseShiftClick?: () => void;
+  onRecallClick?: () => void;
 };
 
 export default function Navbar({
   isShiftActive = false,
   onOpenShiftClick,
   onCloseShiftClick,
+  onRecallClick,
 }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const logout = useAuthStore((s) => s.logout);
+  const heldCarts = useCartStore((s) => s.heldCarts);
 
   const handleLogout = () => {
     if (confirm("Yakin ingin mengakhiri sesi kasir?")) {
@@ -80,6 +85,22 @@ export default function Navbar({
       </div>
 
       <div className="flex items-center gap-3">
+        {onRecallClick && (
+          <button
+            type="button"
+            onClick={onRecallClick}
+            className="h-10 px-4 rounded-xl border-2 border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition-all flex items-center gap-2 text-xs font-black uppercase tracking-wider relative cursor-pointer"
+          >
+            <FolderOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Keranjang Tersimpan</span>
+            {heldCarts.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white font-black text-[9px] h-5 w-5 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-pulse">
+                {heldCarts.length}
+              </span>
+            )}
+          </button>
+        )}
+
         {onOpenShiftClick && onCloseShiftClick && (
           <button
             type="button"

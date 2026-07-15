@@ -10,6 +10,6 @@ export const auditLogsApi = {
     end_date?: string;
   }) =>
     api
-      .get<ApiResponse<ActivityLog[]>>("/admin/activity-logs", { params })
+      .get<ApiResponse<ActivityLog[]>>("/admin/audit-logs", { params })
       .then((res) => res.data),
 };

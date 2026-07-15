@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -14,10 +14,14 @@ import {
   PackagePlus,
   Check,
   Edit,
+  Pause,
 } from "lucide-react";
 import { PaymentModal } from "@/features/cashier/components/PaymentModal";
 import { ReceiptModal } from "@/features/cashier/components/ReceiptModal";
+import { PrintableReceipt } from "@/features/cashier/components/PrintableReceipt";
 import { OpenShiftModal } from "@/features/cashier/components/OpenShiftModal";
+import { HoldCartModal } from "@/features/cashier/components/HoldCartModal";
+import { HeldCartsModal } from "@/features/cashier/components/HeldCartsModal";
 import { ProductModal } from "@/features/products/components/ProductModal";
 import Navbar from "@/features/cashier/components/Navbar";
 import { useCashierPage } from "@/features/cashier/hooks/useCashierPage";
@@ -66,7 +70,17 @@ export default function CashierPage() {
     totalNormal,
     discountAmount,
     grandTotal,
+    heldCarts,
+    holdCurrentCart,
+    loadHeldCarts,
   } = useCashierPage();
+
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [showHeldCartsModal, setShowHeldCartsModal] = useState(false);
+
+  useEffect(() => {
+    loadHeldCarts();
+  }, [loadHeldCarts]);
 
   useEffect(() => {
     if (isHydrated && !currentUser) {
@@ -88,6 +102,7 @@ export default function CashierPage() {
         isShiftActive={isShiftActive}
         onOpenShiftClick={() => setShowOpenShiftModal(true)}
         onCloseShiftClick={() => router.push("/cashier/cashSummary")}
+        onRecallClick={() => setShowHeldCartsModal(true)}
       />
 
       <main className="flex flex-1 overflow-hidden flex-col lg:flex-row">
@@ -444,13 +459,25 @@ export default function CashierPage() {
                 Rp {grandTotal.toLocaleString("id-ID")}
               </h2>
             </div>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              disabled={cart.length === 0 || !isShiftActive}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 text-base font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <CreditCard className="h-5 w-5" /> Bayar Sekarang
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowHoldModal(true)}
+                disabled={cart.length === 0}
+                className="flex h-14 flex-[0.35] items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-all cursor-pointer disabled:cursor-not-allowed"
+                title="Tunda Transaksi / Simpan Keranjang"
+              >
+                <Pause className="h-4 w-4" />
+                <span className="hidden sm:inline">Simpan</span>
+              </button>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                disabled={cart.length === 0 || !isShiftActive}
+                className="flex h-14 flex-[0.65] items-center justify-center gap-3 rounded-xl bg-blue-600 text-base font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <CreditCard className="h-5 w-5" /> Bayar Sekarang
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -495,6 +522,22 @@ export default function CashierPage() {
         onClose={() => setShowReceipt(false)}
         transaction={lastTransaction}
       />
+
+      <HoldCartModal
+        isOpen={showHoldModal}
+        onClose={() => setShowHoldModal(false)}
+        onConfirm={(note) => holdCurrentCart(note)}
+      />
+
+      <HeldCartsModal
+        isOpen={showHeldCartsModal}
+        onClose={() => setShowHeldCartsModal(false)}
+      />
+
+      {/* Hidden printable receipt for thermal printer */}
+      <div className="hidden print:block">
+        <PrintableReceipt transaction={lastTransaction} />
+      </div>
 
       {/* Confirmation Modal for Clearing Cart */}
       {showClearConfirm && (

@@ -23,26 +23,38 @@ export function useAdminTransactions() {
   // Refund Modal State
   const [showRefundModal, setShowRefundModal] = useState(false);
 
-  // Pagination on frontend
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
   const fetchTransactions = useCallback(async () => {
+    if (!isHydrated || !currentUser || currentUser.role !== "admin") return;
     setLoading(true);
     setError("");
     try {
       const res = await api.get("/transactions", {
-        params: { limit: 100 },
+        params: {
+          page: currentPage,
+          limit: itemsPerPage,
+          search: search,
+          status: statusFilter,
+          start_date: startDate,
+          end_date: endDate,
+        },
       });
       const payload = res.data?.data;
       setTransactions(payload?.data || []);
+      setTotalItems(payload?.total || 0);
+      setTotalPages(payload?.total_pages || 1);
     } catch (err: any) {
       console.error("Gagal memuat data transaksi:", err);
       setError(err.response?.data?.message || "Gagal menghubungi server untuk memuat data transaksi.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isHydrated, currentUser, currentPage, itemsPerPage, search, statusFilter, startDate, endDate]);
 
   const openDetail = async (trx: Transaction) => {
     setDetailLoading(true);
@@ -79,38 +91,8 @@ export function useAdminTransactions() {
     setCurrentPage(1);
   };
 
-  // Filtering Logic
-  const filteredTransactions = transactions.filter((t) => {
-    const matchesSearch = 
-      t.transaction_code.toLowerCase().includes(search.toLowerCase()) ||
-      (t.user?.name && t.user.name.toLowerCase().includes(search.toLowerCase()));
-
-    const matchesStatus = statusFilter === "all" || t.status === statusFilter;
-
-    let matchesDate = true;
-    if (startDate || endDate) {
-      const trxDate = new Date(t.created_at);
-      
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (trxDate < start) matchesDate = false;
-      }
-      
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (trxDate > end) matchesDate = false;
-      }
-    }
-
-    return matchesSearch && matchesStatus && matchesDate;
-  });
-
-  const totalItems = filteredTransactions.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTransactions = transactions;
 
   const goToPage = (p: number) => {
     if (p >= 1 && p <= totalPages) {
@@ -118,9 +100,15 @@ export function useAdminTransactions() {
     }
   };
 
+  // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, startDate, endDate]);
+
+  // Fetch transactions when page or filters change
+  useEffect(() => {
+    fetchTransactions();
+  }, [currentPage, search, statusFilter, startDate, endDate, fetchTransactions]);
 
   return {
     currentUser,
