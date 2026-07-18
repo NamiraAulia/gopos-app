@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { loginApi } from "../api";
 import { setStoredToken } from "@/lib/axios";
+import { supabase } from "@/utils/supabaseClient";
 
 export function useLogin() {
   const router = useRouter();
@@ -21,30 +21,61 @@ export function useLogin() {
     setSuccessMsg("");
 
     try {
-      const result = await loginApi.login({ email, password, rememberMe });
+      // 1. Sign in via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (result.success && result.data) {
-        const { token, user } = result.data;
-        
-        setSuccessMsg("Login Berhasil! Mengalihkan ke dashboard...");
-        
-        setStoredToken(token);
-        
-        // Populate the client-side authentication store
-        useAuthStore.setState({ user, token });
-
-        const days = rememberMe ? 30 : 1;
-        const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-        document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
-
-        setTimeout(() => router.push("/cashier"), 1000);
-      } else {
-        setErrorMsg(result.message || "Email atau password salah.");
+      if (authError) {
+        setErrorMsg(authError.message === "Invalid login credentials"
+          ? "Email atau password salah."
+          : authError.message);
+        setIsLoading(false);
+        return;
       }
+
+      // 2. Load user details (numeric ID and Role) from public.users table
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .single();
+
+      if (profileError || !userProfile) {
+        setErrorMsg("Profil pengguna tidak ditemukan di database.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!userProfile.is_active) {
+        setErrorMsg("Akun Anda sedang dinonaktifkan oleh administrator.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Set global store session values
+      const token = authData.session?.access_token || "";
+      const user = {
+        id: userProfile.id,
+        username: userProfile.name,
+        role: userProfile.role as 'admin' | 'kasir',
+        is_active: userProfile.is_active,
+      };
+
+      setSuccessMsg("Login Berhasil! Mengalihkan ke dashboard...");
+      setStoredToken(token);
+      useAuthStore.setState({ user, token });
+
+      // 4. Set session cookie
+      const days = rememberMe ? 30 : 1;
+      const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
+
+      setTimeout(() => router.push("/cashier"), 1000);
     } catch (error: any) {
       console.error("Login error:", error);
-      const msg = error.response?.data?.message || "Koneksi terputus. Pastikan server Backend menyala.";
-      setErrorMsg(msg);
+      setErrorMsg("Terjadi kesalahan sistem saat mencoba masuk.");
     } finally {
       setIsLoading(false);
     }
