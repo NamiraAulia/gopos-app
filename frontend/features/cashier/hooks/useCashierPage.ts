@@ -43,6 +43,7 @@ export function useCashierPage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<any>(null);
+  
 
   useEffect(() => {
     const fetchMembers = async () => {
