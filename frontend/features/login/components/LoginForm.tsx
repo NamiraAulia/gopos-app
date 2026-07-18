@@ -31,7 +31,6 @@ export function LoginForm() {
               <h1 className="text-2xl font-bold">GoPOS</h1>
             </div>
 
-            {/* Title & Subtitle */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-slate-900 mb-1">
                 Selamat Datang
@@ -41,11 +40,9 @@ export function LoginForm() {
               </p>
             </div>
 
-            {/* Alerts Feedback */}
             {successMsg && <Alert type="success" message={successMsg} />}
             {errorMsg && <Alert type="error" message={errorMsg} />}
 
-            {/* Form Utama */}
             <form className="space-y-4" onSubmit={handleLogin}>
               
               <InputField
@@ -66,14 +63,8 @@ export function LoginForm() {
                 placeholder="••••••••"
                 icon={<Lock size={20} />}
                 onChange={(e) => setPassword(e.target.value)}
-                rightSlot={
-                  <a href="#" className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
-                    Lupa sandi?
-                  </a>
-                }
               />
 
-              {/* Checkbox "Ingat sesi saya" */}
               <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center gap-2.5">
                   <input
@@ -89,7 +80,6 @@ export function LoginForm() {
                 </div>
               </div>
 
-              {/* Tombol Submit */}
               <div className="pt-2">
                 <button
                   type="submit"

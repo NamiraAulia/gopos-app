@@ -51,7 +51,7 @@ func ProcessRefund(c *gin.Context) {
 	txID, _ := strconv.ParseUint(txIDParam, 10, 32)
 
 	var transaction models.Transaction
-	if err := database.DB.Preload("Items").Where("id = ? AND status = 'completed'", txID).First(&transaction).Error; err != nil {
+	if err := database.DB.Preload("Items").Where("id = ? AND status IN ('completed', 'partially_refunded')", txID).First(&transaction).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan atau tidak valid untuk retur", err.Error())
 		return
 	}
@@ -144,9 +144,36 @@ func ProcessRefund(c *gin.Context) {
 			return err
 		}
 
+		var totalOriginalQty int = 0
+		for _, item := range transaction.Items {
+			totalOriginalQty += item.Qty
+		}
+
+		var previouslyRefundedQty int64
+		err := tx.Model(&models.RefundItem{}).
+			Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
+			Where("refunds.transaction_id = ?", transaction.ID).
+			Select("COALESCE(SUM(refund_items.qty_refunded), 0)").
+			Row().Scan(&previouslyRefundedQty)
+		if err != nil {
+			return err
+		}
+
+		var currentRefundedQty int = 0
+		for _, reqItem := range input.Items {
+			currentRefundedQty += reqItem.QtyRefunded
+		}
+
+		totalRefundedQty := int(previouslyRefundedQty) + currentRefundedQty
+
+		newStatus := "partially_refunded"
+		if totalRefundedQty >= totalOriginalQty {
+			newStatus = "refunded"
+		}
+
 		if err := tx.Model(&models.Transaction{}).
 			Where("id = ?", transaction.ID).
-			Update("status", "partially_refunded").
+			Update("status", newStatus).
 			Error; err != nil {
 			return err
 		}

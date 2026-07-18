@@ -15,7 +15,7 @@ func GetReceiptData(c *gin.Context) {
 
 	var transaction models.Transaction
 
-	if err := database.DB.Preload("Items").Where("id = ?", id).First(&transaction).Error; err != nil {
+	if err := database.DB.Preload("Items").Preload("Member").Where("id = ?", id).First(&transaction).Error; err != nil {
 		utils.Fail(c, http.StatusNotFound, "Transaksi tidak ditemukan", "transaction not found")
 		return
 	}
@@ -56,6 +56,8 @@ func GetReceiptData(c *gin.Context) {
 		"total_amount":     transaction.TotalAmount,
 		"amount_paid":      transaction.AmountPaid,
 		"change_amount":    transaction.ChangeAmount,
+		"discount_amount":  transaction.DiscountAmount,
+		"member":           transaction.Member,
 		"footer_message":   "Terima Kasih Telah Berbelanja!",
 	})
 }

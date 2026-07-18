@@ -83,6 +83,28 @@ export function useAdminTransactions() {
     fetchTransactions();
   };
 
+  const handleVoid = async (id: number) => {
+    if (!window.confirm("Apakah Anda yakin ingin membatalkan transaksi ini? Tindakan ini akan mengembalikan stok produk.")) {
+      return;
+    }
+    try {
+      setDetailLoading(true);
+      const res = await api.post(`/transactions/${id}/void`);
+      if (res.data?.success || res.status === 200) {
+        alert("Transaksi berhasil dibatalkan!");
+        setSelectedTransaction(null);
+        fetchTransactions();
+      } else {
+        alert(res.data?.message || "Gagal membatalkan transaksi.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Terjadi kesalahan saat membatalkan transaksi.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const handleResetFilters = () => {
     search && setSearch("");
     statusFilter !== "all" && setStatusFilter("all");
@@ -142,5 +164,6 @@ export function useAdminTransactions() {
     handleRefundSuccess,
     handleResetFilters,
     goToPage,
+    handleVoid,
   };
 }

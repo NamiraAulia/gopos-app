@@ -24,7 +24,7 @@ func SetupRoutes(r *gin.Engine) {
 			protected.POST("/products", handlers.AddProducts)
 			protected.PUT("/products/:id", handlers.EditProducts)
 			protected.DELETE("/products/:id", handlers.DeleteProducts)
-			protected.POST("/products/import", handlers.ImportProductsCSV)
+			protected.POST("/products/import", middleware.RequireRole("admin"), handlers.ImportProductsCSV)
 
 			protected.POST("/checkout", handlers.Checkout)
 			protected.GET("/transactions", handlers.GetTransactions)
@@ -55,7 +55,7 @@ func SetupRoutes(r *gin.Engine) {
 				adminOnly.GET("/users", handlers.GetUsers)
 				adminOnly.PUT("/users/:id/deactivate", handlers.DeactivateUser)
 				adminOnly.PUT("/users/:id/activate", handlers.ActivateUser)
-				adminOnly.POST("/products/import", handlers.ImportProductsCSV)
+				// adminOnly.PATCH("/users/:id/reset-password", handlers.ResetPassword)
 				adminOnly.GET("/shifts/active", handlers.GetActiveShifts)
 				adminOnly.POST("/shifts/:id/force-close", handlers.ForceCloseShift)
 				adminOnly.GET("/alerts", handlers.GetSystemAlerts)

@@ -68,6 +68,8 @@ func Checkout(c *gin.Context) {
 	}
 
 	var preflightTotal int64
+	var normalTotal int64
+	var finalDiscount int64
 	type itemCalc struct {
 		unitPrice   int64
 		qtyToDeduct int
@@ -97,13 +99,16 @@ func Checkout(c *gin.Context) {
 			return
 		}
 
-		unitPrice := int64(product.Price)
+		normalPrice := int64(product.Price)
+		if item.UnitChoice == "big" && product.Conversion > 0 {
+			normalPrice = int64(product.PriceBig)
+		}
+
+		unitPrice := normalPrice
 		qtyToDeduct := item.Qty
 
 		if item.UnitChoice == "big" && product.Conversion > 0 {
-			unitPrice = int64(product.PriceBig)
 			qtyToDeduct = item.Qty * product.Conversion
-
 			if product.IsPromo && product.DiscountAmount > 0 {
 				discounted := product.PriceBig - product.DiscountAmount
 				if discounted < 0 {
@@ -113,7 +118,9 @@ func Checkout(c *gin.Context) {
 			}
 		} else {
 			// Unit small / satuan eceran
-			if product.IsPromo && product.DiscountAmount > 0 {
+			if req.MemberID != nil && product.PriceMember > 0 {
+				unitPrice = int64(product.PriceMember)
+			} else if product.IsPromo && product.DiscountAmount > 0 {
 				discounted := product.Price - product.DiscountAmount
 				if discounted < 0 {
 					discounted = 0
@@ -124,6 +131,8 @@ func Checkout(c *gin.Context) {
 
 		subtotal := unitPrice * int64(item.Qty)
 		preflightTotal += subtotal
+		normalTotal += normalPrice * int64(item.Qty)
+
 		calcMap[item.ProductID] = itemCalc{
 			unitPrice:   unitPrice,
 			qtyToDeduct: qtyToDeduct,
@@ -131,9 +140,10 @@ func Checkout(c *gin.Context) {
 		}
 	}
 
-	netTotal := preflightTotal - req.DiscountAmount
-	if netTotal < 0 {
-		netTotal = 0
+	netTotal := preflightTotal
+	finalDiscount = normalTotal - preflightTotal
+	if finalDiscount < 0 {
+		finalDiscount = 0
 	}
 
 	if req.PaymentMethod == "cash" && req.AmountPaid < netTotal {
@@ -184,7 +194,7 @@ func Checkout(c *gin.Context) {
 			ChangeAmount:    changeAmount,
 			Status:          "completed",
 			MemberID:        req.MemberID,
-			DiscountAmount:  req.DiscountAmount,
+			DiscountAmount:  finalDiscount,
 			CreatedAt:       time.Now(),
 		}
 
@@ -331,8 +341,8 @@ func VoidTransaction(c *gin.Context) {
 		return
 	}
 
-	if transaction.Status == "voided" {
-		utils.Fail(c, http.StatusBadRequest, "Transaksi sudah dibatalkan sebelumnya", "already voided")
+	if transaction.Status != "completed" {
+		utils.Fail(c, http.StatusBadRequest, "Hanya transaksi berstatus sukses (completed) yang belum diretur yang dapat dibatalkan", "invalid status for void")
 		return
 	}
 

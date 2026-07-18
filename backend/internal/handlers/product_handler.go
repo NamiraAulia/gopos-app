@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,6 +50,9 @@ type AddProductPayload struct {
 // @Router       /api/v1/products [get]
 func GetProducts(c *gin.Context) {
 	searchQuery := c.Query("name")
+	if searchQuery == "" {
+		searchQuery = c.Query("search")
+	}
 	barcode := c.Query("barcode")
 
 	page, limit, offset := utils.GetPagination(c)
@@ -260,34 +264,123 @@ func DeleteProducts(c *gin.Context) {
 // @Failure      500  {object} map[string]interface{} "Failed to compute sales algorithms"
 // @Router       /api/v1/products/restock-suggestions [get]
 func GetRestockSuggestions(c *gin.Context) {
-	var suggestions []models.RestockSuggestion
+	var rawSuggestions []struct {
+		ProductID      uint       `json:"product_id"`
+		ProductName    string     `json:"product_name"`
+		CurrentStock   int        `json:"current_stock"`
+		AvgSalesPerDay float64    `json:"avg_sales_per_day"`
+		DaysRemaining  float64    `json:"days_remaining"`
+		SupplierName   string     `json:"supplier_name"`
+		Conversion     int        `json:"conversion"`
+		Unit           string     `json:"unit"`
+		UnitBig        string     `json:"unit_big"`
+		ShelfLifeDays  int        `json:"shelf_life_days"`
+		ExpiryDate     *time.Time `json:"expiry_date"`
+	}
 
 	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
 
 	query := `
-		SELECT product_id, product_name, current_stock, avg_sales_per_day, days_remaining
-		FROM (
-			SELECT 
-				p.id as product_id, 
-				p.name as product_name, 
-				p.stock as current_stock,
-				COALESCE(CAST(SUM(ti.qty) AS double precision) / 7.0, 0.0) as avg_sales_per_day,
-				CASE 
-					WHEN COALESCE(SUM(ti.qty), 0) > 0 THEN CAST(p.stock AS double precision) / (CAST(SUM(ti.qty) AS double precision) / 7.0) 
-					ELSE 999.0 
-				END as days_remaining
-			FROM products p
-			LEFT JOIN transaction_items ti ON p.id = ti.product_id
-			LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.created_at >= ?
-			GROUP BY p.id, p.name, p.stock
-		) sub
-		WHERE sub.days_remaining <= 3.0 OR sub.current_stock <= 5
-		ORDER BY sub.days_remaining ASC
+		SELECT 
+			p.id as product_id, 
+			p.name as product_name, 
+			p.stock as current_stock,
+			p.supplier_name as supplier_name,
+			p.conversion as conversion,
+			p.unit as unit,
+			p.unit_big as unit_big,
+			p.shelf_life_days as shelf_life_days,
+			p.expiry_date as expiry_date,
+			COALESCE(CAST(SUM(ti.qty) AS double precision) / 7.0, 0.0) as avg_sales_per_day,
+			CASE 
+				WHEN COALESCE(SUM(ti.qty), 0) > 0 THEN CAST(p.stock AS double precision) / (CAST(SUM(ti.qty) AS double precision) / 7.0) 
+				ELSE 999.0 
+			END as days_remaining
+		FROM products p
+		LEFT JOIN transaction_items ti ON p.id = ti.product_id
+		LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.created_at >= ?
+		WHERE p.is_active = true
+		GROUP BY p.id, p.name, p.stock, p.supplier_name, p.conversion, p.unit, p.unit_big, p.shelf_life_days, p.expiry_date
+		ORDER BY days_remaining ASC
 	`
 
-	if err := database.DB.Raw(query, sevenDaysAgo).Scan(&suggestions).Error; err != nil {
+	if err := database.DB.Raw(query, sevenDaysAgo).Scan(&rawSuggestions).Error; err != nil {
 		utils.Fail(c, http.StatusInternalServerError, "Gagal menghitung data restock", err.Error())
 		return
+	}
+
+	var suggestions []models.RestockSuggestion
+
+	for _, raw := range rawSuggestions {
+		// Pilar 1: Dead Stock filtering (hanya rekomendasikan jika laju penjualan > 0)
+		if !(raw.DaysRemaining <= 3.0 || (raw.CurrentStock <= 5 && raw.AvgSalesPerDay > 0)) {
+			continue
+		}
+
+		// Fallback shelf life jika tidak diisi/nol
+		shelfLife := raw.ShelfLifeDays
+		if shelfLife <= 0 {
+			shelfLife = 30 // default 30 hari
+		}
+
+		// Pilar 3: Risk tier classification & target coverage
+		var riskTier string
+		var targetCoverage int
+		if shelfLife <= 14 {
+			riskTier = "high"
+			targetCoverage = 3 // 3 hari stok untuk barang berisiko tinggi
+		} else if shelfLife <= 90 {
+			riskTier = "medium"
+			targetCoverage = 7 // 7 hari stok untuk barang berisiko sedang
+		} else {
+			riskTier = "low"
+			targetCoverage = 14 // 14 hari stok untuk barang berisiko rendah
+		}
+
+		// Hitung data proyeksi kebutuhan harian & mingguan
+		dailyDemand := raw.AvgSalesPerDay
+		weeklyDemand := raw.AvgSalesPerDay * 7.0
+
+		// Pilar 2: Hitung Saran Restok (Recommend Qty)
+		recPcs := int(math.Ceil((raw.AvgSalesPerDay * float64(targetCoverage)) - float64(raw.CurrentStock)))
+		if recPcs < 0 {
+			recPcs = 0
+		}
+
+		// Hitung Batas Maksimum Aman (Ceiling Qty)
+		maxPcs := int(math.Ceil((raw.AvgSalesPerDay * float64(shelfLife)) - float64(raw.CurrentStock)))
+		if maxPcs < 0 {
+			maxPcs = 0
+		}
+
+		// Konversi ke Satuan Grosir
+		recBig := 0
+		maxBig := 0
+		if raw.Conversion > 0 {
+			recBig = int(math.Ceil(float64(recPcs) / float64(raw.Conversion)))
+			maxBig = int(math.Ceil(float64(maxPcs) / float64(raw.Conversion)))
+		}
+
+		suggestions = append(suggestions, models.RestockSuggestion{
+			ProductID:         raw.ProductID,
+			ProductName:       raw.ProductName,
+			CurrentStock:      raw.CurrentStock,
+			AvgSalesPerDay:    raw.AvgSalesPerDay,
+			DaysRemaining:     raw.DaysRemaining,
+			SupplierName:      raw.SupplierName,
+			Conversion:        raw.Conversion,
+			Unit:              raw.Unit,
+			UnitBig:           raw.UnitBig,
+			ShelfLifeDays:     raw.ShelfLifeDays,
+			ExpiryDate:        raw.ExpiryDate,
+			DailyDemand:       dailyDemand,
+			WeeklyDemand:      weeklyDemand,
+			RecommendQty:      recPcs,
+			RecommendBigQty:   recBig,
+			MaxSafeQty:        maxPcs,
+			MaxSafeBigQty:     maxBig,
+			RiskTier:          riskTier,
+		})
 	}
 
 	utils.OK(c, "Data restock berhasil dihitung", suggestions)

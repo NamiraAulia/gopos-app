@@ -99,7 +99,7 @@ func CloseShift(c *gin.Context) {
 
 	now := time.Now()
 
-	realExpected := activeShift.StartCash + activeShift.TotalCashExpected - activeShift.TotalRefundedCash
+	realExpected := activeShift.TotalCashExpected - activeShift.TotalRefundedCash
 
 	activeShift.CashDifference = input.TotalCashActual - realExpected
 	activeShift.Status = "closed"

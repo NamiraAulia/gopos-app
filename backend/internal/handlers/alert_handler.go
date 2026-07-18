@@ -40,7 +40,7 @@ func GetSystemAlerts(c *gin.Context) {
 	twelveHoursAgo := time.Now().Add(-12 * time.Hour)
 	
 	database.DB.Model(&models.Shift{}).
-		Select("shifts.id, users.username, shifts.start_time").
+		Select("shifts.id, users.name as username, shifts.start_time").
 		Joins("JOIN users ON shifts.user_id = users.id").
 		Where("shifts.status = 'open' AND shifts.start_time < ?", twelveHoursAgo).
 		Scan(&overtimeShifts)
@@ -53,7 +53,7 @@ func GetSystemAlerts(c *gin.Context) {
 	}
 	var badShifts []SevereDiscrepancyAlert
 	database.DB.Model(&models.Shift{}).
-		Select("shifts.id, users.username, shifts.end_time, shifts.cash_difference").
+		Select("shifts.id, users.name as username, shifts.end_time, shifts.cash_difference").
 		Joins("JOIN users ON shifts.user_id = users.id").
 		Where("shifts.status = 'closed' AND (shifts.cash_difference >= ? OR shifts.cash_difference <= ?)", 50000, -50000).
 		Scan(&badShifts)

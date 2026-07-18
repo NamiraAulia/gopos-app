@@ -68,6 +68,7 @@ export function TransactionHistoryView() {
     handleRefundSuccess,
     handleResetFilters,
     goToPage,
+    handleVoid,
   } = useAdminTransactions();
 
   useEffect(() => {
@@ -92,13 +93,12 @@ export function TransactionHistoryView() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900 print:bg-white print:h-auto print:overflow-visible">
-      {/* Sidebar - Hidden on print */}
+
       <div className="print:hidden flex h-full">
         <Sidebar />
       </div>
 
       <main className="flex-1 flex flex-col overflow-hidden print:hidden">
-        {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm relative z-30">
           <div className="flex items-center gap-2 text-slate-500">
             <Receipt className="h-4 w-4" />
@@ -107,11 +107,9 @@ export function TransactionHistoryView() {
           </div>
         </header>
 
-        {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
           <div className="max-w-6xl mx-auto space-y-6">
             
-            {/* Action Bar */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Riwayat Transaksi</h2>
@@ -120,8 +118,6 @@ export function TransactionHistoryView() {
                 </p>
               </div>
             </div>
-
-            {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-semibold px-4 py-3 rounded-xl flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -137,7 +133,6 @@ export function TransactionHistoryView() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 
-                {/* Search */}
                 <div className="relative">
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                     Cari Transaksi
@@ -154,7 +149,6 @@ export function TransactionHistoryView() {
                   </div>
                 </div>
 
-                {/* Status */}
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                     Status
@@ -187,7 +181,6 @@ export function TransactionHistoryView() {
                   </div>
                 </div>
 
-                {/* End Date */}
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                     Sampai Tanggal
@@ -205,7 +198,6 @@ export function TransactionHistoryView() {
 
               </div>
 
-              {/* Reset Button */}
               {(search || statusFilter !== "all" || startDate || endDate) && (
                 <div className="flex justify-end pt-2 border-t border-slate-50">
                   <button
@@ -218,7 +210,6 @@ export function TransactionHistoryView() {
               )}
             </div>
 
-            {/* Table Area */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
               {loading ? (
                 <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-sm font-medium gap-2">
@@ -288,7 +279,6 @@ export function TransactionHistoryView() {
                     </table>
                   </div>
 
-                  {/* Pagination Footer */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 bg-slate-50/50">
                       <p className="text-xs text-slate-500 font-semibold">
@@ -337,7 +327,6 @@ export function TransactionHistoryView() {
         </div>
       </main>
 
-      {/* Transaction Details Modal */}
       {selectedTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm print:hidden">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -409,7 +398,6 @@ export function TransactionHistoryView() {
                 </div>
               </div>
 
-              {/* Price Details */}
               <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs font-semibold text-slate-500 space-y-2.5">
                 <div className="flex justify-between">
                   <span>Subtotal Belanja</span>
@@ -454,13 +442,22 @@ export function TransactionHistoryView() {
               </button>
               
               {selectedTransaction.status === "completed" && (
-                <button
-                  type="button"
-                  onClick={() => setShowRefundModal(true)}
-                  className="flex-1 h-10 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="size-4" /> Retur Barang
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowRefundModal(true)}
+                    className="flex-1 h-10 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="size-4" /> Retur Barang
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleVoid(selectedTransaction.id)}
+                    className="flex-1 h-10 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <X className="size-4" /> Batalkan Transaksi
+                  </button>
+                </>
               )}
               
               <button
@@ -504,7 +501,6 @@ export function TransactionHistoryView() {
         />
       )}
 
-      {/* Return/Refund Modal */}
       <RefundModal
         isOpen={showRefundModal}
         onClose={() => setShowRefundModal(false)}

@@ -85,5 +85,8 @@ func createIndexes() {
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)")
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_tx_items_transaction_id ON transaction_items(transaction_id)")
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_tx_items_product_id ON transaction_items(product_id)")
-	DB.Exec("CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
+	
+	// Drop old non-unique index and create a UNIQUE index
+	DB.Exec("DROP INDEX IF EXISTS idx_products_barcode")
+	DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
 }

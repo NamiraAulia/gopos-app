@@ -133,74 +133,74 @@ func ActivateUser(c *gin.Context) {
 	utils.OK(c, "User berhasil diaktifkan", user)
 }
 
-func ResetPassword(c *gin.Context) {
-	id := c.Param("id")
+// func ResetPassword(c *gin.Context) {
+// 	id := c.Param("id")
 
-	var input struct {
-		NewPassword string `json:"new_password" binding:"required,min=6"`
-	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.Fail(c, http.StatusBadRequest, "Password baru tidak valid (minimal 6 karakter)", err.Error())
-		return
-	}
+// 	var input struct {
+// 		NewPassword string `json:"new_password" binding:"required,min=6"`
+// 	}
+// 	if err := c.ShouldBindJSON(&input); err != nil {
+// 		utils.Fail(c, http.StatusBadRequest, "Password baru tidak valid (minimal 6 karakter)", err.Error())
+// 		return
+// 	}
 
-	var user models.User
-	if err := database.DB.First(&user, id).Error; err != nil {
-		utils.Fail(c, http.StatusNotFound, "User tidak ditemukan", err.Error())
-		return
-	}
+// 	var user models.User
+// 	if err := database.DB.First(&user, id).Error; err != nil {
+// 		utils.Fail(c, http.StatusNotFound, "User tidak ditemukan", err.Error())
+// 		return
+// 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		utils.Fail(c, http.StatusInternalServerError, "Gagal hash password", err.Error())
-		return
-	}
+// 	hashed, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+// 	if err != nil {
+// 		utils.Fail(c, http.StatusInternalServerError, "Gagal hash password", err.Error())
+// 		return
+// 	}
 
-	if err := database.DB.Model(&user).Update("password", string(hashed)).Error; err != nil {
-		utils.Fail(c, http.StatusInternalServerError, "Gagal update password", err.Error())
-		return
-	}
+// 	if err := database.DB.Model(&user).Update("password", string(hashed)).Error; err != nil {
+// 		utils.Fail(c, http.StatusInternalServerError, "Gagal update password", err.Error())
+// 		return
+// 	}
 
-	utils.OK(c, "Password berhasil direset", nil)
-}
+// 	utils.OK(c, "Password berhasil direset", nil)
+// }
 
-func ChangeOwnPassword(c *gin.Context) {
-	var input struct {
-		OldPassword string `json:"old_password" binding:"required"`
-		NewPassword string `json:"new_password" binding:"required,min=6"`
-	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.Fail(c, http.StatusBadRequest, "Input tidak valid", err.Error())
-		return
-	}
+// func ChangeOwnPassword(c *gin.Context) {
+// 	var input struct {
+// 		OldPassword string `json:"old_password" binding:"required"`
+// 		NewPassword string `json:"new_password" binding:"required,min=6"`
+// 	}
+// 	if err := c.ShouldBindJSON(&input); err != nil {
+// 		utils.Fail(c, http.StatusBadRequest, "Input tidak valid", err.Error())
+// 		return
+// 	}
 
-	userID, ok := utils.GetUserID(c)
-	if !ok {
-		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
-		return
-	}
+// 	userID, ok := utils.GetUserID(c)
+// 	if !ok {
+// 		utils.Fail(c, http.StatusUnauthorized, "Sesi tidak valid", "User ID tidak ditemukan")
+// 		return
+// 	}
 
-	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
-		utils.Fail(c, http.StatusNotFound, "User tidak ditemukan", err.Error())
-		return
-	}
+// 	var user models.User
+// 	if err := database.DB.First(&user, userID).Error; err != nil {
+// 		utils.Fail(c, http.StatusNotFound, "User tidak ditemukan", err.Error())
+// 		return
+// 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
-		utils.Fail(c, http.StatusUnauthorized, "Password lama tidak cocok", "wrong password")
-		return
-	}
+// 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
+// 		utils.Fail(c, http.StatusUnauthorized, "Password lama tidak cocok", "wrong password")
+// 		return
+// 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		utils.Fail(c, http.StatusInternalServerError, "Gagal hash password", err.Error())
-		return
-	}
+// 	hashed, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+// 	if err != nil {
+// 		utils.Fail(c, http.StatusInternalServerError, "Gagal hash password", err.Error())
+// 		return
+// 	}
 
-	if err := database.DB.Model(&user).Update("password", string(hashed)).Error; err != nil {
-		utils.Fail(c, http.StatusInternalServerError, "Gagal update password", err.Error())
-		return
-	}
+// 	if err := database.DB.Model(&user).Update("password", string(hashed)).Error; err != nil {
+// 		utils.Fail(c, http.StatusInternalServerError, "Gagal update password", err.Error())
+// 		return
+// 	}
 
-	utils.OK(c, "Password berhasil diubah", nil)
-}
+// 	utils.OK(c, "Password berhasil diubah", nil)
+// }

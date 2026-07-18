@@ -9,6 +9,7 @@ import (
 	"gopos-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // AddExpense godoc
@@ -35,6 +36,8 @@ func AddExpense(c *gin.Context) {
 		return
 	}
 
+	tx := database.DB.Begin()
+
 	expense := models.Expense{
 		UserID:    userID,
 		Name:      input.Name,
@@ -43,11 +46,23 @@ func AddExpense(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := database.DB.Create(&expense).Error; err != nil {
+	if err := tx.Create(&expense).Error; err != nil {
+		tx.Rollback()
 		utils.Fail(c, http.StatusInternalServerError, "Gagal menyimpan pengeluaran", err.Error())
 		return
 	}
 
+	// Update expected shift cash if open shift exists
+	var activeShift models.Shift
+	if err := tx.Where("user_id = ? AND status = 'open'", userID).First(&activeShift).Error; err == nil {
+		if err := tx.Model(&activeShift).UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected - ?", input.Amount)).Error; err != nil {
+			tx.Rollback()
+			utils.Fail(c, http.StatusInternalServerError, "Gagal memperbarui kas shift", err.Error())
+			return
+		}
+	}
+
+	tx.Commit()
 	utils.OK(c, "Pengeluaran berhasil dicatat", expense)
 }
 

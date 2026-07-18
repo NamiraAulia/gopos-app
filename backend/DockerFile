@@ -1,0 +1,29 @@
+# Gunakan image resmi Golang sebagai builder
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Salin file dependency
+COPY go.mod go.sum ./
+RUN go.mod download
+
+# Salin seluruh kode source backend
+COPY . .
+
+# Build aplikasi Go menjadi file binary executable
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+
+# Gunakan image alpine yang sangat ringan untuk menjalankan aplikasi
+FROM alpine:latest
+
+WORKDIR /app
+
+# Salin file binary dari tahap builder
+COPY --from=builder /app/main .
+
+# PENTING: Hugging Face Spaces mewajibkan aplikasi mendengarkan pada port 7860
+EXPOSE 7860
+ENV PORT=7860
+
+# Jalankan backend
+CMD ["./main"]

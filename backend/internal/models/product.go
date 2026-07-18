@@ -18,14 +18,29 @@ type Product struct {
 	DiscountAmount int  `json:"discount_amount" gorm:"default:0"`
 	IsPromo        bool `json:"is_promo" gorm:"default:false"`
 	PriceMember    int  `json:"price_member" gorm:"default:0"`
+	ShelfLifeDays  int  `json:"shelf_life_days" gorm:"default:0"`
+	ExpiryDate     *time.Time `json:"expiry_date"`
 }
 
 type RestockSuggestion struct {
-	ProductID      uint    `json:"product_id"`
-	ProductName    string  `json:"product_name"`
-	CurrentStock   int     `json:"current_stock"`
-	AvgSalesPerDay float64 `json:"avg_sales_per_day"`
-	DaysRemaining  float64 `json:"days_remaining"`
+	ProductID         uint       `json:"product_id"`
+	ProductName       string     `json:"product_name"`
+	CurrentStock      int        `json:"current_stock"`
+	AvgSalesPerDay    float64    `json:"avg_sales_per_day"`
+	DaysRemaining     float64    `json:"days_remaining"`
+	SupplierName      string     `json:"supplier_name"`
+	Conversion        int        `json:"conversion"`
+	Unit              string     `json:"unit"`
+	UnitBig           string     `json:"unit_big"`
+	ShelfLifeDays     int        `json:"shelf_life_days"`
+	ExpiryDate        *time.Time `json:"expiry_date"`
+	DailyDemand       float64    `json:"daily_demand"`
+	WeeklyDemand      float64    `json:"weekly_demand"`
+	RecommendQty      int        `json:"recommend_qty"`
+	RecommendBigQty   int        `json:"recommend_big_qty"`
+	MaxSafeQty        int        `json:"max_safe_qty"`
+	MaxSafeBigQty     int        `json:"max_safe_big_qty"`
+	RiskTier          string     `json:"risk_tier"`
 }
 
 type StockAdjustment struct {

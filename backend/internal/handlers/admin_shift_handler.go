@@ -75,8 +75,8 @@ func ForceCloseShift(c *gin.Context) {
 	}
 
 	now := time.Now()
-	oldExpected := shift.TotalCashExpected
-	difference := input.TotalCashActual - oldExpected
+	realExpected := shift.TotalCashExpected - shift.TotalRefundedCash
+	difference := input.TotalCashActual - realExpected
 
 	errTx := database.DB.Transaction(func(tx *gorm.DB) error {
 		shift.EndTime = &now
@@ -88,7 +88,7 @@ func ForceCloseShift(c *gin.Context) {
 			return err
 		}
 
-		oldValueString := fmt.Sprintf("KasirID: %d, Status: open, Expected: %d", shift.UserID, oldExpected)
+		oldValueString := fmt.Sprintf("KasirID: %d, Status: open, Expected: %d", shift.UserID, realExpected)
 		newValueString := fmt.Sprintf("FORCE_CLOSED BY ADMIN ID %d, Actual: %d, Diff: %d", adminID, input.TotalCashActual, difference)
 
 		errLog := utils.RecordActivity(
