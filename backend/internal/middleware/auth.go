@@ -6,9 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"gopos-backend/internal/database"
+	"gopos-backend/internal/models"
+	"gopos-backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"gopos-backend/internal/utils"
 )
 
 func AuthMiddleware(c *gin.Context) {
@@ -36,19 +39,25 @@ func AuthMiddleware(c *gin.Context) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if userIdFloat, ok := claims["user_id"].(float64); ok {
-			c.Set("user_id", uint(userIdFloat))
-		} else {
-			utils.Fail(c, http.StatusUnauthorized, "Token tidak valid", "invalid user_id data type in token")
+		email, ok := claims["email"].(string)
+		if !ok {
+			utils.Fail(c, http.StatusUnauthorized, "Token tidak valid", "missing email claim in Supabase token")
 			c.Abort()
 			return
 		}
-		if email, ok := claims["email"].(string); ok {
-			c.Set("email", email)
+
+		// Cari user di database berdasarkan email dari Supabase JWT
+		var dbUser models.User
+		if err := database.DB.Where("email = ? AND is_active = true", email).First(&dbUser).Error; err != nil {
+			utils.Fail(c, http.StatusUnauthorized, "Pengguna tidak terdaftar atau tidak aktif", "user not found in local db")
+			c.Abort()
+			return
 		}
-		if role, ok := claims["role"].(string); ok {
-			c.Set("role", role)
-		}
+
+		// Set context agar kompatibel dengan seluruh controller lama
+		c.Set("user_id", dbUser.ID)
+		c.Set("email", dbUser.Email)
+		c.Set("role", dbUser.Role)
 	}
 
 	c.Next()
