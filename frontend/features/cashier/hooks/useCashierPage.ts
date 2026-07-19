@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -123,6 +123,46 @@ export function useCashierPage() {
     };
   }, [cart, totalNormal, discountAmount, grandTotal, selectedMember, lastTransaction]);
 
+  const handleSearchKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = e.currentTarget.value.trim();
+      if (!val) return;
+
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      try {
+        const res = await cashierApi.getProductByBarcode(val);
+        if (res.success && res.data) {
+          const product = res.data;
+          const cartItem = cart.find((item: any) => item.id === product.id);
+          const isOutOfStock = cartItem
+            ? (cartItem.unit_choice === "big"
+              ? cartItem.qty * cartItem.conversion >= product.stock
+              : cartItem.qty >= product.stock)
+            : product.stock <= 0;
+
+          if (!isOutOfStock) {
+            addToCart(product, "small");
+            if (searchInputRef.current) {
+              searchInputRef.current.value = "";
+            }
+            triggerSearch("");
+          } else {
+            alert(`Stok produk "${product.name}" tidak mencukupi!`);
+          }
+        } else {
+          triggerSearch(val);
+        }
+      } catch (err) {
+        console.error("Gagal memproses barcode:", err);
+        triggerSearch(val);
+      }
+    }
+  };
+
   return {
     router,
     currentUser,
@@ -173,5 +213,6 @@ export function useCashierPage() {
     recallCart,
     deleteHeldCart,
     loadHeldCarts,
+    handleSearchKeyDown,
   };
 }

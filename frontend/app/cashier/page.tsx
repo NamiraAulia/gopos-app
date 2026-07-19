@@ -73,6 +73,7 @@ export default function CashierPage() {
     heldCarts,
     holdCurrentCart,
     loadHeldCarts,
+    handleSearchKeyDown,
   } = useCashierPage();
 
   const [showHoldModal, setShowHoldModal] = useState(false);
@@ -125,6 +126,7 @@ export default function CashierPage() {
                       300,
                     );
                   }}
+                  onKeyDown={handleSearchKeyDown}
                   className="h-12 w-full rounded-xl border-2 border-slate-200 bg-white pl-12 pr-4 text-sm font-bold focus:border-blue-600 outline-none"
                   placeholder="Cari barang..."
                 />

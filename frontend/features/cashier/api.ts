@@ -106,7 +106,7 @@ export const cashierApi = {
     let query = supabase.from("products").select("*").eq("is_active", true);
 
     if (search) {
-      query = query.ilike("name", `%${search}%`);
+      query = query.or(`name.ilike.%${search}%,barcode.ilike.%${search}%`);
     }
 
     const { data, error } = await query;
@@ -119,6 +119,18 @@ export const cashierApi = {
         data: data || [],
       }
     };
+  },
+
+  getProductByBarcode: async (barcode: string) => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("barcode", barcode)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { success: true, data: data as Product | null };
   },
 
   getActiveShift: async () => {
