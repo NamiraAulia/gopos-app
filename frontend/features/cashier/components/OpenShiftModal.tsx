@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Wallet, Loader2, ArrowRight } from "lucide-react";
-import api from "@/lib/axios";
+import { cashierApi } from "../api";
 
 type OpenShiftModalProps = {
   isOpen: boolean;
@@ -28,13 +28,13 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: OpenShiftModalPro
     try {
       setShiftLoading(true);
       setShiftError("");
-      const res = await api.post("/shifts/open", { start_cash: numericCash })
+      const res = await cashierApi.openShift(numericCash);
       
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         onSuccess(); // Triger untuk mereset catalog dan menutup modal di parent
       }
     } catch (err: any) {
-      setShiftError(err.response?.data?.message || "Gagal membuka laci kasir.");
+      setShiftError(err.message || "Gagal membuka laci kasir.");
     } finally {
       setShiftLoading(false);
     }

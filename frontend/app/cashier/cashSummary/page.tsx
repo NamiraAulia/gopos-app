@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -18,6 +18,7 @@ import {
   LogOut
 } from "lucide-react";
 import { ExpenseModal } from "@/features/cashier/components/ExpenseModal";
+import { CloseShiftModal } from "@/features/cashier/components/CloseShiftModal";
 import Navbar from "@/features/cashier/components/Navbar";
 import { useCashSummary } from "@/features/cashier/hooks";
 import { useAuthStore } from "@/store/authStore";
@@ -87,6 +88,8 @@ export default function FinancialPage() {
     isClosingShift,
     handleCloseShift,
   } = useCashSummary();
+
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
 
   useEffect(() => {
     if (isHydrated && !currentUser) {
@@ -287,33 +290,6 @@ export default function FinancialPage() {
                       </div>
 
                       <div className="pt-3 space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                            Total Aktual Kas (opsional — hitung manual)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">
-                              Rp
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="0"
-                              disabled={!activeShift || activeShift.status !== "open"}
-                              value={
-                                actualCashNum
-                                  ? actualCashNum.toLocaleString("id-ID")
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                setActualCashInput(
-                                  e.target.value.replace(/\D/g, ""),
-                                )
-                              }
-                              className="w-full h-10 rounded-xl border-2 border-slate-200 pl-8 pr-3 text-sm font-black text-slate-900 focus:border-blue-600 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed bg-white"
-                            />
-                          </div>
-                        </div>
-
                         {selisih !== null && (
                           <div
                             className={`flex justify-between items-center px-4 py-3 rounded-xl border-2 ${selisih === 0
@@ -363,19 +339,10 @@ export default function FinancialPage() {
                         {activeShift && activeShift.status === "open" && (
                           <button
                             type="button"
-                            onClick={handleCloseShift}
-                            disabled={isClosingShift || actualCashNum <= 0}
-                            className="w-full mt-3 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 border-2 border-red-600 hover:border-red-700 disabled:shadow-none text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                            onClick={() => setIsCloseModalOpen(true)}
+                            className="w-full mt-3 py-3 bg-red-600 hover:bg-red-700 border-2 border-red-600 hover:border-red-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                           >
-                            {isClosingShift ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" /> Menutup Shift...
-                              </>
-                            ) : (
-                              <>
-                                <LogOut className="h-4 w-4" /> Tutup Shift Kasir (Selesai)
-                              </>
-                            )}
+                            <LogOut className="h-4 w-4" /> Tutup Shift Kasir (Selesai)
                           </button>
                         )}
 
@@ -496,6 +463,25 @@ export default function FinancialPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchData}
+      />
+
+      <CloseShiftModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
+        onSuccess={() => {
+          setIsCloseModalOpen(false);
+          router.push("/cashier");
+        }}
+        shiftSummary={
+          activeShift
+            ? {
+                start_cash: activeShift.start_cash,
+                total_cash_expected: activeShift.total_cash_expected,
+                total_refunded_cash: activeShift.total_refunded_cash ?? 0,
+                start_time: activeShift.start_time,
+              }
+            : null
+        }
       />
     </div>
   );

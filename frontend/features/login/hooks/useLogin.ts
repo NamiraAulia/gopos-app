@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { setStoredToken } from "@/lib/axios";
 import { supabase } from "@/utils/supabaseClient";
 
 export function useLogin() {
@@ -64,7 +63,7 @@ export function useLogin() {
       };
 
       setSuccessMsg("Login Berhasil! Mengalihkan ke dashboard...");
-      setStoredToken(token);
+      localStorage.setItem("token", token);
       useAuthStore.setState({ user, token });
 
       // 4. Set session cookie

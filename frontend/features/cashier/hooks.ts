@@ -112,6 +112,15 @@ export function useActiveShift() {
     return { shift, isShiftActive, loading, checkShift };
 }
 
+const parseUtcDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return new Date();
+    let normalized = dateStr;
+    if (!dateStr.includes("Z") && !dateStr.includes("+") && !/-\d{2}:\d{2}$/.test(dateStr)) {
+        normalized = dateStr.replace(" ", "T") + "Z";
+    }
+    return new Date(normalized);
+};
+
 export function useCashSummary() {
     const router = useRouter();
     const logout = useAuthStore((s) => s.logout);
@@ -156,7 +165,19 @@ export function useCashSummary() {
         fetchData();
     }, [fetchData]);
 
-    const completedTrx = transactions.filter((t) => t.status === "completed");
+    const shiftStartTimestamp = activeShift ? parseUtcDate(activeShift.start_time).getTime() : 0;
+    const shiftEndTimestamp = activeShift ? (activeShift.end_time ? parseUtcDate(activeShift.end_time).getTime() : Date.now()) : 0;
+
+    const completedTrx = transactions.filter(
+        (t) => {
+            const matchStatus = t.status === "completed";
+            const trxTime = parseUtcDate(t.created_at).getTime();
+            const matchTime = activeShift 
+                ? (trxTime >= shiftStartTimestamp && trxTime <= shiftEndTimestamp) 
+                : false;
+            return matchStatus && matchTime;
+        }
+    );
 
     const cashTotal = completedTrx
         .filter((t) => t.payment_method.toLowerCase() === "cash")
@@ -171,16 +192,34 @@ export function useCashSummary() {
         .reduce((s, t) => s + t.total_amount, 0);
 
     const totalIncome = cashTotal + qrisTotal + transferTotal;
-    const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
+    
+    const activeExpenses = expenses.filter(
+        (e) => {
+            const expTime = parseUtcDate(e.created_at).getTime();
+            return activeShift 
+                ? (expTime >= shiftStartTimestamp && expTime <= shiftEndTimestamp) 
+                : false;
+        }
+    );
+    const totalExpense = activeExpenses.reduce((s, e) => s + e.amount, 0);
 
-    const voidedTrx = transactions.filter((t) => t.status === "voided");
+    const voidedTrx = transactions.filter(
+        (t) => {
+            const trxTime = parseUtcDate(t.created_at).getTime();
+            const matchStatus = t.status === "voided";
+            const matchTime = activeShift 
+                ? (trxTime >= shiftStartTimestamp && trxTime <= shiftEndTimestamp) 
+                : false;
+            return matchStatus && matchTime;
+        }
+    );
     const totalVoided = voidedTrx.reduce((s, t) => s + t.total_amount, 0);
 
     const startCash = activeShift?.start_cash ?? 0;
-    const totalUangMasuk = activeShift?.total_cash_expected ?? cashTotal;
+    const totalUangMasuk = cashTotal;
     const totalUangKeluar = totalExpense;
     const totalKas =
-        startCash + totalUangMasuk - (activeShift?.total_refunded_cash ?? 0);
+        startCash + totalUangMasuk - totalUangKeluar - (activeShift?.total_refunded_cash ?? 0);
 
     const actualCashNum = parseInt(actualCashInput.replace(/\D/g, "")) || 0;
     const selisih = actualCashNum > 0 ? actualCashNum - totalKas : null;

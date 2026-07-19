@@ -89,4 +89,7 @@ func createIndexes() {
 	// Drop old non-unique index and create a UNIQUE index
 	DB.Exec("DROP INDEX IF EXISTS idx_products_barcode")
 	DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
+
+	// Create a unique partial index to ensure at most one active shift per user
+	DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_shifts_user_open_unique ON shifts (user_id) WHERE status = 'open'")
 }

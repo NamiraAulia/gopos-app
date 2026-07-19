@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/axios";
+import { supabase } from "@/utils/supabaseClient";
+import { useAuthStore } from "@/store/authStore";
 import type { Transaction } from "../api";
 
 export function useCashierHistory() {
   const router = useRouter();
+  const { user, activeShift } = useAuthStore();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,11 @@ export function useCashierHistory() {
   const [isShiftActive, setIsShiftActive] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
 
+  // Sync shift active status from store
+  useEffect(() => {
+    setIsShiftActive(!!activeShift);
+  }, [activeShift]);
+
   const handleRefundSuccess = () => {
     setShowRefundModal(false);
     alert("Retur barang berhasil diproses!");
@@ -33,19 +40,48 @@ export function useCashierHistory() {
   const fetchTransactions = useCallback(async (targetPage: number) => {
     try {
       setLoading(true);
-      const res = await api.get("/transactions", {
-        params: { page: targetPage, limit: 15 },
-      });
-      const payload = res.data?.data;
-      setTransactions(payload?.data || []);
-      setTotalPages(payload?.total_pages || 1);
+      const limit = 15;
+      const from = (targetPage - 1) * limit;
+      const to = from + limit - 1;
+
+      // If user is a cashier and there is no active shift, they shouldn't see transactions
+      if (user?.role === "kasir" && !activeShift) {
+        setTransactions([]);
+        setTotalPages(1);
+        setLoading(false);
+        return;
+      }
+
+      let query = supabase
+        .from("transactions")
+        .select(`
+          *,
+          member:members(id, name, phone)
+        `, { count: "exact" });
+
+      // Shift-Locked View for cashiers: only active shift's transactions created by them
+      if (user?.role === "kasir" && activeShift) {
+        // Subtract 10 minutes from start_time to handle client/server clock skew
+        const skewTime = new Date(new Date(activeShift.start_time).getTime() - 10 * 60 * 1000).toISOString();
+        query = query.gte("created_at", skewTime)
+                     .eq("user_id", user.id);
+      }
+
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      setTransactions((data as any[]) || []);
+      setTotalPages(Math.ceil((count || 0) / limit) || 1);
     } catch (err) {
       console.error("Gagal memuat riwayat transaksi:", err);
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, activeShift]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -60,9 +96,19 @@ export function useCashierHistory() {
     setDetailLoading(true);
     setSelected(trx);
     try {
-      const res = await api.get(`/transactions/${trx.id}/receipt`);
-      const full = res.data?.data;
-      if (full) setSelected(full);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(`
+          *,
+          user:users(id, name),
+          member:members(id, name, phone),
+          items:transaction_items(*)
+        `)
+        .eq("id", trx.id)
+        .single();
+
+      if (error) throw error;
+      if (data) setSelected(data as any);
     } catch (err) {
       console.error("Gagal memuat detail transaksi:", err);
     } finally {
@@ -79,14 +125,73 @@ export function useCashierHistory() {
     try {
       setVoidLoading(true);
       setVoidError("");
-      await api.post(`/transactions/${voidTarget.id}/void`);
+
+      // Fetch transaction
+      const { data: tx, error: txErr } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", voidTarget.id)
+        .single();
+
+      if (txErr || !tx) throw new Error("Transaksi tidak ditemukan.");
+      if (tx.status !== "completed") throw new Error("Hanya transaksi completed yang dapat dibatalkan.");
+
+      // Fetch transaction items
+      const { data: items } = await supabase
+        .from("transaction_items")
+        .select("*")
+        .eq("transaction_id", voidTarget.id);
+
+      if (items) {
+        for (const item of items) {
+          const { data: product } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", item.product_id)
+            .single();
+
+          if (product) {
+            const qtyRestored = item.conversion_used * item.qty;
+            await supabase
+              .from("products")
+              .update({ stock: product.stock + qtyRestored })
+              .eq("id", item.product_id);
+          }
+        }
+      }
+
+      // Update status
+      const { error: updateErr } = await supabase
+        .from("transactions")
+        .update({ status: "voided" })
+        .eq("id", voidTarget.id);
+
+      if (updateErr) throw updateErr;
+
+      // Adjust shift expected cash
+      if (tx.payment_method === "cash") {
+        const { data: activeShift } = await supabase
+          .from("shifts")
+          .select("*")
+          .eq("user_id", tx.user_id)
+          .eq("status", "open")
+          .maybeSingle();
+
+        if (activeShift) {
+          await supabase
+            .from("shifts")
+            .update({
+              total_cash_expected: activeShift.total_cash_expected - tx.total_amount,
+            })
+            .eq("id", activeShift.id);
+        }
+      }
+
       setVoidTarget(null);
       setSelected(null);
       fetchTransactions(page);
     } catch (err: any) {
-      setVoidError(
-        err.response?.data?.message || "Gagal membatalkan transaksi.",
-      );
+      setVoidError(err.message || "Gagal membatalkan transaksi.");
     } finally {
       setVoidLoading(false);
     }
@@ -124,10 +229,10 @@ export function useCashierHistory() {
     showOpenShiftModal,
     setShowOpenShiftModal,
     isShiftActive,
+    setIsShiftActive,
     showRefundModal,
     setShowRefundModal,
     handleRefundSuccess,
-    fetchTransactions,
     openDetail,
     handlePrint,
     confirmVoid,

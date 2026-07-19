@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Wallet, Loader2, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
-import api from "@/lib/axios";
+import { cashierApi } from "../api";
 
 type ShiftSummary = {
   start_cash: number;
@@ -33,8 +33,7 @@ export const CloseShiftModal = ({
   const actualCashNum = parseInt(actualCash.replace(/\D/g, "")) || 0;
 
   const expectedCash = shiftSummary
-    ? shiftSummary.start_cash +
-      shiftSummary.total_cash_expected -
+    ? shiftSummary.total_cash_expected -
       shiftSummary.total_refunded_cash
     : 0;
 
@@ -51,15 +50,13 @@ export const CloseShiftModal = ({
     try {
       setLoading(true);
       setError("");
-      const res = await api.post("/shifts/close", {
-        total_cash_actual: actualCashNum,
-      });
+      const res = await cashierApi.closeShift(actualCashNum);
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         onSuccess();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Gagal menutup shift kasir.");
+      setError(err.message || "Gagal menutup shift kasir.");
     } finally {
       setLoading(false);
     }
@@ -89,7 +86,7 @@ export const CloseShiftModal = ({
             <div className="flex justify-between text-xs">
               <span className="font-bold text-slate-500">Penjualan Tunai</span>
               <span className="font-bold text-slate-700">
-                Rp {shiftSummary.total_cash_expected.toLocaleString("id-ID")}
+                Rp {Math.max(0, shiftSummary.total_cash_expected - shiftSummary.start_cash).toLocaleString("id-ID")}
               </span>
             </div>
             {shiftSummary.total_refunded_cash > 0 && (
