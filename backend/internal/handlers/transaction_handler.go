@@ -72,7 +72,7 @@ func Checkout(c *gin.Context) {
 	var finalDiscount int64
 	type itemCalc struct {
 		unitPrice   int64
-		qtyToDeduct int
+		qtyToDeduct float64
 		subtotal    int64
 	}
 	calcMap := make(map[uint]itemCalc, len(req.Items))
@@ -86,19 +86,6 @@ func Checkout(c *gin.Context) {
 			return
 		}
 
-		qtyInBaseUnit := item.Qty
-		if item.UnitChoice == "big" && product.Conversion > 0 {
-			qtyInBaseUnit = item.Qty * product.Conversion
-		}
-
-		if product.Stock < qtyInBaseUnit {
-			utils.Fail(c, http.StatusBadRequest,
-				fmt.Sprintf("Stok produk '%s' tidak cukup (tersedia: %d %s, diminta setara: %d %s)",
-					product.Name, product.Stock, product.Unit, qtyInBaseUnit, product.Unit),
-				"insufficient stock")
-			return
-		}
-
 		normalPrice := int64(product.Price)
 		if item.UnitChoice == "big" && product.Conversion > 0 {
 			normalPrice = int64(product.PriceBig)
@@ -108,7 +95,7 @@ func Checkout(c *gin.Context) {
 		qtyToDeduct := item.Qty
 
 		if item.UnitChoice == "big" && product.Conversion > 0 {
-			qtyToDeduct = item.Qty * product.Conversion
+			qtyToDeduct = item.Qty * float64(product.Conversion)
 			if product.IsPromo && product.DiscountAmount > 0 {
 				discounted := product.PriceBig - product.DiscountAmount
 				if discounted < 0 {
@@ -129,9 +116,9 @@ func Checkout(c *gin.Context) {
 			}
 		}
 
-		subtotal := unitPrice * int64(item.Qty)
+		subtotal := int64(float64(unitPrice) * item.Qty)
 		preflightTotal += subtotal
-		normalTotal += normalPrice * int64(item.Qty)
+		normalTotal += int64(float64(normalPrice) * item.Qty)
 
 		calcMap[item.ProductID] = itemCalc{
 			unitPrice:   unitPrice,
@@ -350,7 +337,7 @@ func VoidTransaction(c *gin.Context) {
 		for _, item := range transaction.Items {
 			qtyToRestore := item.Qty
 			if item.UnitChoice == "big" && item.ConversionUsed > 0 {
-				qtyToRestore = item.Qty * item.ConversionUsed
+				qtyToRestore = item.Qty * float64(item.ConversionUsed)
 			}
 			if err := tx.Model(&models.Product{}).
 				Where("id = ?", item.ProductID).

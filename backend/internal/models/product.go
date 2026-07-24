@@ -9,7 +9,7 @@ type Product struct {
 	BestPrice      int        `json:"best_price"`
 	Price          int        `json:"price"`
 	PriceBig       int        `json:"price_big"`
-	Stock          int        `json:"stock"`
+	Stock          float64    `json:"stock"`
 	SupplierName   string     `json:"supplier_name"`
 	Conversion     int        `json:"conversion"`
 	Unit           string     `json:"unit"`
@@ -25,7 +25,7 @@ type Product struct {
 type RestockSuggestion struct {
 	ProductID       uint       `json:"product_id"`
 	ProductName     string     `json:"product_name"`
-	CurrentStock    int        `json:"current_stock"`
+	CurrentStock    float64    `json:"current_stock"`
 	AvgSalesPerDay  float64    `json:"avg_sales_per_day"`
 	DaysRemaining   float64    `json:"days_remaining"`
 	SupplierName    string     `json:"supplier_name"`
@@ -48,15 +48,15 @@ type StockAdjustment struct {
 	ProductID  uint      `json:"product_id"`
 	UserID     uint      `json:"user_id"`
 	Type       string    `gorm:"size:20" json:"type"`
-	Qty        int       `json:"qty"`
-	StockAfter int       `json:"stock_after"`
+	Qty        float64   `json:"qty"`
+	StockAfter float64   `json:"stock_after"`
 	Reason     string    `gorm:"size:255" json:"reason"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
 type StockAdjustmentInput struct {
-	ProductID uint   `json:"product_id" binding:"required"`
-	Type      string `json:"type"       binding:"required,oneof=in out correction"`
-	Qty       int    `json:"qty"        binding:"required,min=1"`
-	Reason    string `json:"reason"     binding:"required"`
+	ProductID uint    `json:"product_id" binding:"required"`
+	Type      string  `json:"type"       binding:"required,oneof=in out correction"`
+	Qty       float64 `json:"qty"        binding:"required,gt=0"`
+	Reason    string  `json:"reason"     binding:"required"`
 }

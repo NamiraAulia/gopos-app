@@ -20,20 +20,20 @@ import (
 )
 
 type AddProductPayload struct {
-	Name           string `json:"name" binding:"required"`
-	Barcode        string `json:"barcode"`
-	BestPrice      int    `json:"best_price" binding:"required"`
-	Price          int    `json:"price" binding:"required"`
-	PriceBig       int    `json:"price_big"`
-	Stock          int    `json:"stock"`
-	Unit           string `json:"unit" binding:"required"`
-	UnitBig        string `json:"unit_big"`
-	Conversion     int    `json:"conversion"`
-	UnitChoice     string `json:"unit_choice"`
-	SupplierName   string `json:"supplier_name"`
-	DiscountAmount int    `json:"discount_amount"`
-	IsPromo        bool   `json:"is_promo"`
-	PriceMember    int    `json:"price_member"`
+	Name           string  `json:"name" binding:"required"`
+	Barcode        string  `json:"barcode"`
+	BestPrice      int     `json:"best_price" binding:"required"`
+	Price          int     `json:"price" binding:"required"`
+	PriceBig       int     `json:"price_big"`
+	Stock          float64 `json:"stock"`
+	Unit           string  `json:"unit" binding:"required"`
+	UnitBig        string  `json:"unit_big"`
+	Conversion     int     `json:"conversion"`
+	UnitChoice     string  `json:"unit_choice"`
+	SupplierName   string  `json:"supplier_name"`
+	DiscountAmount int     `json:"discount_amount"`
+	IsPromo        bool    `json:"is_promo"`
+	PriceMember    int     `json:"price_member"`
 }
 
 // GetProducts godoc
@@ -109,7 +109,7 @@ func AddProducts(c *gin.Context) {
 
 	finalStock := input.Stock
 	if input.UnitChoice == "big" && input.Conversion > 0 {
-		finalStock = input.Stock * input.Conversion
+		finalStock = input.Stock * float64(input.Conversion)
 	}
 
 	product := models.Product{
@@ -203,13 +203,13 @@ func EditProducts(c *gin.Context) {
 		_ = utils.RecordActivity(nil, userID, "CHANGE_PRICE", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 	if oldStock != input.Stock {
-		oldVal := fmt.Sprintf("Stock: %d", oldStock)
-		newVal := fmt.Sprintf("Stock: %d", input.Stock)
+		oldVal := fmt.Sprintf("Stock: %v", oldStock)
+		newVal := fmt.Sprintf("Stock: %v", input.Stock)
 		_ = utils.RecordActivity(nil, userID, "MANUAL_STOCK_ADJUST", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 	if oldPrice == input.Price && oldStock == input.Stock {
-		oldVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %d", product.Name, product.Price, product.Stock)
-		newVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %d", input.Name, input.Price, input.Stock)
+		oldVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %v", product.Name, product.Price, product.Stock)
+		newVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %v", input.Name, input.Price, input.Stock)
 		_ = utils.RecordActivity(nil, userID, "EDIT_PRODUCT", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 
@@ -267,7 +267,7 @@ func GetRestockSuggestions(c *gin.Context) {
 	var rawSuggestions []struct {
 		ProductID      uint       `json:"product_id"`
 		ProductName    string     `json:"product_name"`
-		CurrentStock   int        `json:"current_stock"`
+		CurrentStock   float64    `json:"current_stock"`
 		AvgSalesPerDay float64    `json:"avg_sales_per_day"`
 		DaysRemaining  float64    `json:"days_remaining"`
 		SupplierName   string     `json:"supplier_name"`
@@ -446,7 +446,7 @@ func ImportProductsCSV(c *gin.Context) {
 		bestPrice, _ := strconv.Atoi(record[2])
 		price, _ := strconv.Atoi(record[3])
 		priceBig, _ := strconv.Atoi(record[4])
-		stock, _ := strconv.Atoi(record[5])
+		stock, _ := strconv.ParseFloat(record[5], 64)
 		unit := strings.TrimSpace(record[6])
 		unitBig := strings.TrimSpace(record[7])
 		conversion, _ := strconv.Atoi(record[8])

@@ -51,6 +51,13 @@ func ConnectDB() {
 		log.Fatal("Gagal migrasi database: ", err)
 	}
 
+	// Alter table columns to support double precision for decimal stock and quantities
+	DB.Exec("ALTER TABLE products ALTER COLUMN stock TYPE double precision")
+	DB.Exec("ALTER TABLE transaction_items ALTER COLUMN qty TYPE double precision")
+	DB.Exec("ALTER TABLE refund_items ALTER COLUMN qty_refunded TYPE double precision")
+	DB.Exec("ALTER TABLE stock_adjustments ALTER COLUMN qty TYPE double precision")
+	DB.Exec("ALTER TABLE stock_adjustments ALTER COLUMN stock_after TYPE double precision")
+
 	createIndexes()
 }
 

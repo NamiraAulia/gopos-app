@@ -21,13 +21,13 @@ func GetReceiptData(c *gin.Context) {
 	}
 
 	type ReceiptItemResponse struct {
-		ID          uint   `json:"id"`
-		ProductID   uint   `json:"product_id"`
-		ProductName string `json:"product_name"`
-		Qty         int    `json:"qty"`
-		UnitPrice   int64  `json:"unit_price"`
-		Subtotal    int64  `json:"subtotal"`
-		UnitChoice  string `json:"unit_choice"`
+		ID          uint    `json:"id"`
+		ProductID   uint    `json:"product_id"`
+		ProductName string  `json:"product_name"`
+		Qty         float64 `json:"qty"`
+		UnitPrice   int64   `json:"unit_price"`
+		Subtotal    int64   `json:"subtotal"`
+		UnitChoice  string  `json:"unit_choice"`
 	}
 
 	var itemsResponse []ReceiptItemResponse

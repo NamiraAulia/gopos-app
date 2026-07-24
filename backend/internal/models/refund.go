@@ -16,10 +16,10 @@ type Refund struct {
 }
 
 type RefundItem struct {
-	ID           uint   `gorm:"primaryKey" json:"id"`
-	RefundID     uint   `gorm:"not null" json:"refund_id"`
-	ProductID    uint   `gorm:"not null" json:"product_id"`
-	ProductName  string `gorm:"type:varchar(255);not null" json:"product_name"`
-	QtyRefunded  int    `gorm:"not null" json:"qty_refunded"`
-	RefundAmount int64  `gorm:"not null" json:"refund_amount"` // (UnitPrice produk saat dibeli * QtyRefunded)
+	ID           uint    `gorm:"primaryKey" json:"id"`
+	RefundID     uint    `gorm:"not null" json:"refund_id"`
+	ProductID    uint    `gorm:"not null" json:"product_id"`
+	ProductName  string  `gorm:"type:varchar(255);not null" json:"product_name"`
+	QtyRefunded  float64 `gorm:"not null" json:"qty_refunded"`
+	RefundAmount int64   `gorm:"not null" json:"refund_amount"` // (UnitPrice produk saat dibeli * QtyRefunded)
 }

@@ -14,8 +14,8 @@ import (
 )
 
 type RefundItemInput struct {
-	ProductID   uint `json:"product_id" binding:"required"`
-	QtyRefunded int  `json:"qty_refunded" binding:"required,min=1"`
+	ProductID   uint    `json:"product_id" binding:"required"`
+	QtyRefunded float64 `json:"qty_refunded" binding:"required,gt=0"`
 }
 
 type RefundInput struct {
@@ -78,22 +78,22 @@ func ProcessRefund(c *gin.Context) {
 				return fmt.Errorf("produk ID %d tidak ada dalam nota transaksi ini", reqItem.ProductID)
 			}
 
-			var alreadyRefundedQty int64
+			var alreadyRefundedQty float64
 			errScan := tx.Model(&models.RefundItem{}).
 				Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
 				Where("refunds.transaction_id = ? AND refund_items.product_id = ?", transaction.ID, reqItem.ProductID).
-				Select("COALESCE(SUM(refund_items.qty_refunded), 0)").
+				Select("COALESCE(SUM(refund_items.qty_refunded), 0.0)").
 				Row().Scan(&alreadyRefundedQty)
 
 			if errScan != nil {
 				return errScan
 			}
 
-			if int(alreadyRefundedQty)+reqItem.QtyRefunded > txItem.Qty {
+			if alreadyRefundedQty+reqItem.QtyRefunded > txItem.Qty {
 				return fmt.Errorf("jumlah retur produk '%s' melampaui batas beli asli", txItem.ProductName)
 			}
 
-			itemRefundAmount := txItem.UnitPrice * int64(reqItem.QtyRefunded)
+			itemRefundAmount := int64(float64(txItem.UnitPrice) * reqItem.QtyRefunded)
 
 			totalRefundAmount = totalRefundAmount + itemRefundAmount
 
@@ -108,7 +108,7 @@ func ProcessRefund(c *gin.Context) {
 			if err := tx.Where("id = ?", reqItem.ProductID).First(&product).Error; err == nil {
 				qtyToRestore := reqItem.QtyRefunded
 				if txItem.UnitChoice == "big" && txItem.ConversionUsed > 0 {
-					qtyToRestore = reqItem.QtyRefunded * txItem.ConversionUsed
+					qtyToRestore = reqItem.QtyRefunded * float64(txItem.ConversionUsed)
 				}
 
 				if err := tx.Model(&models.Product{}).Where("id = ?", product.ID).
@@ -144,27 +144,27 @@ func ProcessRefund(c *gin.Context) {
 			return err
 		}
 
-		var totalOriginalQty int = 0
+		var totalOriginalQty float64 = 0
 		for _, item := range transaction.Items {
 			totalOriginalQty += item.Qty
 		}
 
-		var previouslyRefundedQty int64
+		var previouslyRefundedQty float64
 		err := tx.Model(&models.RefundItem{}).
 			Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
 			Where("refunds.transaction_id = ?", transaction.ID).
-			Select("COALESCE(SUM(refund_items.qty_refunded), 0)").
+			Select("COALESCE(SUM(refund_items.qty_refunded), 0.0)").
 			Row().Scan(&previouslyRefundedQty)
 		if err != nil {
 			return err
 		}
 
-		var currentRefundedQty int = 0
+		var currentRefundedQty float64 = 0
 		for _, reqItem := range input.Items {
 			currentRefundedQty += reqItem.QtyRefunded
 		}
 
-		totalRefundedQty := int(previouslyRefundedQty) + currentRefundedQty
+		totalRefundedQty := previouslyRefundedQty + currentRefundedQty
 
 		newStatus := "partially_refunded"
 		if totalRefundedQty >= totalOriginalQty {

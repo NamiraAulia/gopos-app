@@ -3,10 +3,10 @@ package models
 import "time"
 
 type CheckoutInput struct {
-	ProductID  uint  `json:"product_id" binding:"required"`
-	Qty        int   `json:"qty"        binding:"required,min=1"`
-	UnitPrice  int64  `json:"unit_price"`
-	UnitChoice string `json:"unit_choice" binding:"required,oneof=small big"`
+	ProductID  uint    `json:"product_id" binding:"required"`
+	Qty        float64 `json:"qty"        binding:"required,gt=0"`
+	UnitPrice  int64   `json:"unit_price"`
+	UnitChoice string  `json:"unit_choice" binding:"required,oneof=small big"`
 }
 
 type CheckoutRequest struct {
@@ -35,13 +35,13 @@ type Transaction struct {
 }
 
 type TransactionItem struct {
-	ID            uint   `json:"id"             gorm:"primaryKey"`
-	TransactionID uint   `json:"transaction_id"`
-	ProductID     uint   `json:"product_id"`
-	ProductName   string `json:"product_name"`
-	UnitPrice     int64  `json:"unit_price"`
-	Qty           int    `json:"qty"`
-	Subtotal      int64  `json:"subtotal"`
+	ID            uint    `json:"id"             gorm:"primaryKey"`
+	TransactionID uint    `json:"transaction_id"`
+	ProductID     uint    `json:"product_id"`
+	ProductName   string  `json:"product_name"`
+	UnitPrice     int64   `json:"unit_price"`
+	Qty           float64 `json:"qty"`
+	Subtotal      int64   `json:"subtotal"`
 	ConversionUsed int    `gorm:"default:1" json:"conversion_used"` 
 	UnitChoice     string `gorm:"type:varchar(20);default:'small'" json:"unit_choice"` 
 }
