@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/authStore";
 import type { Transaction } from "../types";
+import { handleReceiptPrint } from "@/lib/printer";
 
 export function useAdminTransactions() {
   const { user: currentUser, isHydrated } = useAuthStore();
@@ -124,8 +125,27 @@ export function useAdminTransactions() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (selectedTransaction) {
+      try {
+        await handleReceiptPrint({
+          transaction: {
+            ...selectedTransaction,
+            items: selectedTransaction.items?.map((item: any) => ({
+              product_name: item.product_name,
+              qty: item.qty,
+              price: item.unit_price,
+              subtotal: item.subtotal,
+            }))
+          },
+          cashierName: selectedTransaction.user?.name || "Kasir"
+        });
+      } catch (err: any) {
+        alert(err.message || "Gagal mencetak struk.");
+      }
+    } else {
+      alert("Tidak ada transaksi yang terpilih.");
+    }
   };
 
   const handleRefundSuccess = () => {

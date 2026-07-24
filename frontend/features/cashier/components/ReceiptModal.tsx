@@ -1,4 +1,9 @@
-import { ShieldCheck, Printer, ShoppingCart } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { ShieldCheck, Printer, ShoppingCart, Loader2 } from "lucide-react";
+import { handleReceiptPrint } from "@/lib/printer";
+import { Alert } from "@/components/ui/Alert";
 
 type ReceiptModalProps = {
   isOpen: boolean;
@@ -7,7 +12,23 @@ type ReceiptModalProps = {
 };
 
 export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps) => {
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+
   if (!isOpen || !transaction) return null;
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    setPrintError(null);
+    try {
+      await handleReceiptPrint({ transaction });
+    } catch (err: any) {
+      console.error("Print error in ReceiptModal:", err);
+      setPrintError(err.message || "Gagal mencetak struk.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -19,6 +40,12 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
           <h2 className="text-2xl font-black text-slate-900 text-center leading-tight">Transaksi Berhasil</h2>
           <p className="text-center text-sm text-slate-500 mt-2">Stok gudang diperbarui otomatis.</p>
         </div>
+
+        {printError && (
+          <div className="px-6 pt-4">
+            <Alert type="error" message={printError} />
+          </div>
+        )}
 
         <div className="p-6 bg-slate-50/50 m-6 mt-0 rounded-xl border border-slate-200">
           <div className="flex justify-between text-sm mb-3">
@@ -54,15 +81,30 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
         </div>
 
         <div className="px-6 pb-6 space-y-3 print:hidden">
-          <button onClick={() => window.print()} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-            <Printer className="h-4 w-4" /> Cetak Struk Fisik
+          <button
+            onClick={handlePrint}
+            disabled={isPrinting}
+            className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isPrinting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Mencetak Struk...</span>
+              </>
+            ) : (
+              <>
+                <Printer className="h-4 w-4" />
+                <span>Cetak Struk Fisik</span>
+              </>
+            )}
           </button>
-          <button onClick={onClose} className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={onClose}
+            className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          >
             <ShoppingCart className="h-4 w-4" /> Tutup & Transaksi Baru
           </button>
         </div>
-
-
       </div>
     </div>
   );

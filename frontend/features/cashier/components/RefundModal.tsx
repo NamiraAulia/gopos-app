@@ -69,7 +69,7 @@ export const RefundModal = ({
   };
 
   const handleQtyChange = (productId: number, val: number, max: number) => {
-    const qty = Math.max(1, Math.min(max, val));
+    const qty = Math.max(0.0001, Math.min(max, val));
     setRefundQtys((prev) => ({
       ...prev,
       [productId]: qty,
@@ -187,10 +187,11 @@ export const RefundModal = ({
                           <span className="text-[10px] font-semibold text-slate-400 mr-1">Qty Retur:</span>
                           <input
                             type="number"
-                            min="1"
+                            step="any"
+                            min="0.0001"
                             max={item.qty}
                             value={currentQty}
-                            onChange={(e) => handleQtyChange(item.product_id, parseInt(e.target.value, 10) || 1, item.qty)}
+                            onChange={(e) => handleQtyChange(item.product_id, parseFloat(e.target.value) || 0.1, item.qty)}
                             className="w-16 h-8 text-center text-xs font-black border-2 border-slate-200 rounded-lg focus:border-blue-600 outline-none transition-all"
                           />
                         </div>

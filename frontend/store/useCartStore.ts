@@ -99,9 +99,7 @@ export const useCartStore = create<CartState>((set) => ({
   clearCart: () => set({ cart: [], selectedMember: null }),
   setSelectedMember: (member) => set({ selectedMember: member }),
   setQty: (id, qty) => set((state) => ({
-    cart: state.cart
-      .map((item) => (item.id === id ? { ...item, qty: Math.max(0, qty) } : item))
-      .filter((item) => item.qty > 0),
+    cart: state.cart.map((item) => (item.id === id ? { ...item, qty } : item)),
   })),
   setCustomPrice: (id, price) => set((state) => ({
     cart: state.cart.map((item) => (item.id === id ? { ...item, custom_price: price } : item)),

@@ -26,6 +26,57 @@ import { ProductModal } from "@/features/products/components/ProductModal";
 import Navbar from "@/features/cashier/components/Navbar";
 import { useCashierPage } from "@/features/cashier/hooks/useCashierPage";
 
+interface QuantityInputProps {
+  itemId: number;
+  value: number;
+  onChange: (qty: number) => void;
+  onRemove: () => void;
+}
+
+const QuantityInput = ({ itemId, value, onChange, onRemove }: QuantityInputProps) => {
+  const [tempValue, setTempValue] = useState(value.toString());
+
+  useEffect(() => {
+    setTempValue(value.toString());
+  }, [value]);
+
+  const handleChange = (val: string) => {
+    let cleaned = val.replace(/[^0-9.,]/g, "");
+    cleaned = cleaned.replace(",", ".");
+    setTempValue(cleaned);
+
+    const parsed = parseFloat(cleaned);
+    if (!isNaN(parsed) && parsed > 0) {
+      onChange(parsed);
+    }
+  };
+
+  const handleBlur = () => {
+    const parsed = parseFloat(tempValue);
+    if (isNaN(parsed) || parsed <= 0) {
+      if (confirm("Apakah Anda ingin menghapus produk ini dari keranjang?")) {
+        onRemove();
+      } else {
+        setTempValue("1");
+        onChange(1);
+      }
+    } else {
+      setTempValue(parsed.toString());
+      onChange(parsed);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={tempValue}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
+      className="font-mono text-xs font-bold w-12 text-center bg-transparent border-b border-slate-200 outline-none focus:border-blue-600 text-slate-800"
+    />
+  );
+};
+
 export default function CashierPage() {
   const router = useRouter();
   const {
@@ -197,15 +248,7 @@ export default function CashierPage() {
                   <div
                     key={product.id}
                     onClick={() => {
-                      const isOutOfStock = cartItem
-                        ? (cartItem.unit_choice === "big"
-                          ? cartItem.qty * cartItem.conversion >= product.stock
-                          : cartItem.qty >= product.stock)
-                        : product.stock <= 0;
-                        
-                      if (!isOutOfStock) {
-                        addToCart(product, "small");
-                      }
+                      addToCart(product, "small");
                     }}
                     className={`p-4 bg-white border rounded-xl cursor-pointer flex flex-col justify-between transition-all relative ${
                       inCartQty > 0
@@ -298,9 +341,7 @@ export default function CashierPage() {
                   ? item.price_big 
                   : (isMemberPrice ? item.price_member : item.price));
               
-              const isOutOfStock = item.unit_choice === "big" 
-                ? (item.qty * item.conversion >= item.stock) 
-                : (item.qty >= item.stock);
+              const isOutOfStock = false;
               
               return (
                 <div
@@ -351,14 +392,11 @@ export default function CashierPage() {
                         >
                           <Minus className="h-3 w-3" />
                         </button>
-                        <input
-                          type="text"
-                          value={item.qty === 0 ? "" : item.qty}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value.replace(/\D/g, "")) || 0;
-                            setQty(item.id, val);
-                          }}
-                          className="font-mono text-xs font-bold w-8 text-center bg-transparent border-b border-slate-200 outline-none focus:border-blue-600 text-slate-800"
+                        <QuantityInput
+                          itemId={item.id}
+                          value={item.qty}
+                          onChange={(qty) => setQty(item.id, qty)}
+                          onRemove={() => removeFromCart(item.id)}
                         />
                         <button
                           onClick={() =>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/authStore";
+import { handleReceiptPrint } from "@/lib/printer";
 import type { Transaction } from "../api";
 
 export function useCashierHistory() {
@@ -116,8 +117,16 @@ export function useCashierHistory() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (selected) {
+      try {
+        await handleReceiptPrint({ transaction: selected });
+      } catch (err: any) {
+        alert(err.message || "Gagal mencetak struk.");
+      }
+    } else {
+      alert("Tidak ada transaksi yang terpilih.");
+    }
   };
 
   const confirmVoid = async () => {

@@ -137,22 +137,11 @@ export function useCashierPage() {
         const res = await cashierApi.getProductByBarcode(val);
         if (res.success && res.data) {
           const product = res.data;
-          const cartItem = cart.find((item: any) => item.id === product.id);
-          const isOutOfStock = cartItem
-            ? (cartItem.unit_choice === "big"
-              ? cartItem.qty * cartItem.conversion >= product.stock
-              : cartItem.qty >= product.stock)
-            : product.stock <= 0;
-
-          if (!isOutOfStock) {
-            addToCart(product, "small");
-            if (searchInputRef.current) {
-              searchInputRef.current.value = "";
-            }
-            triggerSearch("");
-          } else {
-            alert(`Stok produk "${product.name}" tidak mencukupi!`);
+          addToCart(product, "small");
+          if (searchInputRef.current) {
+            searchInputRef.current.value = "";
           }
+          triggerSearch("");
         } else {
           triggerSearch(val);
         }

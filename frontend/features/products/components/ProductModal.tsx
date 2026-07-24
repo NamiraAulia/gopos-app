@@ -351,8 +351,11 @@ export const ProductModal = ({
                     className={inputClass}
                     placeholder="0"
                     required
-                    value={formatRupiah(formData.stock ?? 0)}
-                    onChange={(e) => setMoney("stock", e.target.value)}
+                    value={formData.stock ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+                      setField("stock", val === "" ? 0 : parseFloat(val) || 0);
+                    }}
                   />
                 </Field>
               ) : (
@@ -366,10 +369,11 @@ export const ProductModal = ({
                         type="text"
                         className={inputClass}
                         placeholder="0"
-                        value={formatRupiah(parentStock)}
-                        onChange={(e) =>
-                          setParentStock(parseNumber(e.target.value))
-                        }
+                        value={parentStock || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          setParentStock(val === "" ? 0 : parseInt(val, 10));
+                        }}
                       />
                     </Field>
                     <Field
@@ -380,10 +384,11 @@ export const ProductModal = ({
                         type="text"
                         className={inputClass}
                         placeholder="0"
-                        value={formatRupiah(childStock)}
-                        onChange={(e) =>
-                          setChildStock(parseNumber(e.target.value))
-                        }
+                        value={childStock || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+                          setChildStock(val === "" ? 0 : parseFloat(val) || 0);
+                        }}
                       />
                     </Field>
                   </div>
