@@ -172,6 +172,12 @@ export function printViaRawBT(text: string): void {
   const encodedText = encodeURIComponent(text);
   const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
+  // DEBUG - hapus setelah masalah print ditemukan
+  console.log("DEBUG - text.length:", text.length);
+  console.log("DEBUG - text first 100:", text.substring(0, 100));
+  console.log("DEBUG - encodedText:", encodedText);
+  // DEBUG - hapus setelah masalah print ditemukan
+
   window.location.href = url;
 
   // Hanya jalankan fallback timeout di platform non-native (web biasa)
