@@ -172,27 +172,29 @@ export function printViaRawBT(text: string): void {
   const encodedText = encodeURIComponent(text);
   const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a43.rawbt;end;`;
 
-  const start = Date.now();
-  
-  let hasNavigated = false;
-  const handleVisibilityChange = () => {
-    if (document.hidden) {
-      hasNavigated = true;
-    }
-  };
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-
   window.location.href = url;
 
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-    
-    if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
-      if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
-        window.open("https://play.google.com/store/apps/details?id=ru.a43.rawbt", "_blank");
+  // Hanya jalankan fallback timeout di platform non-native (web biasa)
+  if (!Capacitor.isNativePlatform()) {
+    const start = Date.now();
+    let hasNavigated = false;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        hasNavigated = true;
       }
-    }
-  }, 1000);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    setTimeout(() => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      
+      if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
+        if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
+          window.open("https://play.google.com/store/apps/details?id=ru.a43.rawbt", "_blank");
+        }
+      }
+    }, 1000);
+  }
 }
 
 export async function isRawBTInstalled(): Promise<boolean> {
