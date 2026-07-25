@@ -4,7 +4,7 @@ type User struct {
 	ID       uint   `gorm:"primaryKey"                       json:"id"`
 	Name     string `gorm:"type:varchar(100)"                json:"name"`
 	Email    string `gorm:"unique"                           json:"email"`
-	Password string `                                        json:"-"`
+	Password string `gorm:"-"                                json:"-"`
 	Role     string `gorm:"type:varchar(20);default:'kasir'" json:"role"`
 	IsActive bool   `gorm:"default:true"                     json:"is_active"`
 }

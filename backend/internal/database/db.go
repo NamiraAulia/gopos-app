@@ -46,6 +46,7 @@ func ConnectDB() {
 		&models.Refund{},
 		&models.RefundItem{},
 		&models.Member{},
+		&models.StockAdjustment{},
 	)
 	if err != nil {
 		log.Fatal("Gagal migrasi database: ", err)
