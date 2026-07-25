@@ -101,7 +101,7 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
                 {rawBTInstalled === false && isNative && (
                   <a
-                    href="https://play.google.com/store/apps/details?id=ru.a43.rawbt"
+                    href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
                     target="_blank"
                     rel="noreferrer"
                     className="h-11 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"

@@ -45,7 +45,7 @@ class PrinterPlugin : Plugin() {
 
     @PluginMethod
     fun checkRawBTInstalled(call: PluginCall) {
-        val packageName = "ru.a43.rawbt"
+        val packageName = "ru.a402d.rawbtprinter"
         val pm = context.packageManager
         var installed = false
         

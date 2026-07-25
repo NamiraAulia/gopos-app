@@ -170,7 +170,7 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
 
 export function printViaRawBT(text: string): void {
   const encodedText = encodeURIComponent(text);
-  const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a43.rawbt;end;`;
+  const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
   window.location.href = url;
 
@@ -190,7 +190,7 @@ export function printViaRawBT(text: string): void {
       
       if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
         if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
-          window.open("https://play.google.com/store/apps/details?id=ru.a43.rawbt", "_blank");
+          window.open("https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter", "_blank");
         }
       }
     }, 1000);
