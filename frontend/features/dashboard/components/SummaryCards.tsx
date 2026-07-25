@@ -140,7 +140,7 @@ export const SummaryCards = ({ summary, isLoading }: SummaryCardsProps) => {
         <p className={`text-[10px] font-bold mt-2.5 uppercase ${
           summary.critical_stock_count > 0 ? "text-amber-700" : "text-slate-400"
         }`}>
-          {summary.critical_stock_count > 0 ? "⚠️ Butuh Restock Segera" : "Stok Aman"}
+          {summary.critical_stock_count > 0 ? "Butuh Restock Segera" : "Stok Aman"}
         </p>
       </button>
     </div>

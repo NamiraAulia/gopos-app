@@ -35,7 +35,7 @@ export default function Sidebar() {
     // { name: "Keuangan", href: "/finance", icon: Wallet },
     { name: "Data Member", href: "/member", icon: Users },
     { name: "Asumsi Restock", href: "/restock", icon: AlertTriangle },
-    { name: "Pengaturan Printer", href: "/settings", icon: Printer },
+    { name: "Pengaturan", href: "/settings", icon: Printer },
     ...(isAdmin ? [
       { name: "Kelola Kasir", href: "/admin/users", icon: Users },
       { name: "Riwayat Transaksi", href: "/admin/transactions", icon: Receipt },

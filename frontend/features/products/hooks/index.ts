@@ -24,7 +24,7 @@ export function useProducts(initialParams?: {
 
   const debouncedSearch = useDebounce(params.search, 300);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (activeSignal?: { active: boolean }) => {
     try {
       setLoading(true);
       setError(null);
@@ -32,6 +32,8 @@ export function useProducts(initialParams?: {
         ...params,
         search: debouncedSearch 
       });
+
+      if (activeSignal && !activeSignal.active) return;
 
       if (res?.success && res.data) {
         setProducts(res.data.products ?? []);
@@ -45,16 +47,23 @@ export function useProducts(initialParams?: {
         setProducts([]);
       }
     } catch (err: unknown) {
+      if (activeSignal && !activeSignal.active) return;
       const message = err instanceof Error ? err.message : "Gagal mengambil data produk";
       setError(message);
       setProducts([]);
     } finally {
-      setLoading(false);
+      if (!activeSignal || activeSignal.active) {
+        setLoading(false);
+      }
     }
   }, [params, debouncedSearch]);
 
   useEffect(() => {
-    fetchProducts();
+    const activeSignal = { active: true };
+    fetchProducts(activeSignal);
+    return () => {
+      activeSignal.active = false;
+    };
   }, [fetchProducts]);
 
   const setSearch = useCallback((keyword: string) => {

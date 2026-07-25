@@ -55,21 +55,26 @@ function centerAlign(text: string, width = 48): string {
 
 function centerAlignWrapped(text: string, width = 48): string {
   const lines = wrapText(text, width);
-  return lines.map(line => centerAlign(line, width)).join("\n");
+  return lines.map(line => centerAlign(line, width)).join("%0A");
 }
 
 function formatTwoColumns(label: string, value: string, width = 48): string {
-  const totalLen = label.length + value.length;
-  if (totalLen >= width) {
-    return label + " " + value;
+  if (label.length + value.length >= width) {
+    const maxLabelLen = width - value.length - 1;
+    if (maxLabelLen > 0) {
+      label = label.substring(0, maxLabelLen);
+    } else {
+      value = value.substring(0, width - 2);
+      label = label.substring(0, 1);
+    }
   }
-  const spaces = width - totalLen;
+  const spaces = width - label.length - value.length;
   return label + " ".repeat(spaces) + value;
 }
 
 function formatItemRow(name: string, qty: number, price: number, subtotal: number, width = 48): string {
-  const priceStr = `Rp ${subtotal.toLocaleString("id-ID")}`;
-  const qtyStr = `  ${qty} x Rp ${price.toLocaleString("id-ID")}`;
+  const priceStr = `Rp${subtotal.toLocaleString("id-ID")}`;
+  const qtyStr = `  ${qty} x Rp${price.toLocaleString("id-ID")}`.padEnd(width, " ");
   
   const rightWidth = priceStr.length;
   const firstLineLimit = width - rightWidth - 1; // 1 space separation
@@ -82,17 +87,17 @@ function formatItemRow(name: string, qty: number, price: number, subtotal: numbe
   if (nameLines.length > 0) {
     const firstLineName = nameLines[0];
     const spacesNeeded = width - firstLineName.length - rightWidth;
-    result += firstLineName + " ".repeat(spacesNeeded) + priceStr + "\n";
+    result += firstLineName + " ".repeat(spacesNeeded) + priceStr + "%0A";
 
     for (let i = 1; i < nameLines.length; i++) {
       const subWrapped = wrapText(nameLines[i], indentLimit);
       for (const line of subWrapped) {
-        result += indent + line + "\n";
+        result += (indent + line).padEnd(width, " ") + "%0A";
       }
     }
   }
 
-  result += qtyStr + "\n";
+  result += qtyStr + "%0A";
   return result;
 }
 
@@ -101,31 +106,31 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
   let receipt = "";
 
   // 1. Header toko center-aligned
-  receipt += centerAlignWrapped(data.storeName, width) + "\n";
+  receipt += centerAlignWrapped(data.storeName, width) + "%0A";
   if (data.storeAddress) {
-    receipt += centerAlignWrapped(data.storeAddress, width) + "\n";
+    receipt += centerAlignWrapped(data.storeAddress, width) + "%0A";
   }
   if (data.storePhone) {
-    receipt += centerAlignWrapped(`Telp: ${data.storePhone}`, width) + "\n";
+    receipt += centerAlignWrapped(`Telp: ${data.storePhone}`, width) + "%0A";
   }
 
   // Separator
-  receipt += "-".repeat(width) + "\n";
+  receipt += "-".repeat(width) + "%0A";
 
   // Info Transaksi
   if (data.transactionCode) {
-    receipt += formatTwoColumns("No. Struk:", data.transactionCode, width) + "\n";
+    receipt += formatTwoColumns("No. Struk:", data.transactionCode, width) + "%0A";
   }
-  receipt += formatTwoColumns("Tanggal:", data.transactionDate, width) + "\n";
-  receipt += formatTwoColumns("Kasir:", data.cashierName, width) + "\n";
-  receipt += formatTwoColumns("Pembayaran:", data.paymentMethod.toUpperCase(), width) + "\n";
+  receipt += formatTwoColumns("Tanggal:", data.transactionDate, width) + "%0A";
+  receipt += formatTwoColumns("Kasir:", data.cashierName, width) + "%0A";
+  receipt += formatTwoColumns("Pembayaran:", data.paymentMethod.toUpperCase(), width) + "%0A";
   
   if (data.member) {
-    receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "\n";
+    receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "%0A";
   }
 
   // Separator
-  receipt += "-".repeat(width) + "\n";
+  receipt += "-".repeat(width) + "%0A";
 
   // 2. Baris item
   for (const item of data.items) {
@@ -133,49 +138,67 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
   }
 
   // Separator
-  receipt += "-".repeat(width) + "\n";
+  receipt += "-".repeat(width) + "%0A";
 
   // 3. Totals
   if (data.discount > 0) {
-    receipt += formatTwoColumns("Subtotal:", `Rp ${data.subtotal.toLocaleString("id-ID")}`, width) + "\n";
-    receipt += formatTwoColumns("Diskon:", `-Rp ${data.discount.toLocaleString("id-ID")}`, width) + "\n";
+    receipt += formatTwoColumns("Subtotal:", `Rp${data.subtotal.toLocaleString("id-ID")}`, width) + "%0A";
+    receipt += formatTwoColumns("Diskon:", `-Rp${data.discount.toLocaleString("id-ID")}`, width) + "%0A";
   }
   if (data.tax > 0) {
-    receipt += formatTwoColumns("Pajak:", `Rp ${data.tax.toLocaleString("id-ID")}`, width) + "\n";
+    receipt += formatTwoColumns("Pajak:", `Rp${data.tax.toLocaleString("id-ID")}`, width) + "%0A";
   }
   
-  receipt += formatTwoColumns("TOTAL AKHIR:", `Rp ${data.total.toLocaleString("id-ID")}`, width) + "\n";
+  receipt += formatTwoColumns("TOTAL AKHIR:", `Rp${data.total.toLocaleString("id-ID")}`, width) + "%0A";
   
   if (data.paymentMethod.toLowerCase() === "cash" || data.paymentMethod.toLowerCase() === "tunai") {
     const paid = data.amountPaid ?? data.total;
     const change = data.changeAmount ?? 0;
-    receipt += formatTwoColumns("TUNAI:", `Rp ${paid.toLocaleString("id-ID")}`, width) + "\n";
-    receipt += formatTwoColumns("KEMBALIAN:", `Rp ${change.toLocaleString("id-ID")}`, width) + "\n";
+    receipt += formatTwoColumns("TUNAI:", `Rp${paid.toLocaleString("id-ID")}`, width) + "%0A";
+    receipt += formatTwoColumns("KEMBALIAN:", `Rp${change.toLocaleString("id-ID")}`, width) + "%0A";
   }
 
   // Separator
-  receipt += "-".repeat(width) + "\n";
+  receipt += "-".repeat(width) + "%0A";
 
   // 4. Footer
   if (data.footerText) {
-    receipt += centerAlignWrapped(data.footerText, width) + "\n";
+    receipt += centerAlignWrapped(data.footerText, width) + "%0A";
   }
-  receipt += centerAlignWrapped("Powered by GoPOS", width) + "\n";
+  receipt += centerAlignWrapped("Powered by GoPOS", width) + "%0A";
 
   // 5. Newlines
-  receipt += "\n\n\n\n\n";
+  receipt += "%0A%0A%0A%0A%0A";
 
   return receipt;
 }
+// Helper to convert UTF-8 string to Base64 in a cross-platform/WebView-safe way
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 export function printViaRawBT(text: string): void {
-  const encodedText = encodeURIComponent(text);
+  // Normalisasikan semua tipe baris baru (mengonversi %0A dan \r\n menjadi \n)
+  const cleanText = text.replace(/%0A/g, "\n").replace(/\r\n/g, "\n");
+  const base64Data = utf8ToBase64(cleanText);
+  const url = `intent:rawbt:data:text/plain;base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+
+  /* FALLBACK PENDEKATAN LAMA (URI-Encoded)
+  const encodedText = encodeURI(text);
   const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  */
 
   // DEBUG - hapus setelah masalah print ditemukan
   console.log("DEBUG - text.length:", text.length);
   console.log("DEBUG - text first 100:", text.substring(0, 100));
-  console.log("DEBUG - encodedText:", encodedText);
+  console.log("DEBUG - base64Data:", base64Data);
+  console.log("DEBUG - final url:", url);
   // DEBUG - hapus setelah masalah print ditemukan
 
   window.location.href = url;

@@ -44,7 +44,7 @@ export const StockAlertCard = ({ restockItems, isLoading }: StockAlertCardProps)
             <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center mb-3">
               <Sparkles className="h-6 w-6" />
             </div>
-            <p className="font-black text-slate-700 text-xs">Stok aman terkendali 🎉</p>
+            <p className="font-black text-slate-700 text-xs">Stok aman terkendali</p>
             <p className="text-[10px] text-slate-400 font-medium mt-1 max-w-[200px]">
               Semua produk memiliki tingkat stok yang cukup untuk beberapa hari ke depan.
             </p>

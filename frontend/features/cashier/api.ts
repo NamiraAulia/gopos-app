@@ -324,10 +324,11 @@ export const cashierApi = {
         });
 
         const qtyDeducted = item.unit_choice === "big" ? (item.qty * product.conversion) : item.qty;
-        await supabase
-          .from("products")
-          .update({ stock: product.stock - qtyDeducted })
-          .eq("id", item.product_id);
+        const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
+          product_id: item.product_id,
+          qty_change: -qtyDeducted,
+        });
+        if (rpcError) throw rpcError;
       }
     }
 
@@ -389,10 +390,11 @@ export const cashierApi = {
 
         if (product) {
           const qtyRestored = item.conversion_used * item.qty;
-          await supabase
-            .from("products")
-            .update({ stock: product.stock + qtyRestored })
-            .eq("id", item.product_id);
+          const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
+            product_id: item.product_id,
+            qty_change: qtyRestored,
+          });
+          if (rpcError) throw rpcError;
         }
       }
     }
@@ -473,10 +475,11 @@ export const cashierApi = {
 
         if (product) {
           const qtyRestored = txItem.conversion_used * refundItem.qty_refunded;
-          await supabase
-            .from("products")
-            .update({ stock: product.stock + qtyRestored })
-            .eq("id", refundItem.product_id);
+          const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
+            product_id: refundItem.product_id,
+            qty_change: qtyRestored,
+          });
+          if (rpcError) throw rpcError;
         }
       }
     }

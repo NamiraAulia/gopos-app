@@ -161,10 +161,11 @@ export function useCashierHistory() {
 
           if (product) {
             const qtyRestored = item.conversion_used * item.qty;
-            await supabase
-              .from("products")
-              .update({ stock: product.stock + qtyRestored })
-              .eq("id", item.product_id);
+            const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
+              product_id: item.product_id,
+              qty_change: qtyRestored,
+            });
+            if (rpcError) throw rpcError;
           }
         }
       }
@@ -179,20 +180,23 @@ export function useCashierHistory() {
 
       // Adjust shift expected cash
       if (tx.payment_method === "cash") {
-        const { data: activeShift } = await supabase
-          .from("shifts")
-          .select("*")
-          .eq("user_id", tx.user_id)
-          .eq("status", "open")
-          .maybeSingle();
-
-        if (activeShift) {
-          await supabase
+        const currentUserId = user?.id;
+        if (currentUserId) {
+          const { data: currentActiveShift } = await supabase
             .from("shifts")
-            .update({
-              total_cash_expected: activeShift.total_cash_expected - tx.total_amount,
-            })
-            .eq("id", activeShift.id);
+            .select("*")
+            .eq("user_id", currentUserId)
+            .eq("status", "open")
+            .maybeSingle();
+
+          if (currentActiveShift) {
+            await supabase
+              .from("shifts")
+              .update({
+                total_cash_expected: currentActiveShift.total_cash_expected - tx.total_amount,
+              })
+              .eq("id", currentActiveShift.id);
+          }
         }
       }
 

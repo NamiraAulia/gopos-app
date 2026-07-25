@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { cashierApi, type CheckoutPayload, type ShiftData, type Transaction, type Expense } from "./api";
 import type { Product } from "@/types/api";
 import { useCartStore } from "@/store/useCartStore";
@@ -9,10 +9,15 @@ export function useCashierProducts() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const activeRequestIdRef = useRef(0);
 
     const fetchProducts = useCallback(async (search?: string) => {
+        const requestId = ++activeRequestIdRef.current;
         try {
+            setLoading(true);
             const res = await cashierApi.getProducts(search);
+            if (requestId !== activeRequestIdRef.current) return;
+
             const list = (res?.data as any)?.products ?? [];
             setProducts(Array.isArray(list) ? list : []);
 
@@ -30,12 +35,17 @@ export function useCashierProducts() {
         } catch (err) {
             console.error("Gagal memuat produk kasir:", err);
         } finally {
-            setLoading(false);
+            if (requestId === activeRequestIdRef.current) {
+                setLoading(false);
+            }
         }
     }, []);
 
     useEffect(() => {
         fetchProducts();
+        return () => {
+            activeRequestIdRef.current++;
+        };
     }, [fetchProducts]);
 
     const triggerSearch = useCallback(
