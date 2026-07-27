@@ -273,6 +273,28 @@ class PrinterPlugin : Plugin() {
                 // Ignore
             }
 
+            // Flush Bulk IN endpoint (Clear any pending status packets to unblock USB FIFO RAM)
+            var inEndpoint: UsbEndpoint? = null
+            for (j in 0 until printerInterface.endpointCount) {
+                val ep = printerInterface.getEndpoint(j)
+                if (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
+                    ep.direction == UsbConstants.USB_DIR_IN) {
+                    inEndpoint = ep
+                    break
+                }
+            }
+            if (inEndpoint != null) {
+                try {
+                    val flushBuffer = ByteArray(64)
+                    for (k in 0..4) {
+                        val readResult = connection.bulkTransfer(inEndpoint, flushBuffer, flushBuffer.size, 100)
+                        if (readResult <= 0) break // Buffer is fully empty
+                    }
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
+
             // Handshake 1: GET_DEVICE_ID (Minta Device ID agar printer aktif dari state standby)
             var devId = "Tidak didukung / Timeout"
             try {

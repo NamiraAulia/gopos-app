@@ -133,18 +133,25 @@ export default function SettingsPage() {
     setPrintStatus(null);
 
     const testText = 
-      "GOPOS SIMPLE DIRECT USB PRINT TEST\n" +
-      "--------------------------------\n" +
-      "Tanggal: " + new Date().toLocaleString("id-ID") + "\n" +
-      "Koneksi: USB Murni (Plain Text Only)\n" +
-      "Status : Sukses Terkirim\n" +
-      "--------------------------------\n" +
-      "Jika tulisan ini tercetak, maka hardware\n" +
-      "printer Anda 100% berfungsi dengan baik!\n\n\n\n\n";
+      "GOPOS SIMPLE DIRECT USB PRINT TEST\r\n" +
+      "--------------------------------\r\n" +
+      "Tanggal: " + new Date().toLocaleString("id-ID") + "\r\n" +
+      "Koneksi: USB Murni (Plain Text Only)\r\n" +
+      "Status : Sukses Terkirim\r\n" +
+      "--------------------------------\r\n" +
+      "Jika tulisan ini tercetak, maka hardware\r\n" +
+      "printer Anda 100% berfungsi dengan baik!\r\n\r\n\r\n\r\n\r\n";
 
     try {
       const encoder = new TextEncoder();
-      const bytes = encoder.encode(testText);
+      const textBytes = encoder.encode(testText);
+      
+      // Sisipkan ESC @ (0x1B, 0x40) di awal byte array untuk inisialisasi printer
+      const bytes = new Uint8Array(textBytes.length + 2);
+      bytes[0] = 0x1B;
+      bytes[1] = 0x40;
+      bytes.set(textBytes, 2);
+
       const base64Data = uint8ArrayToBase64(bytes);
       const res = await Printer.printReceipt({ receiptData: base64Data });
 
