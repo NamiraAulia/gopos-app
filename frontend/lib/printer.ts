@@ -3,7 +3,7 @@ import { ReceiptData } from './types/receipt';
 
 export interface PrinterPlugin {
   printReceipt(options: { receiptData: string }): Promise<{ success: boolean; message?: string }>;
-  checkPrinterStatus(): Promise<{ connected: boolean; message?: string }>;
+  checkPrinterStatus(): Promise<{ connected: boolean; hasPermission: boolean; message?: string }>;
   checkRawBTInstalled(): Promise<{ installed: boolean }>;
 }
 
@@ -17,7 +17,82 @@ export interface HandlePrintParams {
   cashierName?: string;
 }
 
-// Helpers for plain text receipt formatting (48 columns)
+// -------------------------------------------------------------
+// ESC/POS Command Builder for 80mm Thermal Printer (Zero Dep)
+// -------------------------------------------------------------
+export class EscPosBuilder {
+  private buffer: number[] = [];
+  private encoder = new TextEncoder();
+
+  constructor() {
+    this.initialize();
+  }
+
+  initialize() {
+    this.buffer.push(0x1B, 0x40); // ESC @ (Initialize printer)
+    return this;
+  }
+
+  alignLeft() {
+    this.buffer.push(0x1B, 0x61, 0x00); // ESC a 0
+    return this;
+  }
+
+  alignCenter() {
+    this.buffer.push(0x1B, 0x61, 0x01); // ESC a 1
+    return this;
+  }
+
+  alignRight() {
+    this.buffer.push(0x1B, 0x61, 0x02); // ESC a 2
+    return this;
+  }
+
+  bold(on = true) {
+    this.buffer.push(0x1B, 0x45, on ? 0x01 : 0x00); // ESC E n
+    return this;
+  }
+
+  fontSizeLarge() {
+    this.buffer.push(0x1D, 0x21, 0x11); // GS ! 0x11 (Double Width & Double Height)
+    return this;
+  }
+
+  fontSizeNormal() {
+    this.buffer.push(0x1D, 0x21, 0x00); // GS ! 0x00
+    return this;
+  }
+
+  text(value: string) {
+    const bytes = this.encoder.encode(value);
+    this.buffer.push(...Array.from(bytes));
+    return this;
+  }
+
+  textLine(value: string) {
+    this.text(value);
+    this.buffer.push(0x0A); // LF (Line feed)
+    return this;
+  }
+
+  lineFeed(lines = 1) {
+    this.buffer.push(0x1B, 0x64, lines); // ESC d n (Print and feed n lines)
+    return this;
+  }
+
+  cut() {
+    this.buffer.push(0x1D, 0x56, 0x42, 0x00); // GS V 66 0 (Feed and partial cut)
+    return this;
+  }
+
+  build(): Uint8Array {
+    return new Uint8Array(this.buffer);
+  }
+}
+
+// -------------------------------------------------------------
+// Formatters and String Layout Utilities for 80mm (48 columns)
+// -------------------------------------------------------------
 function wrapText(text: string, limit: number): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
@@ -43,6 +118,125 @@ function wrapText(text: string, limit: number): string[] {
   return lines;
 }
 
+function formatTwoColumns(label: string, value: string, width = 48): string {
+  const spaces = width - label.length - value.length;
+  if (spaces < 0) {
+    const maxLabelLen = width - value.length - 1;
+    if (maxLabelLen > 0) {
+      return label.substring(0, maxLabelLen) + " " + value;
+    }
+    return label.substring(0, 1) + " " + value.substring(0, width - 2);
+  }
+  return label + " ".repeat(spaces) + value;
+}
+
+export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
+  const builder = new EscPosBuilder();
+
+  // 1. Header (Store Name - Bold, Center, Large)
+  builder.alignCenter()
+         .fontSizeLarge()
+         .bold(true)
+         .textLine(data.storeName)
+         .fontSizeNormal()
+         .bold(false);
+
+  if (data.storeAddress) {
+    const wrappedAddr = wrapText(data.storeAddress, width);
+    for (const line of wrappedAddr) {
+      builder.textLine(line);
+    }
+  }
+  if (data.storePhone) {
+    builder.textLine(`Telp: ${data.storePhone}`);
+  }
+
+  // Divider
+  builder.textLine("-".repeat(width));
+
+  // Transaction Info
+  builder.alignLeft();
+  if (data.transactionCode) {
+    builder.textLine(formatTwoColumns("No. Struk:", data.transactionCode, width));
+  }
+  builder.textLine(formatTwoColumns("Tanggal:", data.transactionDate, width));
+  builder.textLine(formatTwoColumns("Kasir:", data.cashierName, width));
+  builder.textLine(formatTwoColumns("Pembayaran:", data.paymentMethod.toUpperCase(), width));
+  
+  if (data.member) {
+    builder.textLine(formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width));
+  }
+
+  // Divider
+  builder.textLine("-".repeat(width));
+
+  // 2. Items List
+  for (const item of data.items) {
+    const subtotalStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
+    const nameLimit = width - subtotalStr.length - 1;
+    const nameLines = wrapText(item.name, nameLimit);
+
+    if (nameLines.length > 0) {
+      const firstLineName = nameLines[0];
+      const spacesNeeded = width - firstLineName.length - subtotalStr.length;
+      builder.textLine(firstLineName + " ".repeat(spacesNeeded) + subtotalStr);
+
+      for (let i = 1; i < nameLines.length; i++) {
+        builder.textLine("  " + nameLines[i]);
+      }
+    }
+
+    const qtyDetailStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`;
+    builder.textLine(qtyDetailStr);
+  }
+
+  // Divider
+  builder.textLine("-".repeat(width));
+
+  // 3. Totals
+  if (data.discount > 0) {
+    builder.textLine(formatTwoColumns("Subtotal:", `Rp${data.subtotal.toLocaleString("id-ID")}`, width));
+    builder.textLine(formatTwoColumns("Diskon:", `-Rp${data.discount.toLocaleString("id-ID")}`, width));
+  }
+  if (data.tax > 0) {
+    builder.textLine(formatTwoColumns("Pajak:", `Rp${data.tax.toLocaleString("id-ID")}`, width));
+  }
+
+  // Grand Total in Bold
+  builder.bold(true)
+         .textLine(formatTwoColumns("TOTAL AKHIR:", `Rp${data.total.toLocaleString("id-ID")}`, width))
+         .bold(false);
+
+  if (data.paymentMethod.toLowerCase() === "cash" || data.paymentMethod.toLowerCase() === "tunai") {
+    const paid = data.amountPaid ?? data.total;
+    const change = data.changeAmount ?? 0;
+    builder.textLine(formatTwoColumns("TUNAI:", `Rp${paid.toLocaleString("id-ID")}`, width));
+    builder.textLine(formatTwoColumns("KEMBALIAN:", `Rp${change.toLocaleString("id-ID")}`, width));
+  }
+
+  // Divider
+  builder.textLine("-".repeat(width));
+
+  // 4. Footer
+  builder.alignCenter();
+  if (data.footerText) {
+    const wrappedFooter = wrapText(data.footerText, width);
+    for (const line of wrappedFooter) {
+      builder.textLine(line);
+    }
+  }
+  builder.textLine("Powered by GoPOS");
+
+  // Feed 4 lines and cut
+  builder.lineFeed(4);
+  builder.cut();
+
+  return builder.build();
+}
+
+// -------------------------------------------------------------
+// Legacy text helper for Web / RawBT fallback
+// -------------------------------------------------------------
 function centerAlign(text: string, width = 48): string {
   if (text.length >= width) {
     return text.substring(0, width);
@@ -58,54 +252,10 @@ function centerAlignWrapped(text: string, width = 48): string {
   return lines.map(line => centerAlign(line, width)).join("%0A");
 }
 
-function formatTwoColumns(label: string, value: string, width = 48): string {
-  if (label.length + value.length >= width) {
-    const maxLabelLen = width - value.length - 1;
-    if (maxLabelLen > 0) {
-      label = label.substring(0, maxLabelLen);
-    } else {
-      value = value.substring(0, width - 2);
-      label = label.substring(0, 1);
-    }
-  }
-  const spaces = width - label.length - value.length;
-  return label + " ".repeat(spaces) + value;
-}
-
-function formatItemRow(name: string, qty: number, price: number, subtotal: number, width = 48): string {
-  const priceStr = `Rp${subtotal.toLocaleString("id-ID")}`;
-  const qtyStr = `  ${qty} x Rp${price.toLocaleString("id-ID")}`.padEnd(width, " ");
-  
-  const rightWidth = priceStr.length;
-  const firstLineLimit = width - rightWidth - 1; // 1 space separation
-  const indent = "  ";
-  const indentLimit = width - indent.length;
-
-  const nameLines = wrapText(name, firstLineLimit);
-  let result = "";
-
-  if (nameLines.length > 0) {
-    const firstLineName = nameLines[0];
-    const spacesNeeded = width - firstLineName.length - rightWidth;
-    result += firstLineName + " ".repeat(spacesNeeded) + priceStr + "%0A";
-
-    for (let i = 1; i < nameLines.length; i++) {
-      const subWrapped = wrapText(nameLines[i], indentLimit);
-      for (const line of subWrapped) {
-        result += (indent + line).padEnd(width, " ") + "%0A";
-      }
-    }
-  }
-
-  result += qtyStr + "%0A";
-  return result;
-}
-
 export function generatePlainTextReceipt(data: ReceiptData): string {
   const width = 48;
   let receipt = "";
 
-  // 1. Header toko center-aligned
   receipt += centerAlignWrapped(data.storeName, width) + "%0A";
   if (data.storeAddress) {
     receipt += centerAlignWrapped(data.storeAddress, width) + "%0A";
@@ -114,10 +264,8 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
     receipt += centerAlignWrapped(`Telp: ${data.storePhone}`, width) + "%0A";
   }
 
-  // Separator
   receipt += "-".repeat(width) + "%0A";
 
-  // Info Transaksi
   if (data.transactionCode) {
     receipt += formatTwoColumns("No. Struk:", data.transactionCode, width) + "%0A";
   }
@@ -129,18 +277,29 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
     receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "%0A";
   }
 
-  // Separator
   receipt += "-".repeat(width) + "%0A";
 
-  // 2. Baris item
   for (const item of data.items) {
-    receipt += formatItemRow(item.name, item.qty, item.price, item.subtotal, width);
+    const priceStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
+    const qtyStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`.padEnd(width, " ");
+    const rightWidth = priceStr.length;
+    const firstLineLimit = width - rightWidth - 1;
+    const nameLines = wrapText(item.name, firstLineLimit);
+
+    if (nameLines.length > 0) {
+      const firstLineName = nameLines[0];
+      const spacesNeeded = width - firstLineName.length - rightWidth;
+      receipt += firstLineName + " ".repeat(spacesNeeded) + priceStr + "%0A";
+
+      for (let i = 1; i < nameLines.length; i++) {
+        receipt += ("  " + nameLines[i]).padEnd(width, " ") + "%0A";
+      }
+    }
+    receipt += qtyStr + "%0A";
   }
 
-  // Separator
   receipt += "-".repeat(width) + "%0A";
 
-  // 3. Totals
   if (data.discount > 0) {
     receipt += formatTwoColumns("Subtotal:", `Rp${data.subtotal.toLocaleString("id-ID")}`, width) + "%0A";
     receipt += formatTwoColumns("Diskon:", `-Rp${data.discount.toLocaleString("id-ID")}`, width) + "%0A";
@@ -158,52 +317,40 @@ export function generatePlainTextReceipt(data: ReceiptData): string {
     receipt += formatTwoColumns("KEMBALIAN:", `Rp${change.toLocaleString("id-ID")}`, width) + "%0A";
   }
 
-  // Separator
   receipt += "-".repeat(width) + "%0A";
 
-  // 4. Footer
   if (data.footerText) {
     receipt += centerAlignWrapped(data.footerText, width) + "%0A";
   }
   receipt += centerAlignWrapped("Powered by GoPOS", width) + "%0A";
-
-  // 5. Newlines
   receipt += "%0A%0A%0A%0A%0A";
 
   return receipt;
 }
-// Helper to convert UTF-8 string to Base64 in a cross-platform/WebView-safe way
+
 function utf8ToBase64(str: string): string {
   const encoder = new TextEncoder();
   const bytes = encoder.encode(str);
+  return uint8ArrayToBase64(bytes);
+}
+
+function uint8ArrayToBase64(uint8: Uint8Array): string {
   let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const len = uint8.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(uint8[i]);
   }
-  return btoa(binary);
+  return window.btoa(binary);
 }
 
 export function printViaRawBT(text: string): void {
-  // Normalisasikan semua tipe baris baru (mengonversi %0A dan \r\n menjadi \n)
   const cleanText = text.replace(/%0A/g, "\n").replace(/\r\n/g, "\n");
   const base64Data = utf8ToBase64(cleanText);
   const url = `intent:rawbt:data:text/plain;base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
-  /* FALLBACK PENDEKATAN LAMA (URI-Encoded)
-  const encodedText = encodeURI(text);
-  const url = `intent:${encodedText}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
-  */
-
-  // DEBUG - hapus setelah masalah print ditemukan
-  console.log("DEBUG - text.length:", text.length);
-  console.log("DEBUG - text first 100:", text.substring(0, 100));
-  console.log("DEBUG - base64Data:", base64Data);
-  console.log("DEBUG - final url:", url);
-  // DEBUG - hapus setelah masalah print ditemukan
-
+  console.log("DEBUG - rawbt intent url:", url);
   window.location.href = url;
 
-  // Hanya jalankan fallback timeout di platform non-native (web biasa)
   if (!Capacitor.isNativePlatform()) {
     const start = Date.now();
     let hasNavigated = false;
@@ -216,7 +363,6 @@ export function printViaRawBT(text: string): void {
 
     setTimeout(() => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      
       if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
         if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
           window.open("https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter", "_blank");
@@ -250,7 +396,6 @@ export async function handleReceiptPrint({
     throw new Error("Data transaksi tidak ditemukan.");
   }
 
-  // Format data struk ke struktur ReceiptData JSON
   const receiptPayload: ReceiptData = {
     transactionCode: transaction.transaction_code || "-",
     storeName: shopName,
@@ -288,10 +433,23 @@ export async function handleReceiptPrint({
       : null,
   };
 
-  const plainText = generatePlainTextReceipt(receiptPayload);
-  printViaRawBT(plainText);
-
-  return { success: true, isNative: Capacitor.isNativePlatform(), message: "Struk dikirim ke RawBT" };
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const bytes = generateEscPosReceiptBytes(receiptPayload);
+      const base64Data = uint8ArrayToBase64(bytes);
+      const result = await Printer.printReceipt({ receiptData: base64Data });
+      return { success: result.success, isNative: true, message: result.message || "Berhasil dicetak secara native" };
+    } catch (err: any) {
+      console.error("Gagal cetak native USB, fallback ke RawBT:", err);
+      const plainText = generatePlainTextReceipt(receiptPayload);
+      printViaRawBT(plainText);
+      return { success: true, isNative: true, message: "Gagal cetak native, dialihkan ke RawBT: " + err.message };
+    }
+  } else {
+    const plainText = generatePlainTextReceipt(receiptPayload);
+    printViaRawBT(plainText);
+    return { success: true, isNative: false, message: "Membuka link RawBT (Web Fallback)" };
+  }
 }
 
 export type { ReceiptData };
