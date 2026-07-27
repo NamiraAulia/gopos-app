@@ -266,6 +266,48 @@ class PrinterPlugin : Plugin() {
                 return
             }
 
+            // Set alternate setting 0
+            try {
+                connection.setInterface(printerInterface)
+            } catch (e: Exception) {
+                // Ignore
+            }
+
+            // Handshake 1: GET_DEVICE_ID (Minta Device ID agar printer aktif dari state standby)
+            var devId = "Tidak didukung / Timeout"
+            try {
+                val devIdBuffer = ByteArray(256)
+                val devIdResult = connection.controlTransfer(
+                    0xA1,             // requestType (Device-to-Host, Class, Interface)
+                    0x00,             // request (GET_DEVICE_ID)
+                    0x00,             // value
+                    printerInterface.id, // index (Interface ID)
+                    devIdBuffer,
+                    devIdBuffer.size,
+                    2000              // timeout
+                )
+                if (devIdResult >= 2) {
+                    devId = String(devIdBuffer, 2, devIdResult - 2).trim()
+                }
+            } catch (e: Exception) {
+                devId = "Error: ${e.message}"
+            }
+
+            // Handshake 2: SOFT_RESET (Reset printer buffer state)
+            try {
+                connection.controlTransfer(
+                    0x21,             // requestType (Host-to-Device, Class, Interface)
+                    0x02,             // request (SOFT_RESET)
+                    0x00,             // value
+                    printerInterface.id, // index (Interface ID)
+                    null,
+                    0,
+                    1000
+                )
+            } catch (e: Exception) {
+                // Ignore
+            }
+
             // Transfer data in chunks matching maxPacketSize or 512 bytes to avoid buffer dropping
             val maxPacketSize = outEndpoint.maxPacketSize
             val chunkSize = if (maxPacketSize > 0) maxPacketSize else 512
@@ -296,7 +338,7 @@ class PrinterPlugin : Plugin() {
                 }
                 val ret = JSObject()
                 ret.put("success", true)
-                ret.put("message", "Berhasil dikirim! Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $totalWritten")
+                ret.put("message", "Berhasil dikirim! Device ID: $devId, Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $totalWritten")
                 call.resolve(ret)
             } else {
                 call.reject("Gagal transfer data USB bulk (code: $errorCode, tertulis: $totalWritten dari ${bytes.size} byte)")
