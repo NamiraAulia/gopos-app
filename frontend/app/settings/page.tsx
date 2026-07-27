@@ -127,43 +127,58 @@ export default function SettingsPage() {
     }
   };
 
-  // Uji cetak menggunakan Direct USB Native Plain Text (No Formatting / No Cut)
+  // Uji cetak menggunakan Direct USB Native Plain Text (PCL Mode)
   const handleTestPrintNativePlain = async () => {
     setPrinting(true);
     setPrintStatus(null);
 
     const testText = 
-      "GOPOS SIMPLE DIRECT USB PRINT TEST\r\n" +
-      "--------------------------------\r\n" +
+      "GOPOS SIMPLE DIRECT USB PRINT TEST (PCL MODE)\r\n" +
+      "---------------------------------------------\r\n" +
       "Tanggal: " + new Date().toLocaleString("id-ID") + "\r\n" +
-      "Koneksi: USB Murni (Plain Text Only)\r\n" +
+      "Koneksi: USB Murni (PCL Command Set)\r\n" +
       "Status : Sukses Terkirim\r\n" +
-      "--------------------------------\r\n" +
+      "---------------------------------------------\r\n" +
       "Jika tulisan ini tercetak, maka hardware\r\n" +
-      "printer Anda 100% berfungsi dengan baik!\r\n\r\n\r\n\r\n\r\n";
+      "printer Anda 100% berfungsi dalam mode PCL!\r\n\r\n\r\n\r\n\r\n";
 
     try {
       const encoder = new TextEncoder();
       const textBytes = encoder.encode(testText);
       
-      // Sisipkan ESC @ (0x1B, 0x40) di awal byte array untuk inisialisasi printer
-      const bytes = new Uint8Array(textBytes.length + 2);
+      // PCL Command Stream:
+      // [0x1B, 0x45] -> ESC E (PCL Reset/Init)
+      // [textBytes]
+      // [0x0C] -> Form Feed (Eject/Print Page)
+      // [0x1B, 0x45] -> ESC E (PCL Reset/End)
+      const bytes = new Uint8Array(2 + textBytes.length + 1 + 2);
+      
+      // ESC E (Init)
       bytes[0] = 0x1B;
-      bytes[1] = 0x40;
+      bytes[1] = 0x45;
+      
+      // Text Data
       bytes.set(textBytes, 2);
+      
+      // Form Feed (0x0C) to trigger printing of buffer
+      bytes[2 + textBytes.length] = 0x0C;
+      
+      // ESC E (End)
+      bytes[2 + textBytes.length + 1] = 0x1B;
+      bytes[2 + textBytes.length + 2] = 0x45;
 
       const base64Data = uint8ArrayToBase64(bytes);
       const res = await Printer.printReceipt({ receiptData: base64Data });
 
       setPrintStatus({
         success: res.success,
-        message: res.message || "Berhasil mengirim teks polos langsung ke USB printer!",
+        message: res.message || "Berhasil mengirim teks polos PCL langsung ke printer!",
         timestamp: new Date().toLocaleTimeString("id-ID")
       });
     } catch (err: any) {
       setPrintStatus({
         success: false,
-        message: `Gagal mencetak teks polos secara native: ${err.message || err}`,
+        message: `Gagal mencetak teks PCL: ${err.message || err}`,
         timestamp: new Date().toLocaleTimeString("id-ID")
       });
     } finally {
