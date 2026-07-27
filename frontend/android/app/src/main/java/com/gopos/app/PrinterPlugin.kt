@@ -308,40 +308,22 @@ class PrinterPlugin : Plugin() {
                 // Ignore
             }
 
-            // Transfer data in chunks matching maxPacketSize or 512 bytes to avoid buffer dropping
-            val maxPacketSize = outEndpoint.maxPacketSize
-            val chunkSize = if (maxPacketSize > 0) maxPacketSize else 512
-            var totalWritten = 0
-            var writeSuccess = true
-            var errorCode = 0
-
-            while (totalWritten < bytes.size) {
-                val sizeToSend = Math.min(bytes.size - totalWritten, chunkSize)
-                val chunk = ByteArray(sizeToSend)
-                System.arraycopy(bytes, totalWritten, chunk, 0, sizeToSend)
-
-                val result = connection.bulkTransfer(outEndpoint, chunk, sizeToSend, 5000)
-                if (result < 0) {
-                    writeSuccess = false
-                    errorCode = result
-                    break
-                }
-                totalWritten += result
-            }
+            // Kirim seluruh byte data sekaligus (biarkan kernel OS mengelola paket 64-byte dan flow control hardware ACK/NAK)
+            val result = connection.bulkTransfer(outEndpoint, bytes, bytes.size, 5000)
             
-            if (writeSuccess) {
-                // Berikan jeda waktu agar MCU menyelesaikan transmisi data ke print head via USART
+            if (result >= 0) {
+                // Berikan jeda waktu 1.5 detik agar MCU menyelesaikan transmisi data ke print head via USART
                 try {
-                    Thread.sleep(1000)
+                    Thread.sleep(1500)
                 } catch (e: InterruptedException) {
                     // Ignore
                 }
                 val ret = JSObject()
                 ret.put("success", true)
-                ret.put("message", "Berhasil dikirim! Device ID: $devId, Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $totalWritten")
+                ret.put("message", "Berhasil dikirim! Device ID: $devId, Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $result")
                 call.resolve(ret)
             } else {
-                call.reject("Gagal transfer data USB bulk (code: $errorCode, tertulis: $totalWritten dari ${bytes.size} byte)")
+                call.reject("Gagal transfer data USB bulk (code: $result)")
             }
         } catch (e: Exception) {
             call.reject("Error saat mencetak: ${e.message}")
