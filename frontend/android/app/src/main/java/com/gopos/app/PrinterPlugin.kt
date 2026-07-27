@@ -75,12 +75,14 @@ class PrinterPlugin : Plugin() {
             val hasPerm = usbManager.hasPermission(device)
             ret.put("connected", true)
             ret.put("hasPermission", hasPerm)
-            ret.put("message", "Printer thermal internal terhubung (${device.deviceName})")
+            ret.put("message", "Printer thermal internal terhubung (VID: ${device.vendorId}, PID: ${device.productId})")
             call.resolve(ret)
         } else {
+            val deviceList = usbManager.deviceList
+            val devicesInfo = deviceList.values.map { "VID_${it.vendorId}_PID_${it.productId} (Class: ${it.deviceClass})" }.joinToString(", ")
             ret.put("connected", false)
             ret.put("hasPermission", false)
-            ret.put("message", "Printer thermal internal tidak ditemukan")
+            ret.put("message", if (devicesInfo.isNotEmpty()) "Printer tidak terdeteksi. USB aktif: $devicesInfo" else "Printer tidak terdeteksi. Tidak ada perangkat USB yang terhubung.")
             call.resolve(ret)
         }
     }

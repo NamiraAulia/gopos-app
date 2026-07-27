@@ -2,13 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import { isRawBTInstalled, printViaRawBT } from "@/lib/printer";
+import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes } from "@/lib/printer";
 import { Capacitor } from "@capacitor/core";
-import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor } from "lucide-react";
+import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor, HelpCircle, ShieldCheck } from "lucide-react";
+
+// Convert Uint8Array to Base64 (local helper for settings test print)
+function uint8ArrayToBase64(uint8: Uint8Array): string {
+  let binary = "";
+  const len = uint8.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(uint8[i]);
+  }
+  return window.btoa(binary);
+}
 
 export default function SettingsPage() {
   const [isNative, setIsNative] = useState(false);
   const [rawBTInstalled, setRawBTInstalled] = useState<boolean | null>(null);
+  
+  // Native USB Printer States
+  const [nativeConnected, setNativeConnected] = useState<boolean | null>(null);
+  const [nativePermission, setNativePermission] = useState<boolean | null>(null);
+  const [nativeMessage, setNativeMessage] = useState<string>("");
+
   const [checking, setChecking] = useState(true);
   const [printing, setPrinting] = useState(false);
   const [printStatus, setPrintStatus] = useState<{
@@ -20,17 +36,34 @@ export default function SettingsPage() {
   // State for Customer Display
   const [customerDisplayEnabled, setCustomerDisplayEnabled] = useState(false);
 
-  // Fungsi untuk cek status instalasi RawBT
+  // Cek status instalasi printer & RawBT
   const checkStatus = async () => {
     setChecking(true);
     const native = Capacitor.isNativePlatform();
     setIsNative(native);
 
     if (native) {
+      // 1. Cek status RawBT (backup)
       const installed = await isRawBTInstalled();
       setRawBTInstalled(installed);
+
+      // 2. Cek status Direct USB Printer
+      try {
+        const status = await Printer.checkPrinterStatus();
+        setNativeConnected(status.connected);
+        setNativePermission(status.hasPermission);
+        setNativeMessage(status.message || "");
+      } catch (err: any) {
+        console.error("Gagal mendeteksi printer native:", err);
+        setNativeConnected(false);
+        setNativePermission(false);
+        setNativeMessage("Error deteksi native: " + err.message);
+      }
     } else {
-      setRawBTInstalled(null); // Web biasa
+      setRawBTInstalled(null);
+      setNativeConnected(null);
+      setNativePermission(null);
+      setNativeMessage("Bukan Platform Native (Web Browser)");
     }
     setChecking(false);
   };
@@ -47,18 +80,65 @@ export default function SettingsPage() {
     localStorage.setItem("gopos-customer-display-enabled", String(val));
   };
 
-  // Uji cetak teks dummy
-  const handleTestPrint = async () => {
+  // Uji cetak menggunakan Direct USB Native
+  const handleTestPrintNative = async () => {
+    setPrinting(true);
+    setPrintStatus(null);
+
+    const testReceiptData = {
+      storeName: "GoPOS STORE",
+      storeAddress: "Jl. Pengujian POS No. 123",
+      storePhone: "0812-3456-7890",
+      transactionDate: new Date().toLocaleString("id-ID"),
+      transactionCode: "TRX-TEST-0001",
+      cashierName: "Penguji Sistem",
+      paymentMethod: "TUNAI",
+      items: [
+        { name: "Susu Ultra Milk Cokelat 250ml", qty: 2, price: 9500, subtotal: 19000 },
+        { name: "Roti Tawar Kupas Premium", qty: 1, price: 16000, subtotal: 16000 }
+      ],
+      subtotal: 35000,
+      tax: 0,
+      discount: 0,
+      total: 35000,
+      amountPaid: 50000,
+      changeAmount: 15000,
+      footerText: "Direct ESC/POS Native USB Print - Sukses!"
+    };
+
+    try {
+      const bytes = generateEscPosReceiptBytes(testReceiptData);
+      const base64Data = uint8ArrayToBase64(bytes);
+      const res = await Printer.printReceipt({ receiptData: base64Data });
+
+      setPrintStatus({
+        success: res.success,
+        message: res.message || "Berhasil mengirim data cetak langsung ke USB printer!",
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } catch (err: any) {
+      setPrintStatus({
+        success: false,
+        message: `Gagal mencetak secara native: ${err.message || err}`,
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Uji cetak menggunakan RawBT (legacy fallback)
+  const handleTestPrintRawBT = async () => {
     setPrinting(true);
     setPrintStatus(null);
     
     const testText = 
       "================================================\n" +
-      "               GOPOS PRINTER TEST               \n" +
+      "          GOPOS PRINTER TEST (RAWBT)            \n" +
       "================================================\n" +
       "Tanggal: " + new Date().toLocaleString("id-ID") + "\n" +
       "Koneksi: BERHASIL MENGHUBUNGKAN KE RAWBT\n" +
-      "Status : Printer Thermal 80mm Siap Digunakan\n" +
+      "Status : Printer Thermal 80mm via RawBT\n" +
       "================================================\n" +
       "             Powered by GoPOS app\n\n\n\n\n";
 
@@ -68,7 +148,7 @@ export default function SettingsPage() {
         if (!installed) {
           setPrintStatus({
             success: false,
-            message: "Aplikasi RawBT tidak terinstall di tablet POS ini. Silakan unduh melalui link di bawah.",
+            message: "Aplikasi RawBT tidak terinstall di tablet POS ini.",
             timestamp: new Date().toLocaleTimeString("id-ID"),
           });
           setPrinting(false);
@@ -78,18 +158,17 @@ export default function SettingsPage() {
 
       printViaRawBT(testText);
 
-      // Simulasikan durasi proses cetak selama 2 detik
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       setPrintStatus({
         success: true,
-        message: "Berhasil mengirim data ke RawBT. Jika printer tidak merespon, pastikan kertas terisi, printer menyala, dan koneksi bluetooth/USB aktif.",
+        message: "Berhasil mengirim data ke RawBT. Jika printer tidak merespon, pastikan koneksi Bluetooth/USB aktif di RawBT.",
         timestamp: new Date().toLocaleTimeString("id-ID"),
       });
     } catch (err: any) {
       setPrintStatus({
         success: false,
-        message: `Gagal mengirim data cetak: ${err.message || err}`,
+        message: `Gagal mengirim ke RawBT: ${err.message || err}`,
         timestamp: new Date().toLocaleTimeString("id-ID"),
       });
     } finally {
@@ -113,87 +192,145 @@ export default function SettingsPage() {
             <div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">Pengaturan Perangkat POS</h2>
               <p className="text-slate-500 text-sm mt-1">
-                Kelola printer thermal eksternal, periksa modul RawBT, dan konfigurasikan layar eksternal untuk pelanggan.
+                Kelola konfigurasi printer thermal internal (USB Host) dan layar eksternal untuk pelanggan.
               </p>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               
-              {/* Kolom 1: Printer Thermal (RawBT) */}
+              {/* Kolom 1: Konfigurasi Printer */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
-                  <PrinterIcon className="h-5 w-5 text-blue-600" /> Printer Thermal 80mm (RawBT)
+                <h3 className="font-bold text-base text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <PrinterIcon className="h-5 w-5 text-blue-600" /> Koneksi Printer Thermal 80mm
                 </h3>
-                
-                <div className="border-t border-slate-100 pt-4 space-y-4">
-                  {/* Deteksi Platform */}
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-slate-400 uppercase tracking-wider">Platform Aplikasi</span>
-                    <span className="font-bold uppercase text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {isNative ? "Capacitor Native APK" : "Web Browser"}
+
+                {/* Bagian A: Printer Utama (Direct USB Native) */}
+                <div className="space-y-3 bg-slate-50/50 border border-slate-200/80 rounded-xl p-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      Printer Utama (Direct USB Native)
+                    </span>
+                    <span className="text-[9px] uppercase font-extrabold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                      Rekomendasi
                     </span>
                   </div>
 
-                  {/* Status RawBT */}
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-slate-400 uppercase tracking-wider">Status Aplikasi RawBT</span>
-                    {checking ? (
-                      <RefreshCw className="h-4 w-4 animate-spin text-slate-400" />
-                    ) : rawBTInstalled ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-200 uppercase tracking-wider">
-                        <CheckCircle className="h-3 w-3" /> Terinstall
-                      </span>
-                    ) : isNative ? (
-                      <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2.5 py-0.5 rounded-full text-[10px] border border-red-200 uppercase tracking-wider">
-                        <AlertCircle className="h-3 w-3" /> Tidak Terinstall
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 italic font-normal">Bukan Platform Native (Web)</span>
-                    )}
+                  <div className="space-y-2 pt-1">
+                    {/* Status Terhubung */}
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-400 uppercase tracking-wider">Status USB</span>
+                      {checking ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                      ) : nativeConnected ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-200 uppercase tracking-wider">
+                          <CheckCircle className="h-3 w-3" /> Terdeteksi
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2.5 py-0.5 rounded-full text-[10px] border border-red-200 uppercase tracking-wider">
+                          <AlertCircle className="h-3 w-3" /> Tidak Terdeteksi
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Izin Akses USB */}
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-400 uppercase tracking-wider">Izin Akses USB</span>
+                      {checking ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                      ) : nativePermission ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-200 uppercase tracking-wider">
+                          <CheckCircle className="h-3 w-3" /> Diberikan
+                        </span>
+                      ) : isNative && nativeConnected ? (
+                        <span className="inline-flex items-center gap-1 text-orange-600 font-bold bg-orange-50 px-2.5 py-0.5 rounded-full text-[10px] border border-orange-200 uppercase tracking-wider">
+                          <AlertCircle className="h-3 w-3" /> Butuh Konfirmasi
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic font-normal">N/A</span>
+                      )}
+                    </div>
+
+                    {/* Detail Log/Pesan USB */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-[10px] font-mono text-slate-600 break-all leading-normal">
+                      <span className="font-bold text-slate-400 block mb-0.5 uppercase text-[8px] tracking-wider">Info Perangkat USB:</span>
+                      {nativeMessage || "Mendeteksi status printer..."}
+                    </div>
                   </div>
+
+                  {/* Tombol Cetak Native */}
+                  {isNative && (
+                    <button
+                      onClick={handleTestPrintNative}
+                      disabled={printing || checking || !nativeConnected}
+                      className="w-full mt-2 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow"
+                    >
+                      <PrinterIcon className="h-4 w-4" />
+                      <span>Uji Cetak Direct USB (ESC/POS)</span>
+                    </button>
+                  )}
                 </div>
 
-                {/* Tombol Aksi */}
-                <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
+                {/* Bagian B: Printer Cadangan (RawBT Fallback) */}
+                <div className="space-y-3 bg-slate-50/30 border border-slate-200/50 rounded-xl p-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-500 text-xs flex items-center gap-1.5">
+                      <HelpCircle className="h-4 w-4 text-slate-400" />
+                      Printer Cadangan (RawBT Intent)
+                    </span>
+                    <span className="text-[8px] uppercase font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                      Fallback
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs font-semibold pt-1">
+                    <span className="text-slate-400 uppercase tracking-wider">Aplikasi RawBT</span>
+                    {checking ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                    ) : rawBTInstalled ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[9px] border border-emerald-200">
+                        Terinstall
+                      </span>
+                    ) : isNative ? (
+                      <span className="inline-flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[9px] border border-red-200">
+                        Tidak Ada
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 italic font-normal">N/A (Web Browser)</span>
+                    )}
+                  </div>
+
                   {rawBTInstalled === false && isNative && (
                     <a
                       href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
                       target="_blank"
                       rel="noreferrer"
-                      className="h-11 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
+                      className="h-9 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-3.5 w-3.5" />
                       <span>Download RawBT dari Play Store</span>
                     </a>
                   )}
-                  
-                  <button
-                    onClick={handleTestPrint}
-                    disabled={printing}
-                    className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {printing ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Mencetak (2s)...</span>
-                      </>
-                    ) : (
-                      <>
-                        <PrinterIcon className="h-4 w-4" />
-                        <span>Uji Cetak (Test Print)</span>
-                      </>
-                    )}
-                  </button>
 
                   <button
-                    onClick={checkStatus}
-                    disabled={checking}
-                    className="h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleTestPrintRawBT}
+                    disabled={printing || checking}
+                    className="w-full h-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} />
-                    <span>Segarkan Status</span>
+                    <PrinterIcon className="h-3.5 w-3.5" />
+                    <span>Uji Cetak via RawBT (Fallback)</span>
                   </button>
                 </div>
+
+                {/* Tombol Segarkan Global */}
+                <button
+                  onClick={checkStatus}
+                  disabled={checking}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <RefreshCw className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} />
+                  <span>Segarkan Koneksi & Status</span>
+                </button>
 
                 {/* Status Cetak Terakhir */}
                 {printStatus && (
@@ -203,7 +340,7 @@ export default function SettingsPage() {
                       : "bg-rose-50 border-rose-200 text-rose-800 font-medium"
                   }`}>
                     <div className="flex justify-between items-center font-bold">
-                      <span>{printStatus.success ? "Status: Cetak Sukses" : "Status: Cetak Gagal"}</span>
+                      <span>{printStatus.success ? "Status: Sukses" : "Status: Gagal"}</span>
                       <span className="opacity-80 font-normal">{printStatus.timestamp}</span>
                     </div>
                     <p className="leading-relaxed text-[11px]">{printStatus.message}</p>
@@ -213,15 +350,13 @@ export default function SettingsPage() {
                 {/* Panduan Setup Awal */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[11px] text-slate-600 space-y-2.5">
                   <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <AlertCircle className="h-4 w-4 text-blue-500 shrink-0" /> Panduan Setup Awal Printer:
+                    <AlertCircle className="h-4 w-4 text-blue-500 shrink-0" /> Catatan Konektivitas Printer:
                   </h4>
-                  <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed">
-                    <li>Unduh & pasang aplikasi <b>RawBT Printer</b> dari Google Play Store.</li>
-                    <li>Pastikan printer thermal Bluetooth/USB Anda terhubung ke tablet.</li>
-                    <li>Pada aplikasi RawBT, pilih koneksi printer Anda sebagai printer default.</li>
-                    <li>Di setelan RawBT, pastikan setelan lebar kertas diatur ke <b>80mm (48 columns)</b>.</li>
-                    <li>Pastikan tombol service (pojok kanan atas) di aplikasi RawBT berstatus aktif/berjalan.</li>
-                  </ol>
+                  <ul className="list-disc pl-4 space-y-1.5 leading-relaxed">
+                    <li><b>Direct USB Native</b> terhubung langsung melalui komunikasi hardware internal tablet. Pengujian harus dilakukan di mesin POS fisik.</li>
+                    <li>Jika Direct USB tidak terdeteksi, perhatikan panel <i>Info Perangkat USB</i> untuk melihat daftar Vendor ID (VID) dan Product ID (PID) periferal yang tercolok.</li>
+                    <li>Pastikan kabel data printer internal terpasang dengan baik pada mainboard tablet POS.</li>
+                  </ul>
                 </div>
               </div>
 
