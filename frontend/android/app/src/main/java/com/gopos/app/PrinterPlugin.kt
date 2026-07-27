@@ -245,17 +245,34 @@ class PrinterPlugin : Plugin() {
                 return
             }
 
-            // Send raw bytes. USB bulk transfer might fail if size is huge, 
-            // but for typical receipts it fits well within a single bulk transfer.
-            val result = connection.bulkTransfer(outEndpoint, bytes, bytes.size, 5000)
+            // Transfer data in chunks matching maxPacketSize or 512 bytes to avoid buffer dropping
+            val maxPacketSize = outEndpoint.maxPacketSize
+            val chunkSize = if (maxPacketSize > 0) maxPacketSize else 512
+            var totalWritten = 0
+            var writeSuccess = true
+            var errorCode = 0
+
+            while (totalWritten < bytes.size) {
+                val sizeToSend = Math.min(bytes.size - totalWritten, chunkSize)
+                val chunk = ByteArray(sizeToSend)
+                System.arraycopy(bytes, totalWritten, chunk, 0, sizeToSend)
+
+                val result = connection.bulkTransfer(outEndpoint, chunk, sizeToSend, 5000)
+                if (result < 0) {
+                    writeSuccess = false
+                    errorCode = result
+                    break
+                }
+                totalWritten += result
+            }
             
-            if (result >= 0) {
+            if (writeSuccess) {
                 val ret = JSObject()
                 ret.put("success", true)
-                ret.put("message", "Struk berhasil dicetak secara native")
+                ret.put("message", "Berhasil dikirim! Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $totalWritten")
                 call.resolve(ret)
             } else {
-                call.reject("Gagal mencetak struk: bulk transfer error (code: $result)")
+                call.reject("Gagal transfer data USB bulk (code: $errorCode, tertulis: $totalWritten dari ${bytes.size} byte)")
             }
         } catch (e: Exception) {
             call.reject("Error saat mencetak: ${e.message}")

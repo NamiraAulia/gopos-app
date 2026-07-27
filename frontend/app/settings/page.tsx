@@ -127,6 +127,43 @@ export default function SettingsPage() {
     }
   };
 
+  // Uji cetak menggunakan Direct USB Native Plain Text (No Formatting / No Cut)
+  const handleTestPrintNativePlain = async () => {
+    setPrinting(true);
+    setPrintStatus(null);
+
+    const testText = 
+      "GOPOS SIMPLE DIRECT USB PRINT TEST\n" +
+      "--------------------------------\n" +
+      "Tanggal: " + new Date().toLocaleString("id-ID") + "\n" +
+      "Koneksi: USB Murni (Plain Text Only)\n" +
+      "Status : Sukses Terkirim\n" +
+      "--------------------------------\n" +
+      "Jika tulisan ini tercetak, maka hardware\n" +
+      "printer Anda 100% berfungsi dengan baik!\n\n\n\n\n";
+
+    try {
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(testText);
+      const base64Data = uint8ArrayToBase64(bytes);
+      const res = await Printer.printReceipt({ receiptData: base64Data });
+
+      setPrintStatus({
+        success: res.success,
+        message: res.message || "Berhasil mengirim teks polos langsung ke USB printer!",
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } catch (err: any) {
+      setPrintStatus({
+        success: false,
+        message: `Gagal mencetak teks polos secara native: ${err.message || err}`,
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   // Uji cetak menggunakan RawBT (legacy fallback)
   const handleTestPrintRawBT = async () => {
     setPrinting(true);
@@ -260,14 +297,25 @@ export default function SettingsPage() {
 
                   {/* Tombol Cetak Native */}
                   {isNative && (
-                    <button
-                      onClick={handleTestPrintNative}
-                      disabled={printing || checking || !nativeConnected}
-                      className="w-full mt-2 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow"
-                    >
-                      <PrinterIcon className="h-4 w-4" />
-                      <span>Uji Cetak Direct USB (ESC/POS)</span>
-                    </button>
+                    <div className="flex flex-col gap-2 mt-2">
+                      <button
+                        onClick={handleTestPrintNative}
+                        disabled={printing || checking || !nativeConnected}
+                        className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow"
+                      >
+                        <PrinterIcon className="h-4 w-4" />
+                        <span>Uji Cetak ESC/POS (Format Lengkap)</span>
+                      </button>
+
+                      <button
+                        onClick={handleTestPrintNativePlain}
+                        disabled={printing || checking || !nativeConnected}
+                        className="w-full h-10 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100/50 text-blue-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      >
+                        <PrinterIcon className="h-4 w-4" />
+                        <span>Uji Cetak Teks Polos (No Format/Cut)</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
