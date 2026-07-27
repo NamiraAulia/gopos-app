@@ -75,7 +75,28 @@ class PrinterPlugin : Plugin() {
             val hasPerm = usbManager.hasPermission(device)
             ret.put("connected", true)
             ret.put("hasPermission", hasPerm)
-            ret.put("message", "Printer thermal internal terhubung (VID: ${device.vendorId}, PID: ${device.productId})")
+            
+            val details = StringBuilder()
+            details.append("Merek: SmartLogic POS (GD32 MCU)\n")
+            details.append("ID: VID_${device.vendorId}_PID_${device.productId}\n")
+            details.append("Jumlah Interface: ${device.interfaceCount}\n")
+            for (i in 0 until device.interfaceCount) {
+                val usbInterface = device.getInterface(i)
+                details.append("Intf $i: Class=${usbInterface.interfaceClass}, Subclass=${usbInterface.interfaceSubclass}, Proto=${usbInterface.interfaceProtocol}\n")
+                details.append("  Jml Endpoint: ${usbInterface.endpointCount}\n")
+                for (j in 0 until usbInterface.endpointCount) {
+                    val endpoint = usbInterface.getEndpoint(j)
+                    val dir = if (endpoint.direction == UsbConstants.USB_DIR_OUT) "OUT" else "IN"
+                    val type = when (endpoint.type) {
+                        UsbConstants.USB_ENDPOINT_XFER_BULK -> "BULK"
+                        UsbConstants.USB_ENDPOINT_XFER_INT -> "INT"
+                        UsbConstants.USB_ENDPOINT_XFER_CONTROL -> "CTRL"
+                        else -> "OTHER"
+                    }
+                    details.append("    EP $j: Addr=${endpoint.address} (0x${Integer.toHexString(endpoint.address)}), Type=$type, Dir=$dir, MaxPack=${endpoint.maxPacketSize}\n")
+                }
+            }
+            ret.put("message", details.toString())
             call.resolve(ret)
         } else {
             val deviceList = usbManager.deviceList
