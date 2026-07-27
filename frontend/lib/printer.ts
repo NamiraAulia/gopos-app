@@ -71,7 +71,7 @@ export class EscPosBuilder {
 
   textLine(value: string) {
     this.text(value);
-    this.buffer.push(0x0A); // LF (Line feed)
+    this.buffer.push(0x0D, 0x0A); // CR LF (Carriage Return + Line Feed)
     return this;
   }
 

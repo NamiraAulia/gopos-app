@@ -288,6 +288,12 @@ class PrinterPlugin : Plugin() {
             }
             
             if (writeSuccess) {
+                // Berikan jeda waktu agar MCU menyelesaikan transmisi data ke print head via USART
+                try {
+                    Thread.sleep(1000)
+                } catch (e: InterruptedException) {
+                    // Ignore
+                }
                 val ret = JSObject()
                 ret.put("success", true)
                 ret.put("message", "Berhasil dikirim! Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $totalWritten")
