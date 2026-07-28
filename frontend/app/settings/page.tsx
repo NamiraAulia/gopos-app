@@ -35,6 +35,7 @@ export default function SettingsPage() {
 
   // State for Customer Display
   const [customerDisplayEnabled, setCustomerDisplayEnabled] = useState(false);
+  const [printerType, setPrinterType] = useState<"escpos" | "pcl">("escpos");
 
   // Cek status instalasi printer & RawBT
   const checkStatus = async () => {
@@ -72,12 +73,18 @@ export default function SettingsPage() {
     checkStatus();
     if (typeof window !== "undefined") {
       setCustomerDisplayEnabled(localStorage.getItem("gopos-customer-display-enabled") === "true");
+      setPrinterType((localStorage.getItem("gopos-printer-type") as "escpos" | "pcl") || "escpos");
     }
   }, []);
 
   const handleToggleCustomerDisplay = (val: boolean) => {
     setCustomerDisplayEnabled(val);
     localStorage.setItem("gopos-customer-display-enabled", String(val));
+  };
+
+  const handleSetPrinterType = (type: "escpos" | "pcl") => {
+    setPrinterType(type);
+    localStorage.setItem("gopos-printer-type", type);
   };
 
   // Uji cetak menggunakan Direct USB Native
@@ -308,6 +315,19 @@ export default function SettingsPage() {
                       ) : (
                         <span className="text-slate-400 italic font-normal">N/A</span>
                       )}
+                    </div>
+
+                    {/* Tipe Protokol Printer */}
+                    <div className="flex justify-between items-center text-xs font-semibold py-1">
+                      <span className="text-slate-400 uppercase tracking-wider">Protokol Printer</span>
+                      <select
+                        value={printerType}
+                        onChange={(e) => handleSetPrinterType(e.target.value as "escpos" | "pcl")}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 font-bold cursor-pointer outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[11px]"
+                      >
+                        <option value="escpos">ESC/POS (Eksternal)</option>
+                        <option value="pcl">PCL (Internal/Thermal)</option>
+                      </select>
                     </div>
 
                     {/* Detail Log/Pesan USB */}

@@ -235,6 +235,109 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8
 }
 
 // -------------------------------------------------------------
+// PCL Command Builder & Receipt Generator for PCL thermal printer
+// -------------------------------------------------------------
+export function generatePclReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
+  let receipt = "";
+
+  const centerPcl = (text: string) => {
+    const lines = wrapText(text, width);
+    return lines.map(line => centerAlign(line, width)).join("\r\n");
+  };
+
+  receipt += centerPcl(data.storeName) + "\r\n";
+  if (data.storeAddress) {
+    receipt += centerPcl(data.storeAddress) + "\r\n";
+  }
+  if (data.storePhone) {
+    receipt += centerPcl(`Telp: ${data.storePhone}`) + "\r\n";
+  }
+
+  receipt += "-".repeat(width) + "\r\n";
+
+  if (data.transactionCode) {
+    receipt += formatTwoColumns("No. Struk:", data.transactionCode, width) + "\r\n";
+  }
+  receipt += formatTwoColumns("Tanggal:", data.transactionDate, width) + "\r\n";
+  receipt += formatTwoColumns("Kasir:", data.cashierName, width) + "\r\n";
+  receipt += formatTwoColumns("Pembayaran:", data.paymentMethod.toUpperCase(), width) + "\r\n";
+  
+  if (data.member) {
+    receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "\r\n";
+  }
+
+  receipt += "-".repeat(width) + "\r\n";
+
+  for (const item of data.items) {
+    const priceStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
+    const qtyStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`.padEnd(width, " ");
+    const rightWidth = priceStr.length;
+    const firstLineLimit = width - rightWidth - 1;
+    const nameLines = wrapText(item.name, firstLineLimit);
+
+    if (nameLines.length > 0) {
+      const firstLineName = nameLines[0];
+      const spacesNeeded = width - firstLineName.length - rightWidth;
+      receipt += firstLineName + " ".repeat(spacesNeeded) + priceStr + "\r\n";
+
+      for (let i = 1; i < nameLines.length; i++) {
+        receipt += ("  " + nameLines[i]).padEnd(width, " ") + "\r\n";
+      }
+    }
+    receipt += qtyStr + "\r\n";
+  }
+
+  receipt += "-".repeat(width) + "\r\n";
+
+  if (data.discount > 0) {
+    receipt += formatTwoColumns("Subtotal:", `Rp${data.subtotal.toLocaleString("id-ID")}`, width) + "\r\n";
+    receipt += formatTwoColumns("Diskon:", `-Rp${data.discount.toLocaleString("id-ID")}`, width) + "\r\n";
+  }
+  if (data.tax > 0) {
+    receipt += formatTwoColumns("Pajak:", `Rp${data.tax.toLocaleString("id-ID")}`, width) + "\r\n";
+  }
+  
+  receipt += formatTwoColumns("TOTAL AKHIR:", `Rp${data.total.toLocaleString("id-ID")}`, width) + "\r\n";
+  
+  if (data.paymentMethod.toLowerCase() === "cash" || data.paymentMethod.toLowerCase() === "tunai") {
+    const paid = data.amountPaid ?? data.total;
+    const change = data.changeAmount ?? 0;
+    receipt += formatTwoColumns("TUNAI:", `Rp${paid.toLocaleString("id-ID")}`, width) + "\r\n";
+    receipt += formatTwoColumns("KEMBALIAN:", `Rp${change.toLocaleString("id-ID")}`, width) + "\r\n";
+  }
+
+  receipt += "-".repeat(width) + "\r\n";
+
+  if (data.footerText) {
+    receipt += centerPcl(data.footerText) + "\r\n";
+  }
+  receipt += centerPcl("Powered by GoPOS") + "\r\n";
+  receipt += "\r\n\r\n\r\n\r\n\r\n";
+
+  const encoder = new TextEncoder();
+  const textBytes = encoder.encode(receipt);
+
+  const bytes = new Uint8Array(2 + textBytes.length + 1 + 2);
+  
+  // ESC E (Init)
+  bytes[0] = 0x1B;
+  bytes[1] = 0x45;
+  
+  // Text Data
+  bytes.set(textBytes, 2);
+  
+  // Form Feed (0x0C) to trigger printing of buffer
+  bytes[2 + textBytes.length] = 0x0C;
+  
+  // ESC E (End)
+  bytes[2 + textBytes.length + 1] = 0x1B;
+  bytes[2 + textBytes.length + 2] = 0x45;
+
+  return bytes;
+}
+
+
+// -------------------------------------------------------------
 // Legacy text helper for Web / RawBT fallback
 // -------------------------------------------------------------
 function centerAlign(text: string, width = 48): string {
@@ -435,7 +538,17 @@ export async function handleReceiptPrint({
 
   if (Capacitor.isNativePlatform()) {
     try {
-      const bytes = generateEscPosReceiptBytes(receiptPayload);
+      const printerType = typeof window !== "undefined"
+        ? localStorage.getItem("gopos-printer-type") || "escpos"
+        : "escpos";
+
+      let bytes: Uint8Array;
+      if (printerType === "pcl") {
+        bytes = generatePclReceiptBytes(receiptPayload);
+      } else {
+        bytes = generateEscPosReceiptBytes(receiptPayload);
+      }
+      
       const base64Data = uint8ArrayToBase64(bytes);
       const result = await Printer.printReceipt({ receiptData: base64Data });
       return { success: result.success, isNative: true, message: result.message || "Berhasil dicetak secara native" };
