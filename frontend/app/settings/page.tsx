@@ -193,6 +193,42 @@ export default function SettingsPage() {
     }
   };
 
+  // Uji pakan kertas minimal (Feed/LF)
+  const handleMinimalFeed = async () => {
+    setPrinting(true);
+    setPrintStatus(null);
+
+    try {
+      const printerMode = typeof window !== "undefined"
+        ? localStorage.getItem("gopos-printer-type") || "escpos"
+        : "escpos";
+
+      let bytes: Uint8Array;
+      if (printerMode === "pcl") {
+        bytes = new Uint8Array([0x0C]); // Form Feed
+      } else {
+        bytes = new Uint8Array([0x0A, 0x0A]); // Line Feeds
+      }
+
+      const base64Data = uint8ArrayToBase64(bytes);
+      const res = await Printer.printReceipt({ receiptData: base64Data });
+
+      setPrintStatus({
+        success: res.success,
+        message: res.message || "Berhasil mengirim pakan kertas minimal!",
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } catch (err: any) {
+      setPrintStatus({
+        success: false,
+        message: `Gagal pakan kertas: ${err.message || err}`,
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   // Uji cetak menggunakan RawBT (legacy fallback)
   const handleTestPrintRawBT = async () => {
     setPrinting(true);
@@ -356,6 +392,15 @@ export default function SettingsPage() {
                       >
                         <PrinterIcon className="h-4 w-4" />
                         <span>Uji Cetak Teks Polos (No Format/Cut)</span>
+                      </button>
+
+                      <button
+                        onClick={handleMinimalFeed}
+                        disabled={printing || checking || !nativeConnected}
+                        className="w-full h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      >
+                        <PrinterIcon className="h-4 w-4" />
+                        <span>Uji Pakan Kertas (Feed/LF)</span>
                       </button>
                     </div>
                   )}

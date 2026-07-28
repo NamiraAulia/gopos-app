@@ -206,160 +206,224 @@ class PrinterPlugin : Plugin() {
     }
 
     private fun sendToUsbPrinter(device: UsbDevice, bytes: ByteArray, call: PluginCall) {
-        val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-        
-        var printerInterface: UsbInterface? = null
-        var outEndpoint: UsbEndpoint? = null
+        Thread {
+            val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+            
+            var printerInterface: UsbInterface? = null
+            var outEndpoint: UsbEndpoint? = null
 
-        // Try to find printer class interface and its bulk out endpoint
-        for (i in 0 until device.interfaceCount) {
-            val usbInterface = device.getInterface(i)
-            if (usbInterface.interfaceClass == UsbConstants.USB_CLASS_PRINTER) {
-                for (j in 0 until usbInterface.endpointCount) {
-                    val endpoint = usbInterface.getEndpoint(j)
-                    if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
-                        endpoint.direction == UsbConstants.USB_DIR_OUT) {
-                        printerInterface = usbInterface
-                        outEndpoint = endpoint
-                        break
-                    }
-                }
-            }
-            if (printerInterface != null) break
-        }
-
-        // Fallback to first available interface and bulk-out endpoint if class-based search fails
-        if (printerInterface == null || outEndpoint == null) {
-            printerInterface = null
-            outEndpoint = null
+            // Try to find printer class interface and its bulk out endpoint
             for (i in 0 until device.interfaceCount) {
                 val usbInterface = device.getInterface(i)
-                for (j in 0 until usbInterface.endpointCount) {
-                    val endpoint = usbInterface.getEndpoint(j)
-                    if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
-                        endpoint.direction == UsbConstants.USB_DIR_OUT) {
-                        printerInterface = usbInterface
-                        outEndpoint = endpoint
-                        break
+                if (usbInterface.interfaceClass == UsbConstants.USB_CLASS_PRINTER) {
+                    for (j in 0 until usbInterface.endpointCount) {
+                        val endpoint = usbInterface.getEndpoint(j)
+                        if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
+                            endpoint.direction == UsbConstants.USB_DIR_OUT) {
+                            printerInterface = usbInterface
+                            outEndpoint = endpoint
+                            break
+                        }
                     }
                 }
                 if (printerInterface != null) break
             }
-        }
 
-        if (printerInterface == null || outEndpoint == null) {
-            call.reject("Tidak ditemukan endpoint bulk output pada printer")
-            return
-        }
-
-        val connection: UsbDeviceConnection? = usbManager.openDevice(device)
-        if (connection == null) {
-            call.reject("Gagal membuka koneksi USB ke printer")
-            return
-        }
-
-        try {
-            val forceClaim = true
-            if (!connection.claimInterface(printerInterface, forceClaim)) {
-                call.reject("Gagal mengklaim interface printer")
-                connection.close()
-                return
-            }
-
-            // Set alternate setting 0
-            try {
-                connection.setInterface(printerInterface)
-            } catch (e: Exception) {
-                // Ignore
-            }
-
-            // Flush Bulk IN endpoint (Clear any pending status packets to unblock USB FIFO RAM)
-            var inEndpoint: UsbEndpoint? = null
-            for (j in 0 until printerInterface.endpointCount) {
-                val ep = printerInterface.getEndpoint(j)
-                if (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
-                    ep.direction == UsbConstants.USB_DIR_IN) {
-                    inEndpoint = ep
-                    break
+            // Fallback to first available interface and bulk-out endpoint if class-based search fails
+            if (printerInterface == null || outEndpoint == null) {
+                printerInterface = null
+                outEndpoint = null
+                for (i in 0 until device.interfaceCount) {
+                    val usbInterface = device.getInterface(i)
+                    for (j in 0 until usbInterface.endpointCount) {
+                        val endpoint = usbInterface.getEndpoint(j)
+                        if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
+                            endpoint.direction == UsbConstants.USB_DIR_OUT) {
+                            printerInterface = usbInterface
+                            outEndpoint = endpoint
+                            break
+                        }
+                    }
+                    if (printerInterface != null) break
                 }
             }
-            if (inEndpoint != null) {
+
+            if (printerInterface == null || outEndpoint == null) {
+                call.reject("Tidak ditemukan endpoint bulk output pada printer")
+                return@Thread
+            }
+
+            val connection: UsbDeviceConnection? = usbManager.openDevice(device)
+            if (connection == null) {
+                call.reject("Gagal membuka koneksi USB ke printer")
+                return@Thread
+            }
+
+            try {
+                val forceClaim = true
+                if (!connection.claimInterface(printerInterface, forceClaim)) {
+                    call.reject("Gagal mengklaim interface printer")
+                    connection.close()
+                    return@Thread
+                }
+
+                // Set alternate setting 0
                 try {
-                    val flushBuffer = ByteArray(64)
-                    for (k in 0..4) {
-                        val readResult = connection.bulkTransfer(inEndpoint, flushBuffer, flushBuffer.size, 100)
-                        if (readResult <= 0) break // Buffer is fully empty
+                    connection.setInterface(printerInterface)
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
+                // Find Bulk IN endpoint
+                var inEndpoint: UsbEndpoint? = null
+                for (j in 0 until printerInterface.endpointCount) {
+                    val ep = printerInterface.getEndpoint(j)
+                    if (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK && 
+                        ep.direction == UsbConstants.USB_DIR_IN) {
+                        inEndpoint = ep
+                        break
                     }
+                }
+
+                // Flush Bulk IN endpoint (Clear any pending status packets to unblock USB FIFO RAM)
+                if (inEndpoint != null) {
+                    try {
+                        val flushBuffer = ByteArray(64)
+                        for (k in 0..4) {
+                            val readResult = connection.bulkTransfer(inEndpoint, flushBuffer, flushBuffer.size, 100)
+                            if (readResult <= 0) break // Buffer is fully empty
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+
+                // Handshake 1: GET_DEVICE_ID (Minta Device ID agar printer aktif dari state standby)
+                var devId = "Tidak didukung / Timeout"
+                try {
+                    val devIdBuffer = ByteArray(256)
+                    val devIdResult = connection.controlTransfer(
+                        0xA1,             // requestType (Device-to-Host, Class, Interface)
+                        0x00,             // request (GET_DEVICE_ID)
+                        0x00,             // value
+                        printerInterface.id, // index (Interface ID)
+                        devIdBuffer,
+                        devIdBuffer.size,
+                        2000              // timeout
+                    )
+                    if (devIdResult >= 2) {
+                        devId = String(devIdBuffer, 2, devIdResult - 2).trim()
+                    }
+                } catch (e: Exception) {
+                    devId = "Error: ${e.message}"
+                }
+
+                // Handshake 2: SOFT_RESET (Reset printer buffer state)
+                try {
+                    connection.controlTransfer(
+                        0x21,             // requestType (Host-to-Device, Class, Interface)
+                        0x02,             // request (SOFT_RESET)
+                        0x00,             // value
+                        printerInterface.id, // index (Interface ID)
+                        null,
+                        0,
+                        1000
+                    )
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
+                // Jeda stabilisasi setelah soft reset agar printer siap menerima data
+                try {
+                    Thread.sleep(500)
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
+                // Kirim seluruh byte data sekaligus
+                val result = connection.bulkTransfer(outEndpoint, bytes, bytes.size, 5000)
+                
+                if (result >= 0) {
+                    // Jeda 1.5 detik agar MCU menyelesaikan cetak/proses sebelum membaca status
+                    try {
+                        Thread.sleep(1500)
+                    } catch (e: InterruptedException) {
+                        // Ignore
+                    }
+
+                    // 1. Membaca Standard USB Port Status
+                    var usbPortStatus = "Printer tidak mendukung query status ini"
+                    try {
+                        val statusBuffer = ByteArray(1)
+                        val statusResult = connection.controlTransfer(
+                            0xA1,             // requestType (Device-to-Host, Class, Interface)
+                            0x01,             // request (GET_PORT_STATUS)
+                            0x00,             // value
+                            printerInterface.id, // index (Interface ID)
+                            statusBuffer,
+                            statusBuffer.size,
+                            1500              // timeout
+                        )
+                        if (statusResult == 1) {
+                            val statusByte = statusBuffer[0].toInt() and 0xFF
+                            val paperEmpty = (statusByte and 0x20) != 0
+                            val selected = (statusByte and 0x10) != 0
+                            val error = (statusByte and 0x08) == 0
+                            usbPortStatus = "0x${String.format("%02X", statusByte)} (PaperEmpty=$paperEmpty, Online=$selected, Error=$error)"
+                        } else if (statusResult < 0) {
+                            usbPortStatus = "Printer tidak mendukung query status ini (code: $statusResult)"
+                        }
+                    } catch (e: Exception) {
+                        usbPortStatus = "Printer tidak mendukung query status ini: ${e.message}"
+                    }
+
+                    // 2. Membaca dari Bulk IN Endpoint
+                    var bulkInStatus = "Printer tidak merespon sama sekali (0 bytes / Timeout)"
+                    if (inEndpoint != null) {
+                        try {
+                            val readBuffer = ByteArray(64)
+                            val readBytesCount = connection.bulkTransfer(inEndpoint, readBuffer, readBuffer.size, 2500)
+                            if (readBytesCount > 0) {
+                                val hexString = readBuffer.take(readBytesCount).joinToString(" ") { String.format("%02X", it) }
+                                val asciiString = String(readBuffer, 0, readBytesCount, Charsets.US_ASCII)
+                                    .replace(Regex("[^\\x20-\\x7E]"), ".")
+                                bulkInStatus = "Hex: [$hexString] | ASCII: [$asciiString]"
+                            } else if (readBytesCount == 0) {
+                                bulkInStatus = "0 bytes diterima"
+                            } else {
+                                bulkInStatus = "Error membaca dari IN endpoint (code: $readBytesCount)"
+                            }
+                        } catch (e: Exception) {
+                            bulkInStatus = "Gagal membaca IN endpoint: ${e.message}"
+                        }
+                    } else {
+                        bulkInStatus = "Bulk IN Endpoint tidak ditemukan"
+                    }
+
+                    val ret = JSObject()
+                    ret.put("success", true)
+                    ret.put("message", "Berhasil dikirim! Bytes: $result\n" +
+                            "Device ID: $devId\n" +
+                            "Standard Port Status: $usbPortStatus\n" +
+                            "Respon Bulk IN: $bulkInStatus")
+                    call.resolve(ret)
+                } else {
+                    call.reject("Gagal transfer data USB bulk (code: $result)")
+                }
+            } catch (e: Exception) {
+                call.reject("Error saat mencetak: ${e.message}")
+            } finally {
+                try {
+                    connection.releaseInterface(printerInterface)
+                } catch (e: Exception) {
+                    // Ignore
+                }
+                try {
+                    connection.close()
                 } catch (e: Exception) {
                     // Ignore
                 }
             }
-
-            // Handshake 1: GET_DEVICE_ID (Minta Device ID agar printer aktif dari state standby)
-            var devId = "Tidak didukung / Timeout"
-            try {
-                val devIdBuffer = ByteArray(256)
-                val devIdResult = connection.controlTransfer(
-                    0xA1,             // requestType (Device-to-Host, Class, Interface)
-                    0x00,             // request (GET_DEVICE_ID)
-                    0x00,             // value
-                    printerInterface.id, // index (Interface ID)
-                    devIdBuffer,
-                    devIdBuffer.size,
-                    2000              // timeout
-                )
-                if (devIdResult >= 2) {
-                    devId = String(devIdBuffer, 2, devIdResult - 2).trim()
-                }
-            } catch (e: Exception) {
-                devId = "Error: ${e.message}"
-            }
-
-            // Handshake 2: SOFT_RESET (Reset printer buffer state)
-            try {
-                connection.controlTransfer(
-                    0x21,             // requestType (Host-to-Device, Class, Interface)
-                    0x02,             // request (SOFT_RESET)
-                    0x00,             // value
-                    printerInterface.id, // index (Interface ID)
-                    null,
-                    0,
-                    1000
-                )
-            } catch (e: Exception) {
-                // Ignore
-            }
-
-            // Kirim seluruh byte data sekaligus (biarkan kernel OS mengelola paket 64-byte dan flow control hardware ACK/NAK)
-            val result = connection.bulkTransfer(outEndpoint, bytes, bytes.size, 5000)
-            
-            if (result >= 0) {
-                // Berikan jeda waktu 1.5 detik agar MCU menyelesaikan transmisi data ke print head via USART
-                try {
-                    Thread.sleep(1500)
-                } catch (e: InterruptedException) {
-                    // Ignore
-                }
-                val ret = JSObject()
-                ret.put("success", true)
-                ret.put("message", "Berhasil dikirim! Device ID: $devId, Interface Class: ${printerInterface.interfaceClass}, Endpoint Address: ${outEndpoint.address}, Bytes: $result")
-                call.resolve(ret)
-            } else {
-                call.reject("Gagal transfer data USB bulk (code: $result)")
-            }
-        } catch (e: Exception) {
-            call.reject("Error saat mencetak: ${e.message}")
-        } finally {
-            try {
-                connection.releaseInterface(printerInterface)
-            } catch (e: Exception) {
-                // Ignore
-            }
-            try {
-                connection.close()
-            } catch (e: Exception) {
-                // Ignore
-            }
-        }
+        }.start()
     }
 }
