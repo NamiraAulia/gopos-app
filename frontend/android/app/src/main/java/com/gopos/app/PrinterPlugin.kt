@@ -260,8 +260,19 @@ class PrinterPlugin : Plugin() {
             }
 
             try {
+                // Set configuration eksplisit sebelum claim interface
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        val config = device.getConfiguration(0)
+                        connection.setConfiguration(config)
+                    }
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
                 val forceClaim = true
-                if (!connection.claimInterface(printerInterface, forceClaim)) {
+                val claimInterfaceResult = connection.claimInterface(printerInterface, forceClaim)
+                if (!claimInterfaceResult) {
                     call.reject("Gagal mengklaim interface printer")
                     connection.close()
                     return@Thread
@@ -404,6 +415,7 @@ class PrinterPlugin : Plugin() {
                     ret.put("success", true)
                     ret.put("message", "Berhasil dikirim! Bytes: $result\n" +
                             "Device ID: $devId\n" +
+                            "Claim Interface: $claimInterfaceResult\n" +
                             "Standard Port Status: $usbPortStatus\n" +
                             "Respon Bulk IN: $bulkInStatus")
                     call.resolve(ret)
