@@ -449,7 +449,7 @@ function uint8ArrayToBase64(uint8: Uint8Array): string {
 export function printViaRawBT(text: string): void {
   const cleanText = text.replace(/%0A/g, "\n").replace(/\r\n/g, "\n");
   const base64Data = utf8ToBase64(cleanText);
-  const url = `intent:rawbt:data:text/plain;base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  const url = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
   console.log("DEBUG - rawbt intent url:", url);
   window.location.href = url;
