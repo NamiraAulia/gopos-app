@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes } from "@/lib/printer";
+import { convertImageToEscPosRaster } from "@/lib/printer-image-helper";
 import { Capacitor } from "@capacitor/core";
 import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor, HelpCircle, ShieldCheck } from "lucide-react";
 
@@ -36,6 +37,14 @@ export default function SettingsPage() {
   // State for Customer Display
   const [customerDisplayEnabled, setCustomerDisplayEnabled] = useState(false);
   const [printerType, setPrinterType] = useState<"escpos" | "pcl">("escpos");
+
+  // Shop Settings States
+  const [shopName, setShopName] = useState("");
+  const [shopAddress, setShopAddress] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
+  const [footerText, setFooterText] = useState("");
+  const [paperSize, setPaperSize] = useState<"58mm" | "80mm">("80mm");
+  const [logoBase64, setLogoBase64] = useState("");
 
   // Cek status instalasi printer & RawBT
   const checkStatus = async () => {
@@ -74,8 +83,41 @@ export default function SettingsPage() {
     if (typeof window !== "undefined") {
       setCustomerDisplayEnabled(localStorage.getItem("gopos-customer-display-enabled") === "true");
       setPrinterType((localStorage.getItem("gopos-printer-type") as "escpos" | "pcl") || "escpos");
+      
+      // Load Shop Settings from the requested gopos_* keys
+      setShopName(localStorage.getItem("gopos_shop_name") || "");
+      setShopAddress(localStorage.getItem("gopos_shop_address") || "");
+      setShopPhone(localStorage.getItem("gopos_shop_phone") || "");
+      setFooterText(localStorage.getItem("gopos_shop_footer") || "");
+      setPaperSize((localStorage.getItem("gopos_paper_size") as "58mm" | "80mm") || "80mm");
+      setLogoBase64(localStorage.getItem("gopos_shop_logo") || "");
     }
   }, []);
+
+  const handleSaveShopSettings = () => {
+    localStorage.setItem("gopos_shop_name", shopName);
+    localStorage.setItem("gopos_shop_address", shopAddress);
+    localStorage.setItem("gopos_shop_phone", shopPhone);
+    localStorage.setItem("gopos_shop_footer", footerText);
+    localStorage.setItem("gopos_paper_size", paperSize);
+    localStorage.setItem("gopos_shop_logo", logoBase64);
+    alert("Pengaturan struk berhasil disimpan!");
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearLogo = () => {
+    setLogoBase64("");
+  };
 
   const handleToggleCustomerDisplay = (val: boolean) => {
     setCustomerDisplayEnabled(val);
@@ -92,10 +134,22 @@ export default function SettingsPage() {
     setPrinting(true);
     setPrintStatus(null);
 
+    let logoBytes: Uint8Array | undefined = undefined;
+    if (logoBase64) {
+      try {
+        const logoWidth = paperSize === "58mm" ? 256 : 384;
+        logoBytes = await convertImageToEscPosRaster(logoBase64, logoWidth);
+      } catch (err: any) {
+        console.warn("Gagal memproses logo uji cetak:", err);
+      }
+    }
+
+    const cols = paperSize === "58mm" ? 32 : 48;
+
     const testReceiptData = {
-      storeName: "GoPOS STORE",
-      storeAddress: "Jl. Pengujian POS No. 123",
-      storePhone: "0812-3456-7890",
+      storeName: shopName || "GoPOS STORE",
+      storeAddress: shopAddress || "Jl. Pengujian POS No. 123",
+      storePhone: shopPhone || "0812-3456-7890",
       transactionDate: new Date().toLocaleString("id-ID"),
       transactionCode: "TRX-TEST-0001",
       cashierName: "Penguji Sistem",
@@ -110,11 +164,12 @@ export default function SettingsPage() {
       total: 35000,
       amountPaid: 50000,
       changeAmount: 15000,
-      footerText: "Direct ESC/POS Native USB Print - Sukses!"
+      footerText: footerText || "Direct ESC/POS Native USB Print - Sukses!",
+      logoBytes
     };
 
     try {
-      const bytes = generateEscPosReceiptBytes(testReceiptData);
+      const bytes = generateEscPosReceiptBytes(testReceiptData, cols);
       const base64Data = uint8ArrayToBase64(bytes);
       const res = await Printer.printReceipt({ receiptData: base64Data });
 
@@ -584,6 +639,128 @@ export default function SettingsPage() {
                       Layar ini akan menampilkan daftar barang belanjaan dan total harga secara real-time kepada pelanggan. Pastikan modul layar sekunder terhubung dengan benar ke mainboard perangkat tablet.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Pengaturan Struk Belanja */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h3 className="font-bold text-base text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <PrinterIcon className="h-5 w-5 text-indigo-600" /> Pengaturan Struk Belanja
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Nama Toko */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Toko</label>
+                    <input
+                      type="text"
+                      value={shopName}
+                      onChange={(e) => setShopName(e.target.value)}
+                      placeholder="GoPOS STORE"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  {/* Alamat Toko */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alamat Toko</label>
+                    <textarea
+                      value={shopAddress}
+                      onChange={(e) => setShopAddress(e.target.value)}
+                      placeholder="Jl. Raya Utama No. 123, Jakarta"
+                      rows={2}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Nomor Telepon */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">No. Telepon Toko</label>
+                    <input
+                      type="text"
+                      value={shopPhone}
+                      onChange={(e) => setShopPhone(e.target.value)}
+                      placeholder="0812-3456-7890"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  {/* Teks Footer */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Teks Footer Struk</label>
+                    <input
+                      type="text"
+                      value={footerText}
+                      onChange={(e) => setFooterText(e.target.value)}
+                      placeholder="Terima Kasih - Barang yang sudah dibeli..."
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  {/* Ukuran Kertas Printer */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ukuran Kertas & Kolom</label>
+                    <select
+                      value={paperSize}
+                      onChange={(e) => setPaperSize(e.target.value as "58mm" | "80mm")}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value="80mm">80mm (Lebar - 48 Kolom)</option>
+                      <option value="58mm">58mm (Kecil - 32 Kolom)</option>
+                    </select>
+                  </div>
+
+                  {/* Logo Toko */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Logo Struk (Hitam Putih / Monochrome)</label>
+                    <div className="flex items-center gap-3">
+                      {logoBase64 ? (
+                        <div className="relative border border-slate-200 rounded-xl p-2 bg-slate-50 flex items-center justify-center h-16 w-16 group shrink-0">
+                          <img
+                            src={logoBase64}
+                            alt="Preview Logo"
+                            className="max-h-full max-w-full object-contain filter grayscale"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleClearLogo}
+                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-600 transition-colors cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center bg-slate-50 shrink-0 text-slate-400">
+                          <PrinterIcon className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          id="logo-upload-input"
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="logo-upload-input"
+                          className="inline-flex h-9 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                        >
+                          Pilih Gambar Logo
+                        </label>
+                        <p className="text-[10px] text-slate-400 mt-1">Logo akan otomatis disesuaikan & diubah menjadi monochrome (hitam putih) untuk dicetak.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tombol Simpan */}
+                  <button
+                    type="button"
+                    onClick={handleSaveShopSettings}
+                    className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow"
+                  >
+                    Simpan Pengaturan Struk
+                  </button>
                 </div>
               </div>
 

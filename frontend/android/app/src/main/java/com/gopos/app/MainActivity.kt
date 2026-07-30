@@ -70,6 +70,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(PrinterPlugin::class.java)
         super.onCreate(savedInstanceState)
 
+        // 2. Intersept URL (Tetap dipertahankan jika masih butuh panggil Intent RawBT)
         bridge.webView.webViewClient = object : BridgeWebViewClient(bridge) {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return super.shouldOverrideUrlLoading(view, request)
@@ -88,28 +89,13 @@ class MainActivity : BridgeActivity() {
             }
 
             private fun handleIntent(url: String): Boolean {
-                // DEBUG - hapus setelah masalah print ditemukan
-                val urlLength = url.length
-                val first50 = if (url.length > 50) url.substring(0, 50) else url
-                Toast.makeText(bridge.context, "URL Length: $urlLength\nPrefix: $first50", Toast.LENGTH_LONG).show()
-                // DEBUG - hapus setelah masalah print ditemukan
-
                 try {
                     val intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
-
-                    // DEBUG - hapus setelah masalah print ditemukan
-                    val dataStr = intent.dataString ?: intent.data?.toString() ?: "null"
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        Toast.makeText(bridge.context, "Intent Data:\n$dataStr", Toast.LENGTH_LONG).show()
-                    }, 3500)
-                    // DEBUG - hapus setelah masalah print ditemukan
-
                     bridge.context.startActivity(intent)
                 } catch (e: ActivityNotFoundException) {
-                    Toast.makeText(bridge.context, "RawBT tidak terinstall", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(bridge.context, "Aplikasi pendukung tidak ditemukan", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    Toast.makeText(bridge.context, "Gagal memproses print command", Toast.LENGTH_SHORT).show()
                 }
                 return true
             }
@@ -137,14 +123,12 @@ class MainActivity : BridgeActivity() {
         if (displays.isNotEmpty()) {
             val targetDisplay = displays[0]
             
-            // If already showing on a different display, dismiss it
             if (customerPresentation != null && customerPresentation?.display != targetDisplay) {
                 customerPresentation?.dismiss()
                 customerPresentation = null
             }
             
             if (customerPresentation == null) {
-                // Determine origin of main webview to maintain same-origin for BroadcastChannel
                 val mainUrl = bridge.webView.url ?: "http://localhost"
                 val targetUrl = try {
                     val uri = Uri.parse(mainUrl)
@@ -164,7 +148,6 @@ class MainActivity : BridgeActivity() {
                 }
             }
         } else {
-            // Dismiss if no presentation display is connected anymore
             customerPresentation?.dismiss()
             customerPresentation = null
         }

@@ -1,5 +1,6 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
 import { ReceiptData } from './types/receipt';
+import { convertImageToEscPosRaster } from './printer-image-helper';
 
 export interface PrinterPlugin {
   printReceipt(options: { receiptData: string }): Promise<{ success: boolean; message?: string }>;
@@ -9,12 +10,22 @@ export interface PrinterPlugin {
 
 export const Printer = registerPlugin<PrinterPlugin>('Printer');
 
+export interface ShopSettings {
+  name?: string;
+  address?: string;
+  phone?: string;
+  footer?: string;
+  logo?: string; // base64 or URL
+}
+
 export interface HandlePrintParams {
   transaction: any;
   shopName?: string;
   shopAddress?: string;
   shopPhone?: string;
   cashierName?: string;
+  paperSize?: '58mm' | '80mm';
+  shopSettings?: ShopSettings;
 }
 
 // -------------------------------------------------------------
@@ -85,6 +96,11 @@ export class EscPosBuilder {
     return this;
   }
 
+  raw(bytes: Uint8Array | number[]) {
+    this.buffer.push(...Array.from(bytes));
+    return this;
+  }
+
   build(): Uint8Array {
     return new Uint8Array(this.buffer);
   }
@@ -132,6 +148,13 @@ function formatTwoColumns(label: string, value: string, width = 48): string {
 
 export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
   const builder = new EscPosBuilder();
+
+  // 0. Print Logo if present
+  if (data.logoBytes && data.logoBytes.length > 0) {
+    builder.alignCenter()
+           .raw(data.logoBytes)
+           .lineFeed(1);
+  }
 
   // 1. Header (Store Name - Bold, Center, Large)
   builder.alignCenter()
@@ -355,8 +378,7 @@ function centerAlignWrapped(text: string, width = 48): string {
   return lines.map(line => centerAlign(line, width)).join("%0A");
 }
 
-export function generatePlainTextReceipt(data: ReceiptData): string {
-  const width = 48;
+export function generatePlainTextReceipt(data: ReceiptData, width = 48): string {
   let receipt = "";
 
   receipt += centerAlignWrapped(data.storeName, width) + "%0A";
@@ -488,22 +510,59 @@ export async function isRawBTInstalled(): Promise<boolean> {
   }
 }
 
-export async function handleReceiptPrint({
-  transaction,
-  shopName = "GoPOS STORE",
-  shopAddress = "Jl. Raya Utama No. 123, Jakarta",
-  shopPhone = "0812-3456-7890",
-  cashierName = "Kasir",
-}: HandlePrintParams): Promise<{ success: boolean; isNative: boolean; message?: string }> {
+export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ success: boolean; isNative: boolean; message?: string }> {
+  const { transaction, cashierName = "Kasir" } = params;
   if (!transaction) {
     throw new Error("Data transaksi tidak ditemukan.");
   }
 
+  // Retrieve settings from localStorage as fallback
+  let localShopName = "";
+  let localShopAddress = "";
+  let localShopPhone = "";
+  let localShopFooter = "";
+  let localPaperSize = "80mm";
+  let localLogo = "";
+
+  if (typeof window !== "undefined") {
+    try {
+      localShopName = localStorage.getItem("gopos_shop_name") || "";
+      localShopAddress = localStorage.getItem("gopos_shop_address") || "";
+      localShopPhone = localStorage.getItem("gopos_shop_phone") || "";
+      localShopFooter = localStorage.getItem("gopos_shop_footer") || "";
+      localPaperSize = localStorage.getItem("gopos_paper_size") || "80mm";
+      localLogo = localStorage.getItem("gopos_shop_logo") || "";
+    } catch (e) {
+      console.error("Gagal membaca settings dari localStorage:", e);
+    }
+  }
+
+  // Resolve final values
+  const paperSize = params.paperSize || localPaperSize || "80mm";
+  const cols = paperSize === "58mm" ? 32 : 48;
+
+  const storeName = params.shopSettings?.name || params.shopName || localShopName || "GoPOS STORE";
+  const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "";
+  const storePhone = params.shopSettings?.phone || params.shopPhone || localShopPhone || "";
+  const footerText = params.shopSettings?.footer || localShopFooter || "Terima Kasih - Barang yang sudah dibeli tidak dapat ditukar/dikembalikan";
+  const logoSrc = params.shopSettings?.logo || localLogo || "";
+
+  // Process logo asynchronously if present
+  let logoBytes: Uint8Array | undefined = undefined;
+  if (logoSrc) {
+    try {
+      const logoWidth = paperSize === "58mm" ? 256 : 384;
+      logoBytes = await convertImageToEscPosRaster(logoSrc, logoWidth);
+    } catch (logoErr) {
+      console.warn("Gagal memproses logo struk, mencetak tanpa logo:", logoErr);
+    }
+  }
+
   const receiptPayload: ReceiptData = {
     transactionCode: transaction.transaction_code || "-",
-    storeName: shopName,
-    storeAddress: shopAddress,
-    storePhone: shopPhone,
+    storeName,
+    storeAddress,
+    storePhone,
     items: (transaction.items || []).map((item: any) => ({
       name: item.product_name || item.name || "Item",
       qty: item.qty || 1,
@@ -525,7 +584,7 @@ export async function handleReceiptPrint({
           dateStyle: "short",
           timeStyle: "short",
         }),
-    footerText: "Terima Kasih - Barang yang sudah dibeli tidak dapat ditukar/dikembalikan",
+    footerText,
     amountPaid: transaction.amount_paid ?? transaction.total_amount,
     changeAmount: transaction.change_amount ?? 0,
     member: transaction.member
@@ -534,6 +593,7 @@ export async function handleReceiptPrint({
           memberCode: transaction.member.phone || transaction.member.member_code || `#${transaction.member.id}`,
         }
       : null,
+    logoBytes,
   };
 
   if (Capacitor.isNativePlatform()) {
@@ -544,9 +604,9 @@ export async function handleReceiptPrint({
 
       let bytes: Uint8Array;
       if (printerType === "pcl") {
-        bytes = generatePclReceiptBytes(receiptPayload);
+        bytes = generatePclReceiptBytes(receiptPayload, cols);
       } else {
-        bytes = generateEscPosReceiptBytes(receiptPayload);
+        bytes = generateEscPosReceiptBytes(receiptPayload, cols);
       }
       
       const base64Data = uint8ArrayToBase64(bytes);
@@ -554,12 +614,12 @@ export async function handleReceiptPrint({
       return { success: result.success, isNative: true, message: result.message || "Berhasil dicetak secara native" };
     } catch (err: any) {
       console.error("Gagal cetak native USB, fallback ke RawBT:", err);
-      const plainText = generatePlainTextReceipt(receiptPayload);
+      const plainText = generatePlainTextReceipt(receiptPayload, cols);
       printViaRawBT(plainText);
       return { success: true, isNative: true, message: "Gagal cetak native, dialihkan ke RawBT: " + err.message };
     }
   } else {
-    const plainText = generatePlainTextReceipt(receiptPayload);
+    const plainText = generatePlainTextReceipt(receiptPayload, cols);
     printViaRawBT(plainText);
     return { success: true, isNative: false, message: "Membuka link RawBT (Web Fallback)" };
   }
