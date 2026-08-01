@@ -137,6 +137,8 @@ export function useProductManagement() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
   const [filterStokKritis, setFilterStokKritis] = useState(false);
+  const [filterDataIncomplete, setFilterDataIncomplete] = useState(false);
+  const [showCsvModal, setShowCsvModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -144,12 +146,25 @@ export function useProductManagement() {
   const { products, meta, loading, refresh, setSearch, setPage, setParams } = useProducts();
   const { deleteProduct, updateProduct, uploadCsv, loading: mutationLoading } = useMutationProducts();
 
+  const isIncompleteProduct = (p: Product) => {
+    const isStockZero = p.stock === 0;
+    const isHppZero = p.best_price === 0 || p.best_price == null;
+    const isAutoBarcode = /^PRD-\d{8}-\d+$/i.test(p.barcode || "");
+    return isStockZero || isHppZero || isAutoBarcode;
+  };
+
+  const incompleteCount = products.filter(isIncompleteProduct).length;
+
   let displayedProducts = [...products];
 
   if (filterStokKritis) {
     displayedProducts = displayedProducts.filter(
       (p) => p.min_stock != null && p.stock <= p.min_stock
     );
+  }
+
+  if (filterDataIncomplete) {
+    displayedProducts = displayedProducts.filter(isIncompleteProduct);
   }
 
   if (sortOrder !== "none") {
@@ -243,9 +258,11 @@ export function useProductManagement() {
   const handleResetSearch = () => {
     setSearchQuery("");
     setFilterStokKritis(false);
+    setFilterDataIncomplete(false);
     setSortOrder("none");
     setParams({ search: "", page: 1 });
   };
+
 
   const handleTogglePromo = async (product: Product) => {
     const res = await updateProduct(product.id, {
@@ -310,6 +327,11 @@ export function useProductManagement() {
     setSortOrder,
     filterStokKritis,
     setFilterStokKritis,
+    filterDataIncomplete,
+    setFilterDataIncomplete,
+    incompleteCount,
+    showCsvModal,
+    setShowCsvModal,
     fileInputRef,
     searchInputRef,
     displayedProducts,
@@ -332,3 +354,4 @@ export function useProductManagement() {
     meta,
   };
 }
+

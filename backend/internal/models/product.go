@@ -10,6 +10,7 @@ type Product struct {
 	Price          int        `json:"price"`
 	PriceBig       int        `json:"price_big"`
 	Stock          float64    `json:"stock"`
+	MinStock       int        `json:"min_stock" gorm:"default:5"`
 	SupplierName   string     `json:"supplier_name"`
 	Conversion     int        `json:"conversion"`
 	Unit           string     `json:"unit"`

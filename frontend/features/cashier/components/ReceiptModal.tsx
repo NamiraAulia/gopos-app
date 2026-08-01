@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Printer, ShoppingCart, Loader2 } from "lucide-react";
+import { ShieldCheck, Printer, ShoppingCart, Loader2, RefreshCw, CheckCircle } from "lucide-react";
 import { handleReceiptPrint } from "@/lib/printer";
 import { Alert } from "@/components/ui/Alert";
 
@@ -14,17 +14,25 @@ type ReceiptModalProps = {
 export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
+  const [printSuccess, setPrintSuccess] = useState(false);
 
   if (!isOpen || !transaction) return null;
 
   const handlePrint = async () => {
     setIsPrinting(true);
     setPrintError(null);
+    setPrintSuccess(false);
+
     try {
-      await handleReceiptPrint({ transaction });
+      const res = await handleReceiptPrint({ transaction });
+      if (res && res.success === false) {
+        throw new Error(res.message || "Printer tidak merespon.");
+      }
+      setPrintSuccess(true);
+      setTimeout(() => setPrintSuccess(false), 4000);
     } catch (err: any) {
       console.error("Print error in ReceiptModal:", err);
-      setPrintError(err.message || "Gagal mencetak struk.");
+      setPrintError(err.message || "Tidak dapat terhubung ke printer.");
     } finally {
       setIsPrinting(false);
     }
@@ -41,13 +49,32 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
           <p className="text-center text-sm text-slate-500 mt-2">Stok gudang diperbarui otomatis.</p>
         </div>
 
-        {printError && (
+        {/* Success Alert */}
+        {printSuccess && (
           <div className="px-6 pt-4">
-            <Alert type="error" message={printError} />
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Struk berhasil dicetak</span>
+            </div>
           </div>
         )}
 
-        <div className="p-6 bg-slate-50/50 m-6 mt-0 rounded-xl border border-slate-200">
+        {/* Error Alert with Retry button */}
+        {printError && (
+          <div className="px-6 pt-4 space-y-2">
+            <Alert type="error" message={`Gagal mencetak struk: ${printError}. Periksa koneksi printer.`} />
+            <button
+              onClick={handlePrint}
+              disabled={isPrinting}
+              className="w-full h-9 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isPrinting ? "animate-spin" : ""}`} />
+              <span>Coba Cetak Lagi</span>
+            </button>
+          </div>
+        )}
+
+        <div className="p-6 bg-slate-50/50 m-6 mt-4 rounded-xl border border-slate-200">
           <div className="flex justify-between text-sm mb-3">
             <span className="font-bold text-slate-500">Nomor Struk</span>
             <span className="font-bold text-slate-900">{transaction.transaction_code}</span>

@@ -13,11 +13,13 @@ import {
   ArrowUpDown, 
   Percent, 
   CheckSquare, 
-  Square 
+  Square,
+  AlertCircle
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { ProductModal } from "@/features/products/components/ProductModal";
 import { DeleteModal } from "@/features/products/components/DeleteModal";
+import { CsvImportModal } from "@/features/products/components/CsvImportModal";
 import { useProductManagement } from "@/features/products/hooks/index";
 
 export default function ProductManagementPage() {
@@ -33,6 +35,11 @@ export default function ProductManagementPage() {
     setSortOrder,
     filterStokKritis,
     setFilterStokKritis,
+    filterDataIncomplete,
+    setFilterDataIncomplete,
+    incompleteCount,
+    showCsvModal,
+    setShowCsvModal,
     fileInputRef,
     searchInputRef,
     displayedProducts,
@@ -78,11 +85,10 @@ export default function ProductManagementPage() {
             </div>
             
             <div className="flex items-center gap-2">
-              <input type="file" ref={fileInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
-              <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 border bg-white text-slate-700 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors cursor-pointer">
-                <Upload className="h-4 w-4 text-slate-500" /> Import CSV
+              <button onClick={() => setShowCsvModal(true)} className="flex items-center gap-1.5 px-3.5 py-2 border bg-white text-slate-700 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors cursor-pointer">
+                <Upload className="h-4 w-4 text-blue-600" /> Import CSV
               </button>
-              <button onClick={handleExportCSV} className="flex items-center gap-1.5 px-3 py-2 border bg-white text-slate-700 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors cursor-pointer">
+              <button onClick={handleExportCSV} className="flex items-center gap-1.5 px-3.5 py-2 border bg-white text-slate-700 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors cursor-pointer">
                 <Download className="h-4 w-4 text-slate-500" /> Export CSV
               </button>
               <button onClick={handleOpenAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm transition-colors cursor-pointer">
@@ -101,18 +107,22 @@ export default function ProductManagementPage() {
               <button onClick={() => setFilterStokKritis(!filterStokKritis)} className={`flex items-center gap-1 px-3 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${filterStokKritis ? "bg-red-50 border-red-200 text-red-600" : "bg-white text-slate-600"}`}>
                 <AlertTriangle className="h-3.5 w-3.5" /> Stok Kritis
               </button>
+              <button onClick={() => setFilterDataIncomplete(!filterDataIncomplete)} className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${filterDataIncomplete ? "bg-amber-50 border-amber-300 text-amber-700 shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500" /> Data Belum Lengkap ({incompleteCount})
+              </button>
               {selectedIds.length > 0 && (
                 <button onClick={handleBulkDeactivate} className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer">
                   Kosongkan {selectedIds.length} Stok Terpilih
                 </button>
               )}
-              {(searchQuery || filterStokKritis || sortOrder !== "none") && (
+              {(searchQuery || filterStokKritis || filterDataIncomplete || sortOrder !== "none") && (
                 <button onClick={handleResetSearch} className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
                   Clear
                 </button>
               )}
             </div>
           </div>
+
 
           <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-left">
@@ -232,11 +242,29 @@ export default function ProductManagementPage() {
             )}
           </div>
         </div>
+
+        <ProductModal
+          isOpen={showProductModal}
+          onClose={() => setShowProductModal(false)}
+          existingProduct={selectedProduct}
+          onSuccess={refresh}
+        />
+
+        <DeleteModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          product={selectedProduct}
+          isDeleting={mutationLoading}
+        />
+
+        <CsvImportModal
+          isOpen={showCsvModal}
+          onClose={() => setShowCsvModal(false)}
+          onSuccess={refresh}
+        />
       </main>
 
-      <ProductModal isOpen={showProductModal} onClose={() => setShowProductModal(false)} existingProduct={selectedProduct} onSuccess={refresh} />
-      
-      <DeleteModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleConfirmDelete} product={selectedProduct} isDeleting={mutationLoading} />
     </div>
   );
 }

@@ -65,6 +65,9 @@ export function TransactionHistoryView() {
     fetchTransactions,
     openDetail,
     handlePrint,
+    isPrinting,
+    printError,
+    printSuccess,
     handleRefundSuccess,
     handleResetFilters,
     goToPage,
@@ -432,41 +435,73 @@ export function TransactionHistoryView() {
             </div>
 
             {/* Modal Actions */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="flex-1 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Printer className="size-4 text-slate-400" /> Cetak Ulang Struk
-              </button>
-              
-              {selectedTransaction.status === "completed" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setShowRefundModal(true)}
-                    className="flex-1 h-10 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="size-4" /> Retur Barang
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleVoid(selectedTransaction.id)}
-                    className="flex-1 h-10 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <X className="size-4" /> Batalkan Transaksi
-                  </button>
-                </>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+              {printSuccess && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold text-center">
+                  Struk berhasil dicetak
+                </div>
               )}
+              {printError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold space-y-1.5">
+                  <p>Gagal mencetak struk: {printError}. Periksa koneksi printer.</p>
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={isPrinting || detailLoading}
+                    className="w-full h-8 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <span>Coba Cetak Lagi</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  disabled={isPrinting || detailLoading}
+                  className="flex-1 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPrinting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      <span>Mencetak Struk...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="size-4 text-slate-400" />
+                      <span>Cetak Ulang Struk</span>
+                    </>
+                  )}
+                </button>
               
-              <button
-                type="button"
-                onClick={() => setSelectedTransaction(null)}
-                className="sm:w-20 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
+                {selectedTransaction.status === "completed" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowRefundModal(true)}
+                      className="flex-1 h-10 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="size-4" /> Retur Barang
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleVoid(selectedTransaction.id)}
+                      className="flex-1 h-10 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <X className="size-4" /> Batalkan Transaksi
+                    </button>
+                  </>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransaction(null)}
+                  className="sm:w-20 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
 
           </div>

@@ -191,13 +191,19 @@ export const productsApi = {
                     });
                 }
             };
-            reader.onerror = () => resolve({
-                success: false,
-                message: "Gagal membaca berkas CSV",
-                data: null,
-                meta: null,
-            });
             reader.readAsText(file);
         });
+    },
+
+    batchImport: async (products: any[], signal?: AbortSignal) => {
+        const { productsApi } = await import("@/lib/api");
+        return productsApi.batchImport(products, signal);
+    },
+
+    getBarcodes: async () => {
+        const { productsApi } = await import("@/lib/api");
+        return productsApi.getBarcodes();
     }
 };
+
+

@@ -2,10 +2,27 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 import { ReceiptData } from './types/receipt';
 import { convertImageToEscPosRaster } from './printer-image-helper';
 
+export interface PrinterDevice {
+  vendorId: number;
+  productId: number;
+  deviceName: string;
+  productName: string;
+}
+
 export interface PrinterPlugin {
   printReceipt(options: { text?: string; receiptData?: string }): Promise<{ success: boolean; message?: string }>;
-  checkPrinterStatus(): Promise<{ connected: boolean; hasPermission: boolean; message?: string }>;
+  checkPrinterStatus(): Promise<{
+    connected: boolean;
+    hasPermission: boolean;
+    message?: string;
+    printerType?: 'usb' | 'telpo_internal';
+    vendorId?: number;
+    productId?: number;
+    candidateCount?: number;
+  }>;
   checkRawBTInstalled(): Promise<{ installed: boolean }>;
+  listAvailablePrinters(): Promise<{ printers: PrinterDevice[]; count: number }>;
+  setPreferredPrinter(options: { vendorId: number; productId: number }): Promise<{ success: boolean; preferredPrinter?: string }>;
 }
 
 export const Printer = registerPlugin<PrinterPlugin>('Printer');
@@ -507,6 +524,33 @@ export async function isRawBTInstalled(): Promise<boolean> {
   } catch (err) {
     console.error("Gagal memeriksa installasi RawBT:", err);
     return false;
+  }
+}
+
+export async function getAvailablePrinters(): Promise<{ printers: PrinterDevice[]; count: number }> {
+  if (!Capacitor.isNativePlatform()) {
+    return { printers: [], count: 0 };
+  }
+  try {
+    return await Printer.listAvailablePrinters();
+  } catch (err) {
+    console.error("Gagal mendeteksi listAvailablePrinters:", err);
+    return { printers: [], count: 0 };
+  }
+}
+
+export async function setPreferredPrinterDevice(vendorId: number, productId: number): Promise<{ success: boolean; preferredPrinter?: string }> {
+  if (!Capacitor.isNativePlatform()) {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("preferred_printer_vid_pid", `${vendorId}:${productId}`);
+    }
+    return { success: true, preferredPrinter: `${vendorId}:${productId}` };
+  }
+  try {
+    return await Printer.setPreferredPrinter({ vendorId, productId });
+  } catch (err: any) {
+    console.error("Gagal menyimpan preferensi printer:", err);
+    throw err;
   }
 }
 

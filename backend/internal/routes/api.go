@@ -25,6 +25,8 @@ func SetupRoutes(r *gin.Engine) {
 			protected.PUT("/products/:id", handlers.EditProducts)
 			protected.DELETE("/products/:id", handlers.DeleteProducts)
 			protected.POST("/products/import", middleware.RequireRole("admin"), handlers.ImportProductsCSV)
+			protected.POST("/products/batch-import", middleware.RequireRole("admin"), handlers.BatchImportProducts)
+			protected.GET("/products/barcodes", middleware.RequireRole("admin"), handlers.GetProductBarcodes)
 
 			protected.POST("/checkout", handlers.Checkout)
 			protected.GET("/transactions", handlers.GetTransactions)

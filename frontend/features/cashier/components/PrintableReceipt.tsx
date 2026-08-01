@@ -46,6 +46,7 @@ export const PrintableReceipt = ({
 }: PrintableReceiptProps) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
+  const [printSuccess, setPrintSuccess] = useState(false);
 
   if (!transaction) return null;
 
@@ -69,25 +70,31 @@ export const PrintableReceipt = ({
   const handlePrint = async () => {
     setIsPrinting(true);
     setPrintError(null);
+    setPrintSuccess(false);
 
     try {
       if (Capacitor.isNativePlatform()) {
-        // Cek status printer thermal
         const status = await Printer.checkPrinterStatus();
         if (!status.connected) {
-          throw new Error(status.message || "Printer thermal internal tidak terhubung atau tidak siap.");
+          throw new Error(status.message || "Printer thermal/USB tidak terhubung atau tidak siap.");
         }
       }
 
-      await handleReceiptPrint({
+      const res = await handleReceiptPrint({
         transaction,
         shopName,
         shopAddress,
         shopPhone,
       });
+
+      if (res && res.success === false) {
+        throw new Error(res.message || "Gagal mengirim data cetak ke printer.");
+      }
+      setPrintSuccess(true);
+      setTimeout(() => setPrintSuccess(false), 4000);
     } catch (err: any) {
       console.error("Gagal mencetak struk:", err);
-      setPrintError(err.message || "Gagal mencetak struk. Pastikan printer terhubung.");
+      setPrintError(err.message || "Periksa koneksi printer.");
     } finally {
       setIsPrinting(false);
     }
@@ -95,10 +102,24 @@ export const PrintableReceipt = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Pesan Error / Alert jika print gagal */}
+      {/* Pesan Sukses */}
+      {printSuccess && (
+        <div className="w-full max-w-[58mm] mb-3 print:hidden p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold">
+          Struk berhasil dicetak
+        </div>
+      )}
+
+      {/* Pesan Error / Alert jika print gagal dengan tombol Coba Cetak Lagi */}
       {printError && (
-        <div className="w-full max-w-[58mm] mb-3 print:hidden">
-          <Alert type="error" message={printError} />
+        <div className="w-full max-w-[58mm] mb-3 print:hidden space-y-2">
+          <Alert type="error" message={`Gagal mencetak struk: ${printError}. Periksa koneksi printer.`} />
+          <button
+            onClick={handlePrint}
+            disabled={isPrinting}
+            className="w-full h-8 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <span>Coba Cetak Lagi</span>
+          </button>
         </div>
       )}
 

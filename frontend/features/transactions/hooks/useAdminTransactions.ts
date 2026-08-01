@@ -125,26 +125,43 @@ export function useAdminTransactions() {
     }
   };
 
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const [printSuccess, setPrintSuccess] = useState(false);
+
   const handlePrint = async () => {
-    if (selectedTransaction) {
-      try {
-        await handleReceiptPrint({
-          transaction: {
-            ...selectedTransaction,
-            items: selectedTransaction.items?.map((item: any) => ({
-              product_name: item.product_name,
-              qty: item.qty,
-              price: item.unit_price,
-              subtotal: item.subtotal,
-            }))
-          },
-          cashierName: selectedTransaction.user?.name || "Kasir"
-        });
-      } catch (err: any) {
-        alert(err.message || "Gagal mencetak struk.");
+    if (!selectedTransaction) {
+      setPrintError("Tidak ada transaksi yang terpilih.");
+      return;
+    }
+    setIsPrinting(true);
+    setPrintError(null);
+    setPrintSuccess(false);
+
+    try {
+      const res = await handleReceiptPrint({
+        transaction: {
+          ...selectedTransaction,
+          items: selectedTransaction.items?.map((item: any) => ({
+            product_name: item.product_name,
+            qty: item.qty,
+            price: item.unit_price,
+            subtotal: item.subtotal,
+          }))
+        },
+        cashierName: selectedTransaction.user?.name || "Kasir"
+      });
+
+      if (res && res.success === false) {
+        throw new Error(res.message || "Gagal mencetak struk.");
       }
-    } else {
-      alert("Tidak ada transaksi yang terpilih.");
+      setPrintSuccess(true);
+      setTimeout(() => setPrintSuccess(false), 4000);
+    } catch (err: any) {
+      console.error("Error cetak di useAdminTransactions:", err);
+      setPrintError(err.message || "Periksa koneksi printer.");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -290,6 +307,9 @@ export function useAdminTransactions() {
     fetchTransactions,
     openDetail,
     handlePrint,
+    isPrinting,
+    printError,
+    printSuccess,
     handleRefundSuccess,
     handleResetFilters,
     goToPage,

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes } from "@/lib/printer";
+import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes, PrinterDevice, getAvailablePrinters, setPreferredPrinterDevice } from "@/lib/printer";
 import { convertImageToEscPosRaster } from "@/lib/printer-image-helper";
 import { Capacitor } from "@capacitor/core";
-import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor, HelpCircle, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor, HelpCircle, ShieldCheck, Loader2, Usb, Check } from "lucide-react";
 
 // Convert Uint8Array to Base64 (local helper for settings test print)
 function uint8ArrayToBase64(uint8: Uint8Array): string {
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [nativeConnected, setNativeConnected] = useState<boolean | null>(null);
   const [nativePermission, setNativePermission] = useState<boolean | null>(null);
   const [nativeMessage, setNativeMessage] = useState<string>("");
+  const [printerTypeState, setPrinterTypeState] = useState<string>("");
 
   const [checking, setChecking] = useState(true);
   const [printing, setPrinting] = useState(false);
@@ -33,6 +34,12 @@ export default function SettingsPage() {
     message: string;
     timestamp: string;
   } | null>(null);
+
+  // Available USB Printers state (TUGAS 1)
+  const [availablePrinters, setAvailablePrinters] = useState<PrinterDevice[]>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState<boolean>(false);
+  const [preferredVidPid, setPreferredVidPid] = useState<string>("");
+  const [toastNotif, setToastNotif] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // State for Customer Display
   const [customerDisplayEnabled, setCustomerDisplayEnabled] = useState(false);
@@ -45,6 +52,75 @@ export default function SettingsPage() {
   const [footerText, setFooterText] = useState("");
   const [paperSize, setPaperSize] = useState<"58mm" | "80mm">("80mm");
   const [logoBase64, setLogoBase64] = useState("");
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToastNotif({ message, type });
+    setTimeout(() => setToastNotif(null), 4000);
+  };
+
+  // Fetch available USB printers
+  const fetchAvailablePrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const res = await Printer.listAvailablePrinters();
+        setAvailablePrinters(res.printers || []);
+      } else {
+        const res = await getAvailablePrinters();
+        setAvailablePrinters(res.printers || []);
+      }
+    } catch (err: any) {
+      console.error("Gagal memuat listAvailablePrinters:", err);
+      setAvailablePrinters([]);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  };
+
+  // Handle select preferred printer
+  const handleSelectPreferredPrinter = async (vendorId: number, productId: number) => {
+    try {
+      await setPreferredPrinterDevice(vendorId, productId);
+      const vidPidStr = `${vendorId}:${productId}`;
+      setPreferredVidPid(vidPidStr);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("preferred_printer_vid_pid", vidPidStr);
+      }
+      showToast(`Berhasil memilih printer (VID: ${vendorId}, PID: ${productId})`, "success");
+    } catch (err: any) {
+      showToast(`Gagal menyimpan preferensi printer: ${err.message || err}`, "error");
+    }
+  };
+
+  // Quick Test Print helper
+  const handleQuickTestPrint = async () => {
+    setPrinting(true);
+    setPrintStatus(null);
+    try {
+      const testText = "=== TEST PRINT ===\nGoPOS POS System\nTanggal: " + new Date().toLocaleString("id-ID") + "\nStatus: Koneksi Printer USB Berhasil!\n\n\n\n";
+      const res = await Printer.printReceipt({ text: testText });
+      if (res.success) {
+        showToast("Struk test print berhasil dicetak", "success");
+        setPrintStatus({
+          success: true,
+          message: res.message || "Struk test print berhasil dicetak ke printer!",
+          timestamp: new Date().toLocaleTimeString("id-ID")
+        });
+      } else {
+        throw new Error(res.message || "Gagal mencetak test print");
+      }
+    } catch (err: any) {
+      const errMsg = `Gagal mencetak struk test print: ${err.message || err}. Periksa koneksi printer.`;
+      showToast(errMsg, "error");
+      setPrintStatus({
+        success: false,
+        message: errMsg,
+        timestamp: new Date().toLocaleTimeString("id-ID")
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   // Cek status instalasi printer & RawBT
   const checkStatus = async () => {
@@ -63,6 +139,10 @@ export default function SettingsPage() {
         setNativeConnected(status.connected);
         setNativePermission(status.hasPermission);
         setNativeMessage(status.message || "");
+        setPrinterTypeState(status.printerType || "");
+        if (status.vendorId && status.productId) {
+          setPreferredVidPid(`${status.vendorId}:${status.productId}`);
+        }
       } catch (err: any) {
         console.error("Gagal mendeteksi printer native:", err);
         setNativeConnected(false);
@@ -75,6 +155,7 @@ export default function SettingsPage() {
       setNativePermission(null);
       setNativeMessage("Bukan Platform Native (Web Browser)");
     }
+    await fetchAvailablePrinters();
     setChecking(false);
   };
 
@@ -83,6 +164,7 @@ export default function SettingsPage() {
     if (typeof window !== "undefined") {
       setCustomerDisplayEnabled(localStorage.getItem("gopos-customer-display-enabled") === "true");
       setPrinterType((localStorage.getItem("gopos-printer-type") as "escpos" | "pcl") || "escpos");
+      setPreferredVidPid(localStorage.getItem("preferred_printer_vid_pid") || "");
       
       // Load Shop Settings from the requested gopos_* keys
       setShopName(localStorage.getItem("gopos_shop_name") || "");
@@ -477,6 +559,115 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* Section: Pemilihan Printer USB Terdeteksi (TUGAS 1) */}
+                <div className="space-y-3 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Usb className="h-4 w-4 text-blue-600" />
+                      Daftar Printer USB Terdeteksi
+                    </span>
+                    <button
+                      onClick={fetchAvailablePrinters}
+                      disabled={loadingPrinters}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${loadingPrinters ? "animate-spin" : ""}`} />
+                      Segarkan
+                    </button>
+                  </div>
+
+                  {/* Toast Notification Banner */}
+                  {toastNotif && (
+                    <div className={`p-2.5 rounded-lg text-xs font-bold flex items-center justify-between ${
+                      toastNotif.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+                    }`}>
+                      <span>{toastNotif.message}</span>
+                    </div>
+                  )}
+
+                  {/* Loading State */}
+                  {loadingPrinters ? (
+                    <div className="py-6 flex items-center justify-center gap-2 text-slate-500 text-xs font-bold">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      Memindai printer USB...
+                    </div>
+                  ) : availablePrinters.length === 0 ? (
+                    /* Empty State */
+                    <div className="py-4 px-3 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center space-y-2">
+                      <p className="text-xs text-slate-600 font-medium">
+                        Tidak ada printer USB terdeteksi. Pastikan printer sudah tercolok dan tersambung dengan benar.
+                      </p>
+                      <button
+                        onClick={fetchAvailablePrinters}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Coba lagi
+                      </button>
+                    </div>
+                  ) : (
+                    /* List of Printers */
+                    <div className="space-y-2">
+                      {availablePrinters.map((dev, idx) => {
+                        const isSelected = preferredVidPid === `${dev.vendorId}:${dev.productId}`;
+                        const name = dev.productName || dev.deviceName || `USB Printer ${idx + 1}`;
+                        return (
+                          <div
+                            key={`${dev.vendorId}-${dev.productId}-${idx}`}
+                            className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${
+                              isSelected ? "bg-blue-50/70 border-blue-300" : "bg-slate-50/40 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div>
+                              <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                                <PrinterIcon className="h-3.5 w-3.5 text-slate-500" />
+                                {name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                VID: {dev.vendorId} | PID: {dev.productId} {dev.deviceName && `(${dev.deviceName})`}
+                              </div>
+                            </div>
+
+                            {isSelected ? (
+                              <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-100 px-2.5 py-1 rounded-md text-[10px] font-extrabold border border-blue-200">
+                                <Check className="h-3 w-3" /> Terpilih
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleSelectPreferredPrinter(dev.vendorId, dev.productId)}
+                                className="px-3 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] transition-colors cursor-pointer shadow-sm"
+                              >
+                                Pilih
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Quick Test Print Button */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <button
+                      onClick={handleQuickTestPrint}
+                      disabled={printing || loadingPrinters}
+                      className="w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {printing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Mencetak Struk Test...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PrinterIcon className="h-3.5 w-3.5" />
+                          <span>Test Print Struk Quick</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Bagian B: Printer Cadangan (RawBT Fallback) */}

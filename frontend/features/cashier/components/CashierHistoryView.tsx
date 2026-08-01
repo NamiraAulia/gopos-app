@@ -51,6 +51,9 @@ export interface CashierHistoryViewProps {
   fetchTransactions: (targetPage: number) => Promise<void>;
   openDetail: (trx: Transaction) => Promise<void>;
   handlePrint: () => void;
+  isPrinting?: boolean;
+  printError?: string | null;
+  printSuccess?: boolean;
   confirmVoid: () => Promise<void>;
   handleLogout: () => void;
   filteredTransactions: Transaction[];
@@ -78,7 +81,11 @@ export function CashierHistoryView({
   fetchTransactions,
   openDetail,
   handlePrint,
+  isPrinting = false,
+  printError,
+  printSuccess = false,
   confirmVoid,
+  handleLogout,
   filteredTransactions,
 }: CashierHistoryViewProps) {
   return (
@@ -308,12 +315,40 @@ export function CashierHistoryView({
             </div>
 
             <div className="p-5 pt-0 space-y-2 shrink-0">
+              {printSuccess && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold text-center">
+                  Struk berhasil dicetak
+                </div>
+              )}
+              {printError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold space-y-1.5">
+                  <p>Gagal mencetak struk: {printError}. Periksa koneksi printer.</p>
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={isPrinting || detailLoading}
+                    className="w-full h-8 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <span>Coba Cetak Lagi</span>
+                  </button>
+                </div>
+              )}
               <button
                 onClick={handlePrint}
-                disabled={detailLoading}
-                className="w-full h-11 rounded-xl border-2 border-slate-200 text-xs font-black text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                disabled={isPrinting || detailLoading}
+                className="w-full h-11 rounded-xl border-2 border-slate-200 text-xs font-black text-blue-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               >
-                <Printer className="h-4 w-4" /> Cetak Struk
+                {isPrinting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    <span>Mencetak Struk...</span>
+                  </>
+                ) : (
+                  <>
+                    <Printer className="h-4 w-4" />
+                    <span>Cetak Struk</span>
+                  </>
+                )}
               </button>
               {selected.status !== "voided" && (
                 <div className="flex gap-2">

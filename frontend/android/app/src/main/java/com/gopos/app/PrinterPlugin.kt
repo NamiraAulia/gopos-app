@@ -13,6 +13,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.util.Base64
 import android.util.Log
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -25,30 +26,131 @@ class PrinterPlugin : Plugin() {
 
     private val TAG = "PrinterPlugin"
     private val ACTION_USB_PERMISSION = "com.gopos.app.USB_PERMISSION"
+    private val PREFS_NAME = "PrinterPrefs"
+    private val KEY_PREFERRED_PRINTER = "preferred_printer_vid_pid"
+
+    private fun isUsbPrinter(device: UsbDevice): Boolean {
+        for (i in 0 until device.interfaceCount) {
+            val intf = device.getInterface(i)
+            if (intf.interfaceClass == UsbConstants.USB_CLASS_PRINTER) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun getCandidatePrinters(usbManager: UsbManager): List<UsbDevice> {
+        val candidatePrinters = mutableListOf<UsbDevice>()
+        for (device in usbManager.deviceList.values) {
+            if (isUsbPrinter(device)) {
+                candidatePrinters.add(device)
+            }
+        }
+        return candidatePrinters
+    }
+
+    private fun selectPrinter(candidatePrinters: List<UsbDevice>, context: Context): UsbDevice? {
+        if (candidatePrinters.isEmpty()) return null
+        if (candidatePrinters.size == 1) {
+            return candidatePrinters.first()
+        }
+
+        // Jika ada lebih dari 1 candidate printer USB:
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val preferredVidPid = prefs.getString(KEY_PREFERRED_PRINTER, null)
+
+        if (!preferredVidPid.isNullOrEmpty()) {
+            val matched = candidatePrinters.find { "${it.vendorId}:${it.productId}" == preferredVidPid }
+            if (matched != null) {
+                Log.d(TAG, "Menggunakan printer sesuai preferensi tersimpan ($preferredVidPid): ${matched.deviceName} (VID: ${matched.vendorId}, PID: ${matched.productId})")
+                return matched
+            }
+        }
+
+        Log.d(TAG, "Tidak ada preferensi tersimpan yang cocok. Menggunakan candidate printer PERTAMA (${candidatePrinters.first().deviceName}). Total candidate terdeteksi: ${candidatePrinters.size}")
+        return candidatePrinters.first()
+    }
+
+    @PluginMethod
+    fun listAvailablePrinters(call: PluginCall) {
+        try {
+            val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+            val candidatePrinters = getCandidatePrinters(usbManager)
+            Log.d(TAG, "listAvailablePrinters: Menemukan ${candidatePrinters.size} device USB Printer Class")
+
+            val printersArray = JSArray()
+            for (device in candidatePrinters) {
+                val obj = JSObject()
+                obj.put("vendorId", device.vendorId)
+                obj.put("productId", device.productId)
+                obj.put("deviceName", device.deviceName)
+                obj.put("productName", device.productName ?: device.deviceName ?: "Generic USB Printer")
+                printersArray.put(obj)
+            }
+
+            val ret = JSObject()
+            ret.put("printers", printersArray)
+            ret.put("count", candidatePrinters.size)
+            call.resolve(ret)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error pada listAvailablePrinters: ${e.message}", e)
+            call.reject("Gagal mendaftar printer USB: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun setPreferredPrinter(call: PluginCall) {
+        val vendorId = call.getInt("vendorId") ?: call.getString("vendorId")?.toIntOrNull()
+        val productId = call.getInt("productId") ?: call.getString("productId")?.toIntOrNull()
+
+        if (vendorId == null || productId == null) {
+            call.reject("vendorId dan productId wajib diberikan")
+            return
+        }
+
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val value = "$vendorId:$productId"
+            prefs.edit().putString(KEY_PREFERRED_PRINTER, value).apply()
+            Log.d(TAG, "Preferensi printer berhasil disimpan: $value")
+
+            val ret = JSObject()
+            ret.put("success", true)
+            ret.put("preferredPrinter", value)
+            call.resolve(ret)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error menyimpan preferensi printer: ${e.message}", e)
+            call.reject("Gagal menyimpan preferensi printer: ${e.message}")
+        }
+    }
 
     @PluginMethod
     fun checkPrinterStatus(call: PluginCall) {
         val ret = JSObject()
         Thread {
-            // 1. Cek USB Host Manager untuk printer GD32-USB_Printer (VID: 10473, PID: 653)
+            // 1. Cek USB Host Manager untuk printer USB generic (USB_CLASS_PRINTER = 7)
             try {
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-                val deviceList = usbManager.deviceList
-                
-                val exactDevice = deviceList.values.find { it.vendorId == 10473 && it.productId == 653 }
-                    ?: deviceList.values.find { it.vendorId == 10473 }
-                    ?: deviceList.values.firstOrNull()
+                val candidatePrinters = getCandidatePrinters(usbManager)
+                Log.d(TAG, "checkPrinterStatus: Candidate printer USB terdeteksi = ${candidatePrinters.size}")
 
-                if (exactDevice != null) {
-                    val hasPerm = usbManager.hasPermission(exactDevice)
-                    Log.d(TAG, "checkPrinterStatus: Device ditemukan (${exactDevice.deviceName}, VID: ${exactDevice.vendorId}, PID: ${exactDevice.productId}, Permission: $hasPerm)")
+                val selectedDevice = selectPrinter(candidatePrinters, context)
+
+                if (selectedDevice != null) {
+                    val hasPerm = usbManager.hasPermission(selectedDevice)
+                    val prodName = selectedDevice.productName ?: selectedDevice.deviceName ?: "USB Printer"
+                    Log.d(TAG, "checkPrinterStatus: Device terpilih (${selectedDevice.deviceName}, VID: ${selectedDevice.vendorId}, PID: ${selectedDevice.productId}, Permission: $hasPerm, Total Kandidat: ${candidatePrinters.size})")
                     ret.put("connected", true)
                     ret.put("hasPermission", hasPerm)
-                    ret.put("message", "Printer GD32-USB_Printer Terdeteksi (${exactDevice.deviceName}, VID: ${exactDevice.vendorId}, PID: ${exactDevice.productId}, Permission: $hasPerm)")
+                    ret.put("vendorId", selectedDevice.vendorId)
+                    ret.put("productId", selectedDevice.productId)
+                    ret.put("candidateCount", candidatePrinters.size)
+                    ret.put("printerType", "usb")
+                    ret.put("message", "Printer USB terdeteksi: $prodName (VID=${selectedDevice.vendorId}, PID=${selectedDevice.productId})")
                     call.resolve(ret)
                     return@Thread
                 } else {
-                    Log.w(TAG, "checkPrinterStatus: Device GD32 USB tidak ditemukan di USB deviceList")
+                    Log.w(TAG, "checkPrinterStatus: Tidak ada USB Device dengan interface USB_CLASS_PRINTER (7) terdeteksi")
                 }
             } catch (e: Throwable) {
                 Log.e(TAG, "checkPrinterStatus Error USB: ${e.message}", e)
@@ -63,6 +165,7 @@ class PrinterPlugin : Plugin() {
                 ret.put("connected", true)
                 ret.put("hasPermission", true)
                 ret.put("status", status)
+                ret.put("printerType", "telpo_internal")
                 ret.put("message", "Printer Internal Telpo Siap Gunakan (Status: $status)")
                 call.resolve(ret)
                 return@Thread
@@ -76,10 +179,10 @@ class PrinterPlugin : Plugin() {
                 }
             }
 
-            // 3. Status jika bukan USB GD32 & Telpo
+            // 3. Status jika bukan USB & Telpo
             ret.put("connected", false)
             ret.put("hasPermission", false)
-            ret.put("message", "Printer GD32-USB_Printer / Telpo tidak terdeteksi.")
+            ret.put("message", "Printer USB / Telpo tidak terdeteksi.")
             call.resolve(ret)
         }.start()
     }
@@ -117,8 +220,8 @@ class PrinterPlugin : Plugin() {
         }
 
         if (targetInterface == null || targetEndpoint == null) {
-            Log.e(TAG, "Gagal: Endpoint BULK OUT (0x01) tidak ditemukan pada device ${device.deviceName}")
-            call.reject("Endpoint BULK OUT tidak ditemukan pada printer USB GD32")
+            Log.e(TAG, "Gagal: Endpoint BULK OUT tidak ditemukan pada device ${device.deviceName}")
+            call.reject("Endpoint BULK OUT tidak ditemukan pada printer USB ${device.deviceName}")
             return
         }
 
@@ -139,7 +242,7 @@ class PrinterPlugin : Plugin() {
 
             if (!claimed) {
                 Log.e(TAG, "Gagal claimInterface() pada interface ${targetInterface.id}")
-                call.reject("Gagal claim USB interface pada printer GD32")
+                call.reject("Gagal claim USB interface pada printer ${device.deviceName}")
                 return
             }
 
@@ -151,7 +254,7 @@ class PrinterPlugin : Plugin() {
                 val ret = JSObject()
                 ret.put("success", true)
                 ret.put("bytesTransferred", bytesTransferred)
-                ret.put("message", "Berhasil mencetak ke GD32-USB_Printer ($bytesTransferred bytes terkirim)!")
+                ret.put("message", "Berhasil mencetak ke printer USB ($bytesTransferred bytes terkirim)!")
                 call.resolve(ret)
             } else {
                 Log.e(TAG, "bulkTransfer() GAGAL dengan kode error: $bytesTransferred")
@@ -188,97 +291,100 @@ class PrinterPlugin : Plugin() {
 
         Thread {
             // -------------------------------------------------------------
-            // STRATEGI 1: Direct Android USB Host Bulk Transfer (Utama untuk GD32-USB_Printer VID 10473 PID 653)
+            // STRATEGI 1: Direct Generic USB Host Bulk Transfer (Device Class USB_CLASS_PRINTER = 7)
             // -------------------------------------------------------------
             try {
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-                val deviceList = usbManager.deviceList
+                val candidatePrinters = getCandidatePrinters(usbManager)
+                Log.d(TAG, "printReceipt: Jumlah kandidat printer USB terdeteksi = ${candidatePrinters.size}")
 
-                if (deviceList.isNotEmpty()) {
-                    val device = deviceList.values.find { it.vendorId == 10473 && it.productId == 653 }
-                        ?: deviceList.values.find { it.vendorId == 10473 }
-                        ?: deviceList.values.firstOrNull()
+                for ((idx, cand) in candidatePrinters.withIndex()) {
+                    Log.d(TAG, " Candidate [$idx]: ${cand.deviceName} (VID=${cand.vendorId}, PID=${cand.productId}, Name=${cand.productName})")
+                }
 
-                    if (device != null) {
-                        Log.d(TAG, "Device GD32-USB_Printer ditemukan: ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})")
+                val device = selectPrinter(candidatePrinters, context)
 
-                        val bytesToSend: ByteArray? = when {
-                            !receiptData.isNullOrEmpty() -> {
-                                try { Base64.decode(receiptData, Base64.DEFAULT) } catch (e: Exception) { null }
-                            }
-                            !textParam.isNullOrEmpty() -> {
-                                val builder = mutableListOf<Byte>()
-                                builder.addAll(listOf(0x1B.toByte(), 0x40.toByte())) // ESC @ Init
-                                builder.addAll(textParam.toByteArray(Charsets.UTF_8).toList())
-                                builder.addAll(listOf(0x0A.toByte(), 0x0A.toByte(), 0x0A.toByte(), 0x1D.toByte(), 0x56.toByte(), 0x42.toByte(), 0x00.toByte())) // Cut/Feed
-                                builder.toByteArray()
-                            }
-                            else -> null
+                if (device != null) {
+                    Log.d(TAG, "Printer terpilih untuk cetak: ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})")
+
+                    val bytesToSend: ByteArray? = when {
+                        !receiptData.isNullOrEmpty() -> {
+                            try { Base64.decode(receiptData, Base64.DEFAULT) } catch (e: Exception) { null }
                         }
-
-                        if (bytesToSend == null || bytesToSend.isEmpty()) {
-                            Log.e(TAG, "Payload byte cetak kosong atau invalid")
-                            call.reject("Payload byte cetak tidak valid")
-                            return@Thread
+                        !textParam.isNullOrEmpty() -> {
+                            val builder = mutableListOf<Byte>()
+                            builder.addAll(listOf(0x1B.toByte(), 0x40.toByte())) // ESC @ Init
+                            builder.addAll(textParam.toByteArray(Charsets.UTF_8).toList())
+                            builder.addAll(listOf(0x0A.toByte(), 0x0A.toByte(), 0x0A.toByte(), 0x1D.toByte(), 0x56.toByte(), 0x42.toByte(), 0x00.toByte())) // Cut/Feed
+                            builder.toByteArray()
                         }
+                        else -> null
+                    }
 
-                        val hasPerm = usbManager.hasPermission(device)
-                        Log.d(TAG, "Cek USB Permission untuk ${device.deviceName}: $hasPerm")
+                    if (bytesToSend == null || bytesToSend.isEmpty()) {
+                        Log.e(TAG, "Payload byte cetak kosong atau invalid")
+                        call.reject("Payload byte cetak tidak valid")
+                        return@Thread
+                    }
 
-                        if (hasPerm) {
-                            Log.d(TAG, "Permission SUDAH ada. Langsung memanggil doActualPrint...")
-                            doActualPrint(usbManager, device, bytesToSend, call)
-                            return@Thread
-                        } else {
-                            Log.d(TAG, "Permission BELUM ada. Memasang BroadcastReceiver dan meminta izin...")
+                    val hasPerm = usbManager.hasPermission(device)
+                    Log.d(TAG, "Cek USB Permission untuk ${device.deviceName}: $hasPerm")
 
-                            val permissionReceiver = object : BroadcastReceiver() {
-                                override fun onReceive(reqContext: Context?, intent: Intent?) {
-                                    if (intent?.action == ACTION_USB_PERMISSION) {
-                                        try {
-                                            context.unregisterReceiver(this)
-                                            Log.d(TAG, "BroadcastReceiver berhasil di-unregister")
-                                        } catch (e: Throwable) {
-                                            Log.e(TAG, "Gagal unregister BroadcastReceiver: ${e.message}")
-                                        }
+                    if (hasPerm) {
+                        Log.d(TAG, "Permission SUDAH ada. Langsung memanggil doActualPrint...")
+                        doActualPrint(usbManager, device, bytesToSend, call)
+                        return@Thread
+                    } else {
+                        Log.d(TAG, "Permission BELUM ada. Memasang BroadcastReceiver dan meminta izin...")
 
-                                        val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
-                                        Log.d(TAG, "BroadcastReceiver menerima tanggapan permission: granted = $granted")
+                        val permissionReceiver = object : BroadcastReceiver() {
+                            override fun onReceive(reqContext: Context?, intent: Intent?) {
+                                if (intent?.action == ACTION_USB_PERMISSION) {
+                                    try {
+                                        context.unregisterReceiver(this)
+                                        Log.d(TAG, "BroadcastReceiver berhasil di-unregister")
+                                    } catch (e: Throwable) {
+                                        Log.e(TAG, "Gagal unregister BroadcastReceiver: ${e.message}")
+                                    }
 
-                                        if (granted) {
-                                            Log.d(TAG, "Izin USB Diberikan oleh User! Melanjutkan ke doActualPrint...")
+                                    val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                                    Log.d(TAG, "BroadcastReceiver menerima tanggapan permission: granted = $granted")
+
+                                    if (granted) {
+                                        Log.d(TAG, "Izin USB Diberikan oleh User! Melanjutkan ke doActualPrint (di Thread terpisah)...")
+                                        Thread {
                                             doActualPrint(usbManager, device, bytesToSend, call)
-                                        } else {
-                                            Log.e(TAG, "Izin USB Ditolak oleh User")
-                                            call.reject("Izin USB ditolak oleh user")
-                                        }
+                                        }.start()
+                                    } else {
+                                        Log.e(TAG, "Izin USB Ditolak oleh User")
+                                        call.reject("Izin USB ditolak oleh user")
                                     }
                                 }
                             }
-
-                            val filter = IntentFilter(ACTION_USB_PERMISSION)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-                            } else {
-                                context.registerReceiver(permissionReceiver, filter)
-                            }
-
-                            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                            } else {
-                                PendingIntent.FLAG_UPDATE_CURRENT
-                            }
-                            val permissionIntent = PendingIntent.getBroadcast(
-                                context, 0, Intent(ACTION_USB_PERMISSION), flags
-                            )
-
-                            Log.d(TAG, "Memanggil usbManager.requestPermission()...")
-                            usbManager.requestPermission(device, permissionIntent)
-                            return@Thread
                         }
-                    } else {
-                        Log.w(TAG, "Device GD32-USB_Printer TIDAK ditemukan di USB deviceList")
+
+                        val filter = IntentFilter(ACTION_USB_PERMISSION)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                        } else {
+                            context.registerReceiver(permissionReceiver, filter)
+                        }
+
+                        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                        } else {
+                            PendingIntent.FLAG_UPDATE_CURRENT
+                        }
+                        val permissionIntent = PendingIntent.getBroadcast(
+                            context, 0, Intent(ACTION_USB_PERMISSION), flags
+                        )
+
+                        Log.d(TAG, "Memanggil usbManager.requestPermission()...")
+                        usbManager.requestPermission(device, permissionIntent)
+                        return@Thread
                     }
+                } else {
+                    Log.w(TAG, "Device printer USB TIDAK ditemukan di USB deviceList (Strategi 1)")
                 }
             } catch (e: Throwable) {
                 Log.e(TAG, "Exception pada USB Strategi: ${e.message}", e)
@@ -332,9 +438,3 @@ class PrinterPlugin : Plugin() {
         printReceipt(call)
     }
 }
-
-
-
-
-
-

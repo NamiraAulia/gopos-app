@@ -56,7 +56,27 @@ export const productsApi = {
       })
     );
   },
+
+  batchImport: (products: any[], signal?: AbortSignal) =>
+    handleResponse<{
+      processed: number;
+      success_count: number;
+      updated_count: number;
+      skipped_count: number;
+      failed_count: number;
+      details: Array<{
+        index: number;
+        status: 'success' | 'updated' | 'skipped' | 'failed';
+        name: string;
+        barcode: string;
+        error?: string;
+      }>;
+    }>(api.post('/products/batch-import', { products }, { signal })),
+
+  getBarcodes: () =>
+    handleResponse<string[]>(api.get('/products/barcodes')),
 };
+
 
 // TRANSACTIONS
 

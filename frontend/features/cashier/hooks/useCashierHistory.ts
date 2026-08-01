@@ -117,15 +117,31 @@ export function useCashierHistory() {
     }
   };
 
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const [printSuccess, setPrintSuccess] = useState(false);
+
   const handlePrint = async () => {
-    if (selected) {
-      try {
-        await handleReceiptPrint({ transaction: selected });
-      } catch (err: any) {
-        alert(err.message || "Gagal mencetak struk.");
+    if (!selected) {
+      setPrintError("Tidak ada transaksi yang terpilih.");
+      return;
+    }
+    setIsPrinting(true);
+    setPrintError(null);
+    setPrintSuccess(false);
+
+    try {
+      const res = await handleReceiptPrint({ transaction: selected });
+      if (res && res.success === false) {
+        throw new Error(res.message || "Gagal mencetak struk.");
       }
-    } else {
-      alert("Tidak ada transaksi yang terpilih.");
+      setPrintSuccess(true);
+      setTimeout(() => setPrintSuccess(false), 4000);
+    } catch (err: any) {
+      console.error("Error cetak di useCashierHistory:", err);
+      setPrintError(err.message || "Periksa koneksi printer.");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -248,6 +264,9 @@ export function useCashierHistory() {
     handleRefundSuccess,
     openDetail,
     handlePrint,
+    isPrinting,
+    printError,
+    printSuccess,
     confirmVoid,
     handleLogout,
     filteredTransactions,

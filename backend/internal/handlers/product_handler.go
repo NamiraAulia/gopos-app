@@ -504,3 +504,245 @@ func ImportProductsCSV(c *gin.Context) {
 		},
 	})
 }
+
+type BatchProductItem struct {
+	Name         string  `json:"name"`
+	Barcode      string  `json:"barcode"`
+	Price        int     `json:"price"`
+	PriceMember  int     `json:"price_member"`
+	BestPrice    int     `json:"best_price"`
+	Unit         string  `json:"unit"`
+	MinStock     int     `json:"min_stock"`
+	Stock        float64 `json:"stock"`
+	UnitBig      string  `json:"unit_big"`
+	Conversion   int     `json:"conversion"`
+	PriceBig     int     `json:"price_big"`
+	SupplierName string  `json:"supplier_name"`
+	Action       string  `json:"action"` // "create", "update", or "skip"
+}
+
+type BatchImportPayload struct {
+	Products []BatchProductItem `json:"products"`
+}
+
+type BatchItemResult struct {
+	Index   int    `json:"index"`
+	Status  string `json:"status"` // "success", "updated", "skipped", "failed"
+	Name    string `json:"name"`
+	Barcode string `json:"barcode"`
+	Error   string `json:"error,omitempty"`
+}
+
+// BatchImportProducts godoc
+// @Summary      Batch import products in chunks
+// @Description  Bulk process products JSON array chunk with item-by-item action (create/update/skip), validation, and status details
+// @Tags         Products
+// @Accept       json
+// @Produce      json
+// @Param        payload  body  BatchImportPayload  true  "Chunk of product items"
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /api/v1/products/batch-import [post]
+func BatchImportProducts(c *gin.Context) {
+	var payload BatchImportPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format JSON batch tidak valid", "error": err.Error()})
+		return
+	}
+
+	if len(payload.Products) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Array produk tidak boleh kosong"})
+		return
+	}
+
+	results := make([]BatchItemResult, 0, len(payload.Products))
+	successCount := 0
+	updatedCount := 0
+	skippedCount := 0
+	failedCount := 0
+
+	dateStr := time.Now().Format("20060102")
+
+	for i, item := range payload.Products {
+		action := strings.ToLower(strings.TrimSpace(item.Action))
+		if action == "" {
+			action = "create"
+		}
+
+		name := strings.TrimSpace(item.Name)
+		barcode := strings.TrimSpace(item.Barcode)
+
+		if action == "skip" {
+			skippedCount++
+			results = append(results, BatchItemResult{
+				Index:   i,
+				Status:  "skipped",
+				Name:    name,
+				Barcode: barcode,
+			})
+			continue
+		}
+
+		// Server-side validation
+		if name == "" {
+			failedCount++
+			results = append(results, BatchItemResult{
+				Index:   i,
+				Status:  "failed",
+				Name:    name,
+				Barcode: barcode,
+				Error:   "Nama barang wajib diisi",
+			})
+			continue
+		}
+
+		if item.Price <= 0 {
+			failedCount++
+			results = append(results, BatchItemResult{
+				Index:   i,
+				Status:  "failed",
+				Name:    name,
+				Barcode: barcode,
+				Error:   "Harga jual eceran (price) harus lebih besar dari 0",
+			})
+			continue
+		}
+
+		// Defaults
+		minStock := item.MinStock
+		if minStock <= 0 {
+			minStock = 5
+		}
+
+		unit := strings.TrimSpace(item.Unit)
+		if unit == "" {
+			unit = "Pcs"
+		}
+
+		if barcode == "" {
+			barcode = fmt.Sprintf("PRD-%s-%03d", dateStr, i+1)
+		}
+
+		unitBig := strings.TrimSpace(item.UnitBig)
+		conversion := item.Conversion
+		priceBig := item.PriceBig
+		if unitBig != "" && (conversion <= 0 || priceBig <= 0) {
+			// Incomplete wholesale info -> ignore wholesale fields
+			unitBig = ""
+			conversion = 1
+			priceBig = 0
+		}
+		if conversion <= 0 {
+			conversion = 1
+		}
+
+		if action == "update" {
+			var existing models.Product
+			err := database.DB.Where("barcode = ? AND is_active = ?", barcode, true).First(&existing).Error
+			if err == nil {
+				existing.Name = name
+				existing.Price = item.Price
+				existing.PriceMember = item.PriceMember
+				existing.BestPrice = item.BestPrice
+				existing.Unit = unit
+				existing.MinStock = minStock
+				existing.Stock = item.Stock
+				existing.UnitBig = unitBig
+				existing.Conversion = conversion
+				existing.PriceBig = priceBig
+				if item.SupplierName != "" {
+					existing.SupplierName = strings.TrimSpace(item.SupplierName)
+				}
+				if saveErr := database.DB.Save(&existing).Error; saveErr != nil {
+					failedCount++
+					results = append(results, BatchItemResult{
+						Index:   i,
+						Status:  "failed",
+						Name:    name,
+						Barcode: barcode,
+						Error:   saveErr.Error(),
+					})
+				} else {
+					updatedCount++
+					results = append(results, BatchItemResult{
+						Index:   i,
+						Status:  "updated",
+						Name:    name,
+						Barcode: barcode,
+					})
+				}
+				continue
+			}
+			// If product to update was not found, fall through to create it as new product
+		}
+
+		// Action: "create"
+		product := models.Product{
+			Name:         name,
+			Barcode:      barcode,
+			Price:        item.Price,
+			PriceMember:  item.PriceMember,
+			BestPrice:    item.BestPrice,
+			Unit:         unit,
+			MinStock:     minStock,
+			Stock:        item.Stock,
+			UnitBig:      unitBig,
+			Conversion:   conversion,
+			PriceBig:     priceBig,
+			SupplierName: strings.TrimSpace(item.SupplierName),
+			IsActive:     true,
+		}
+
+		err := database.DB.Create(&product).Error
+		if err != nil {
+			failedCount++
+			results = append(results, BatchItemResult{
+				Index:   i,
+				Status:  "failed",
+				Name:    name,
+				Barcode: barcode,
+				Error:   err.Error(),
+			})
+		} else {
+			successCount++
+			results = append(results, BatchItemResult{
+				Index:   i,
+				Status:  "success",
+				Name:    name,
+				Barcode: barcode,
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"message":       fmt.Sprintf("Batch selesai diproses: %d dibuat, %d diperbarui, %d dilewati, %d gagal", successCount, updatedCount, skippedCount, failedCount),
+		"processed":     len(payload.Products),
+		"success_count": successCount,
+		"updated_count": updatedCount,
+		"skipped_count": skippedCount,
+		"failed_count":  failedCount,
+		"details":       results,
+	})
+}
+
+// GetProductBarcodes godoc
+// @Summary      Get existing product barcodes list
+// @Description  Retrieve array of all active product barcodes for fast duplicate checking in frontend
+// @Tags         Products
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /api/v1/products/barcodes [get]
+func GetProductBarcodes(c *gin.Context) {
+	var barcodes []string
+	if err := database.DB.Model(&models.Product{}).
+		Where("is_active = ? AND barcode IS NOT NULL AND barcode != ''", true).
+		Pluck("barcode", &barcodes).Error; err != nil {
+		utils.Fail(c, http.StatusInternalServerError, "Gagal mengambil daftar barcode", err.Error())
+		return
+	}
+	utils.OK(c, "Daftar barcode berhasil diambil", barcodes)
+}
+
