@@ -114,11 +114,27 @@ class PrinterPlugin : Plugin() {
 
                     if (bytesToSend != null && bytesToSend.isNotEmpty()) {
                         for ((_, device) in deviceList) {
+                            if (!usbManager.hasPermission(device)) {
+                                try {
+                                    val flags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                        android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                    } else {
+                                        android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                    }
+                                    val permissionIntent = android.app.PendingIntent.getBroadcast(
+                                        context, 0, android.content.Intent("com.gopos.app.USB_PERMISSION"), flags
+                                    )
+                                    usbManager.requestPermission(device, permissionIntent)
+                                } catch (permErr: Throwable) {
+                                    permErr.printStackTrace()
+                                }
+                            }
+
                             for (i in 0 until device.interfaceCount) {
                                 val intf = device.getInterface(i)
                                 for (j in 0 until intf.endpointCount) {
                                     val ep = intf.getEndpoint(j)
-                                    if (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK && ep.direction == UsbConstants.USB_DIR_OUT) {
+                                    if (ep.direction == UsbConstants.USB_DIR_OUT) {
                                         val connection = usbManager.openDevice(device)
                                         if (connection != null) {
                                             if (connection.claimInterface(intf, true)) {
