@@ -21,7 +21,28 @@ class PrinterPlugin : Plugin() {
     fun checkPrinterStatus(call: PluginCall) {
         val ret = JSObject()
         Thread {
-            // 1. Coba inisialisasi Hardware Telpo Internal
+            // 1. Cek USB Host Manager untuk printer GD32-USB_Printer (VID: 10473, PID: 653)
+            try {
+                val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+                val deviceList = usbManager.deviceList
+                
+                val exactDevice = deviceList.values.find { it.vendorId == 10473 && it.productId == 653 }
+                    ?: deviceList.values.find { it.vendorId == 10473 }
+                    ?: deviceList.values.firstOrNull()
+
+                if (exactDevice != null) {
+                    val hasPerm = usbManager.hasPermission(exactDevice)
+                    ret.put("connected", true)
+                    ret.put("hasPermission", hasPerm)
+                    ret.put("message", "Printer GD32-USB_Printer Terdeteksi (${exactDevice.deviceName}, VID: ${exactDevice.vendorId}, PID: ${exactDevice.productId}, Permission: $hasPerm)")
+                    call.resolve(ret)
+                    return@Thread
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+
+            // 2. Fallback: Coba inisialisasi Hardware Telpo Internal
             try {
                 ThermalPrinter.start()
                 val status = ThermalPrinter.checkStatus()
@@ -33,7 +54,7 @@ class PrinterPlugin : Plugin() {
                 call.resolve(ret)
                 return@Thread
             } catch (e: Throwable) {
-                // Ignore & lanjut ke fallback USB Direct
+                // Ignore
             } finally {
                 try {
                     ThermalPrinter.stop()
@@ -42,26 +63,10 @@ class PrinterPlugin : Plugin() {
                 }
             }
 
-            // 2. Fallback: Cek USB Host Manager untuk printer USB Internal (GD32) / OTG
-            try {
-                val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-                val deviceList = usbManager.deviceList
-                if (deviceList.isNotEmpty()) {
-                    val usbNames = deviceList.values.joinToString { "${it.deviceName} (${it.vendorId}:${it.productId})" }
-                    ret.put("connected", true)
-                    ret.put("hasPermission", true)
-                    ret.put("message", "Printer USB Internal Terhubung ($usbNames)")
-                    call.resolve(ret)
-                    return@Thread
-                }
-            } catch (e: Throwable) {
-                e.printStackTrace()
-            }
-
-            // 3. Status jika bukan Telpo & USB tidak terdeteksi
+            // 3. Status jika bukan USB GD32 & Telpo
             ret.put("connected", false)
             ret.put("hasPermission", false)
-            ret.put("message", "Printer USB Internal / Host tidak terdeteksi.")
+            ret.put("message", "Printer GD32-USB_Printer / Telpo tidak terdeteksi.")
             call.resolve(ret)
         }.start()
     }
@@ -91,66 +96,93 @@ class PrinterPlugin : Plugin() {
 
         Thread {
             // -------------------------------------------------------------
-            // STRATEGI 1: Direct Android USB Host Bulk Transfer (Utama untuk GD32)
+            // STRATEGI 1: Direct Android USB Host Bulk Transfer (Utama untuk GD32-USB_Printer VID 10473 PID 653)
             // -------------------------------------------------------------
             try {
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
                 val deviceList = usbManager.deviceList
 
                 if (deviceList.isNotEmpty()) {
-                    val bytesToSend: ByteArray? = when {
-                        !receiptData.isNullOrEmpty() -> {
-                            try { Base64.decode(receiptData, Base64.DEFAULT) } catch (e: Exception) { null }
-                        }
-                        !textParam.isNullOrEmpty() -> {
-                            val builder = mutableListOf<Byte>()
-                            builder.addAll(listOf(0x1B.toByte(), 0x40.toByte())) // ESC @ Init
-                            builder.addAll(textParam.toByteArray(Charsets.UTF_8).toList())
-                            builder.addAll(listOf(0x0A.toByte(), 0x0A.toByte(), 0x0A.toByte(), 0x1D.toByte(), 0x56.toByte(), 0x42.toByte(), 0x00.toByte()))
-                            builder.toByteArray()
-                        }
-                        else -> null
-                    }
+                    // a. Cari device persis VID 10473 PID 653
+                    val device = deviceList.values.find { it.vendorId == 10473 && it.productId == 653 }
+                        ?: deviceList.values.find { it.vendorId == 10473 }
+                        ?: deviceList.values.firstOrNull()
 
-                    if (bytesToSend != null && bytesToSend.isNotEmpty()) {
-                        for ((_, device) in deviceList) {
-                            if (!usbManager.hasPermission(device)) {
-                                try {
-                                    val flags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                        android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                                    } else {
-                                        android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                                    }
-                                    val permissionIntent = android.app.PendingIntent.getBroadcast(
-                                        context, 0, android.content.Intent("com.gopos.app.USB_PERMISSION"), flags
-                                    )
-                                    usbManager.requestPermission(device, permissionIntent)
-                                } catch (permErr: Throwable) {
-                                    permErr.printStackTrace()
+                    if (device != null) {
+                        // d. Request permission via UsbManager bila belum ada
+                        if (!usbManager.hasPermission(device)) {
+                            try {
+                                val flags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                    android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                } else {
+                                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                }
+                                val permissionIntent = android.app.PendingIntent.getBroadcast(
+                                    context, 0, android.content.Intent("com.gopos.app.USB_PERMISSION"), flags
+                                )
+                                usbManager.requestPermission(device, permissionIntent)
+                            } catch (permErr: Throwable) {
+                                permErr.printStackTrace()
+                            }
+                        }
+
+                        // b. Cari endpoint OUT (USB_DIR_OUT & USB_ENDPOINT_XFER_BULK) - Address 0x01
+                        var targetEndpoint: UsbEndpoint? = null
+                        var targetInterface: UsbInterface? = null
+
+                        for (i in 0 until device.interfaceCount) {
+                            val intf = device.getInterface(i)
+                            for (j in 0 until intf.endpointCount) {
+                                val ep = intf.getEndpoint(j)
+                                if (ep.direction == UsbConstants.USB_DIR_OUT && ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK) {
+                                    targetEndpoint = ep
+                                    targetInterface = intf
+                                    break
                                 }
                             }
+                            if (targetEndpoint != null) break
+                        }
 
-                            for (i in 0 until device.interfaceCount) {
-                                val intf = device.getInterface(i)
-                                for (j in 0 until intf.endpointCount) {
-                                    val ep = intf.getEndpoint(j)
-                                    if (ep.direction == UsbConstants.USB_DIR_OUT) {
-                                        val connection = usbManager.openDevice(device)
-                                        if (connection != null) {
-                                            if (connection.claimInterface(intf, true)) {
-                                                val bytesTransferred = connection.bulkTransfer(ep, bytesToSend, bytesToSend.size, 5000)
-                                                connection.releaseInterface(intf)
-                                                connection.close()
+                        // Siapkan payload bytes ESC/POS
+                        val bytesToSend: ByteArray? = when {
+                            !receiptData.isNullOrEmpty() -> {
+                                try { Base64.decode(receiptData, Base64.DEFAULT) } catch (e: Exception) { null }
+                            }
+                            !textParam.isNullOrEmpty() -> {
+                                val builder = mutableListOf<Byte>()
+                                builder.addAll(listOf(0x1B.toByte(), 0x40.toByte())) // ESC @ Init
+                                builder.addAll(textParam.toByteArray(Charsets.UTF_8).toList())
+                                builder.addAll(listOf(0x0A.toByte(), 0x0A.toByte(), 0x0A.toByte(), 0x1D.toByte(), 0x56.toByte(), 0x42.toByte(), 0x00.toByte())) // Cut/Feed
+                                builder.toByteArray()
+                            }
+                            else -> null
+                        }
 
-                                                if (bytesTransferred >= 0) {
-                                                    val ret = JSObject()
-                                                    ret.put("success", true)
-                                                    ret.put("message", "Berhasil mencetak langsung ke Internal USB Printer (${device.deviceName})!")
-                                                    call.resolve(ret)
-                                                    return@Thread
-                                                }
-                                            }
+                        // c. Claim interface, send bulkTransfer, lalu release & close di blok finally
+                        if (targetInterface != null && targetEndpoint != null && bytesToSend != null && bytesToSend.isNotEmpty()) {
+                            val connection = usbManager.openDevice(device)
+                            if (connection != null) {
+                                try {
+                                    if (connection.claimInterface(targetInterface, true)) {
+                                        val bytesTransferred = connection.bulkTransfer(targetEndpoint, bytesToSend, bytesToSend.size, 5000)
+                                        if (bytesTransferred >= 0) {
+                                            val ret = JSObject()
+                                            ret.put("success", true)
+                                            ret.put("message", "Berhasil mencetak ke GD32-USB_Printer (VID 10473, PID 653, Transferred: $bytesTransferred bytes)!")
+                                            call.resolve(ret)
+                                            return@Thread
                                         }
+                                    }
+                                } finally {
+                                    try {
+                                        connection.releaseInterface(targetInterface)
+                                    } catch (e: Throwable) {
+                                        e.printStackTrace()
+                                    }
+                                    try {
+                                        connection.close()
+                                    } catch (e: Throwable) {
+                                        e.printStackTrace()
                                     }
                                 }
                             }
@@ -208,6 +240,7 @@ class PrinterPlugin : Plugin() {
         printReceipt(call)
     }
 }
+
 
 
 
