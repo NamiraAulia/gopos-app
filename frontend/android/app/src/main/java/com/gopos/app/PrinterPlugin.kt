@@ -26,9 +26,11 @@ class PrinterPlugin : Plugin() {
                 call.resolve(ret)
             } catch (e: Throwable) {
                 e.printStackTrace()
+                val errName = e.javaClass.simpleName
+                val errMessage = e.message ?: "Native Lib / Hardware Serial Port error"
                 ret.put("connected", false)
                 ret.put("hasPermission", false)
-                ret.put("message", "Telpo Printer tidak terdeteksi: ${e.message ?: "Native Lib/Hardware error"}")
+                ret.put("message", "Deteksi Printer ($errName): $errMessage")
                 call.resolve(ret)
             } finally {
                 try {
