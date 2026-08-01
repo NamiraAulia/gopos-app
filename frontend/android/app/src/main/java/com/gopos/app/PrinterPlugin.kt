@@ -1,5 +1,7 @@
 package com.gopos.app
 
+import android.content.Context
+import android.hardware.usb.UsbManager
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -14,24 +16,19 @@ class PrinterPlugin : Plugin() {
     fun checkPrinterStatus(call: PluginCall) {
         val ret = JSObject()
         Thread {
+            // 1. Coba inisialisasi Hardware Telpo Internal
             try {
-                // Inisialisasi printer Telpo secara aman
                 ThermalPrinter.start()
                 val status = ThermalPrinter.checkStatus()
                 
                 ret.put("connected", true)
                 ret.put("hasPermission", true)
                 ret.put("status", status)
-                ret.put("message", "Printer Thermal Telpo Siap Gunakan (Status: $status)")
+                ret.put("message", "Printer Internal Telpo Siap Gunakan (Status: $status)")
                 call.resolve(ret)
+                return@Thread
             } catch (e: Throwable) {
-                e.printStackTrace()
-                val errName = e.javaClass.simpleName
-                val errMessage = e.message ?: "Native Lib / Hardware Serial Port error"
-                ret.put("connected", false)
-                ret.put("hasPermission", false)
-                ret.put("message", "Deteksi Printer ($errName): $errMessage")
-                call.resolve(ret)
+                // Ignore & lanjut ke fallback USB
             } finally {
                 try {
                     ThermalPrinter.stop()
@@ -39,6 +36,28 @@ class PrinterPlugin : Plugin() {
                     // Ignore
                 }
             }
+
+            // 2. Fallback: Cek USB Host Manager untuk printer USB OTG / Eksternal
+            try {
+                val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+                val deviceList = usbManager.deviceList
+                if (deviceList.isNotEmpty()) {
+                    val usbNames = deviceList.values.joinToString { it.deviceName }
+                    ret.put("connected", true)
+                    ret.put("hasPermission", true)
+                    ret.put("message", "Printer USB Terhubung ($usbNames)")
+                    call.resolve(ret)
+                    return@Thread
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+
+            // 3. Status jika bukan Telpo & USB tidak terdeteksi
+            ret.put("connected", false)
+            ret.put("hasPermission", false)
+            ret.put("message", "Printer Internal Telpo / USB Host tidak terdeteksi. Gunakan koneksi RawBT untuk Bluetooth / USB Printer.")
+            call.resolve(ret)
         }.start()
     }
 
@@ -116,5 +135,6 @@ class PrinterPlugin : Plugin() {
         printReceipt(call)
     }
 }
+
 
 
