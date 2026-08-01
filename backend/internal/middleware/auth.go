@@ -67,10 +67,11 @@ func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleValue, exists := c.Get("role")
 		if !exists {
-			utils.Fail(c, http.StatusUnauthorized, "Akses ditolak", "Informasi role tidak ditemukan")
+			utils.Fail(c, http.StatusForbidden, "Akses ditolak", "Informasi role tidak ditemukan")
 			c.Abort()
 			return
 		}
+
 
 		role, ok := roleValue.(string)
 		if !ok {
