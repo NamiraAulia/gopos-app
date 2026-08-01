@@ -16,29 +16,23 @@ class PrinterPlugin : Plugin() {
         val ret = JSObject()
         Thread {
             try {
-                // Inisialisasi printer untuk mengecek status
+                // Inisialisasi printer untuk mengecek status secara aman
                 ThermalPrinter.init(context)
                 
                 ret.put("connected", true)
                 ret.put("hasPermission", true)
                 ret.put("message", "Printer Thermal Telpo Siap Gunakan")
                 call.resolve(ret)
-            } catch (e: TelpoException) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
                 ret.put("connected", false)
                 ret.put("hasPermission", false)
-                ret.put("message", "Gagal inisialisasi Telpo Printer: ${e.message}")
-                call.resolve(ret)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                ret.put("connected", false)
-                ret.put("hasPermission", false)
-                ret.put("message", "Error: ${e.message}")
+                ret.put("message", "Gagal inisialisasi Telpo Printer (Perangkat tidak mendukung): ${e.message ?: "Native Lib/Hardware error"}")
                 call.resolve(ret)
             } finally {
                 try {
                     ThermalPrinter.stop()
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     // Ignore
                 }
             }
@@ -46,10 +40,25 @@ class PrinterPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun printText(call: PluginCall) {
-        val textToPrint = call.getString("text")
+    fun checkRawBTInstalled(call: PluginCall) {
+        val ret = JSObject()
+        try {
+            val pm = context.packageManager
+            pm.getPackageInfo("ru.a402d.rawbtprinter", 0)
+            ret.put("installed", true)
+        } catch (e: Throwable) {
+            ret.put("installed", false)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun printReceipt(call: PluginCall) {
+        val receiptData = call.getString("receiptData")
+        val textToPrint = call.getString("text") ?: receiptData
+
         if (textToPrint.isNullOrEmpty()) {
-            call.reject("Teks tidak boleh kosong")
+            call.reject("Data cetak tidak boleh kosong")
             return
         }
 
@@ -73,20 +82,22 @@ class PrinterPlugin : Plugin() {
                 ret.put("message", "Berhasil mencetak struk!")
                 call.resolve(ret)
 
-            } catch (e: TelpoException) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
-                call.reject("Telpo Printer Error: ${e.message}")
-            } catch (e: Exception) {
-                e.printStackTrace()
-                call.reject("Error saat mencetak: ${e.message}")
+                call.reject("Gagal mencetak secara native: ${e.message ?: "Perangkat tidak mendukung Telpo Printer"}")
             } finally {
                 // Selalu hentikan/close session printer setelah selesai
                 try {
                     ThermalPrinter.stop()
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     // Ignore
                 }
             }
         }.start()
     }
-}
+
+    @PluginMethod
+    fun printText(call: PluginCall) {
+        printReceipt(call)
+    }
+}

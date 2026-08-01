@@ -111,45 +111,61 @@ class MainActivity : BridgeActivity() {
 
     override fun onStop() {
         displayManager?.unregisterDisplayListener(displayListener)
-        customerPresentation?.dismiss()
+        try {
+            customerPresentation?.dismiss()
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
         customerPresentation = null
         super.onStop()
     }
 
     private fun updateCustomerDisplay() {
-        val dm = displayManager ?: return
-        val displays = dm.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
-        
-        if (displays.isNotEmpty()) {
-            val targetDisplay = displays[0]
+        try {
+            val dm = displayManager ?: return
+            val displays = dm.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
             
-            if (customerPresentation != null && customerPresentation?.display != targetDisplay) {
-                customerPresentation?.dismiss()
-                customerPresentation = null
-            }
-            
-            if (customerPresentation == null) {
-                val mainUrl = bridge.webView.url ?: "http://localhost"
-                val targetUrl = try {
-                    val uri = Uri.parse(mainUrl)
-                    val scheme = uri.scheme ?: "http"
-                    val host = uri.host ?: "localhost"
-                    val port = if (uri.port != -1) ":${uri.port}" else ""
-                    "$scheme://$host$port/customer-display"
-                } catch (e: Exception) {
-                    "http://localhost/customer-display"
+            if (displays.isNotEmpty()) {
+                val targetDisplay = displays[0]
+                
+                if (customerPresentation != null && customerPresentation?.display != targetDisplay) {
+                    try {
+                        customerPresentation?.dismiss()
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
+                    }
+                    customerPresentation = null
                 }
                 
-                customerPresentation = CustomerDisplayPresentation(this, targetDisplay, targetUrl)
+                if (customerPresentation == null) {
+                    val mainUrl = bridge?.webView?.url ?: "http://localhost"
+                    val targetUrl = try {
+                        val uri = Uri.parse(mainUrl)
+                        val scheme = uri.scheme ?: "http"
+                        val host = uri.host ?: "localhost"
+                        val port = if (uri.port != -1) ":${uri.port}" else ""
+                        "$scheme://$host$port/customer-display"
+                    } catch (e: Throwable) {
+                        "http://localhost/customer-display"
+                    }
+                    
+                    customerPresentation = CustomerDisplayPresentation(this, targetDisplay, targetUrl)
+                    try {
+                        customerPresentation?.show()
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
+                    }
+                }
+            } else {
                 try {
-                    customerPresentation?.show()
-                } catch (e: Exception) {
+                    customerPresentation?.dismiss()
+                } catch (e: Throwable) {
                     e.printStackTrace()
                 }
+                customerPresentation = null
             }
-        } else {
-            customerPresentation?.dismiss()
-            customerPresentation = null
+        } catch (e: Throwable) {
+            e.printStackTrace()
         }
     }
 }

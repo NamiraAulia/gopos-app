@@ -9,6 +9,12 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface DashboardStats {
+  todayRevenue: number;
+  monthRevenue: number;
+  totalSales: number;
+}
+
 export interface DashboardSummary {
   today_revenue: number;
   month_revenue: number;
