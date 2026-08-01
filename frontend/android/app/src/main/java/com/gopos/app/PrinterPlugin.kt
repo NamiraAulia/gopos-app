@@ -6,7 +6,6 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.telpo.tps550.api.printer.ThermalPrinter
-import com.telpo.tps550.api.TelpoException
 
 @CapacitorPlugin(name = "Printer")
 class PrinterPlugin : Plugin() {
@@ -16,18 +15,20 @@ class PrinterPlugin : Plugin() {
         val ret = JSObject()
         Thread {
             try {
-                // Inisialisasi printer untuk mengecek status secara aman
-                ThermalPrinter.init(context)
+                // Inisialisasi printer Telpo secara aman
+                ThermalPrinter.start()
+                val status = ThermalPrinter.checkStatus()
                 
                 ret.put("connected", true)
                 ret.put("hasPermission", true)
-                ret.put("message", "Printer Thermal Telpo Siap Gunakan")
+                ret.put("status", status)
+                ret.put("message", "Printer Thermal Telpo Siap Gunakan (Status: $status)")
                 call.resolve(ret)
             } catch (e: Throwable) {
                 e.printStackTrace()
                 ret.put("connected", false)
                 ret.put("hasPermission", false)
-                ret.put("message", "Gagal inisialisasi Telpo Printer (Perangkat tidak mendukung): ${e.message ?: "Native Lib/Hardware error"}")
+                ret.put("message", "Telpo Printer tidak terdeteksi: ${e.message ?: "Native Lib/Hardware error"}")
                 call.resolve(ret)
             } finally {
                 try {
@@ -54,8 +55,20 @@ class PrinterPlugin : Plugin() {
 
     @PluginMethod
     fun printReceipt(call: PluginCall) {
+        val textParam = call.getString("text")
         val receiptData = call.getString("receiptData")
-        val textToPrint = call.getString("text") ?: receiptData
+
+        var textToPrint = textParam
+        if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
+            textToPrint = try {
+                val bytes = android.util.Base64.decode(receiptData, android.util.Base64.DEFAULT)
+                val cleanedBytes = bytes.filter { it in 32..126 || it == 10.toByte() || it == 13.toByte() || it == 9.toByte() }.toByteArray()
+                val decoded = String(cleanedBytes, Charsets.UTF_8)
+                if (decoded.trim().isNotEmpty()) decoded else receiptData
+            } catch (e: Exception) {
+                receiptData
+            }
+        }
 
         if (textToPrint.isNullOrEmpty()) {
             call.reject("Data cetak tidak boleh kosong")
@@ -65,12 +78,12 @@ class PrinterPlugin : Plugin() {
         Thread {
             try {
                 // 1. Inisialisasi SDK Telpo
-                ThermalPrinter.init(context)
-                ThermalPrinter.clear()
+                ThermalPrinter.start()
+                ThermalPrinter.clearString()
 
                 // 2. Formatting Teks & Tambahkan Data
-                ThermalPrinter.setAligh(ThermalPrinter.ALIGH_MIDDLE)
-                ThermalPrinter.setTextSize(25)
+                ThermalPrinter.setAlgin(ThermalPrinter.ALGIN_LEFT)
+                ThermalPrinter.setFontSize(24)
                 ThermalPrinter.addString(textToPrint + "\n\n")
 
                 // 3. Eksekusi Cetak & Feed Kertas
@@ -79,12 +92,12 @@ class PrinterPlugin : Plugin() {
 
                 val ret = JSObject()
                 ret.put("success", true)
-                ret.put("message", "Berhasil mencetak struk!")
+                ret.put("message", "Berhasil mencetak struk via Telpo Thermal Printer!")
                 call.resolve(ret)
 
             } catch (e: Throwable) {
                 e.printStackTrace()
-                call.reject("Gagal mencetak secara native: ${e.message ?: "Perangkat tidak mendukung Telpo Printer"}")
+                call.reject("Telpo Printer Error: ${e.message ?: "Perangkat tidak mendukung Telpo Printer"}")
             } finally {
                 // Selalu hentikan/close session printer setelah selesai
                 try {
@@ -100,4 +113,6 @@ class PrinterPlugin : Plugin() {
     fun printText(call: PluginCall) {
         printReceipt(call)
     }
-}
+}
+
+

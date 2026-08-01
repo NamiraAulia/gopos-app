@@ -171,7 +171,25 @@ export default function SettingsPage() {
     try {
       const bytes = generateEscPosReceiptBytes(testReceiptData, cols);
       const base64Data = uint8ArrayToBase64(bytes);
-      const res = await Printer.printReceipt({ receiptData: base64Data });
+      const testText = 
+        `========== ${testReceiptData.storeName} ==========\n` +
+        `${testReceiptData.storeAddress}\n` +
+        `Telp: ${testReceiptData.storePhone}\n` +
+        `------------------------------------------------\n` +
+        `No. Struk: ${testReceiptData.transactionCode}\n` +
+        `Tanggal  : ${testReceiptData.transactionDate}\n` +
+        `Kasir    : ${testReceiptData.cashierName}\n` +
+        `------------------------------------------------\n` +
+        `Susu Ultra Milk Cokelat 250ml x 2      Rp19.000\n` +
+        `Roti Tawar Kupas Premium x 1           Rp16.000\n` +
+        `------------------------------------------------\n` +
+        `TOTAL AKHIR:                           Rp35.000\n` +
+        `TUNAI:                                 Rp50.000\n` +
+        `KEMBALIAN:                             Rp15.000\n` +
+        `------------------------------------------------\n` +
+        `${testReceiptData.footerText}\n\n\n`;
+
+      const res = await Printer.printReceipt({ text: testText, receiptData: base64Data });
 
       setPrintStatus({
         success: res.success,

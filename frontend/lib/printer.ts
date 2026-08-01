@@ -3,7 +3,7 @@ import { ReceiptData } from './types/receipt';
 import { convertImageToEscPosRaster } from './printer-image-helper';
 
 export interface PrinterPlugin {
-  printReceipt(options: { receiptData: string }): Promise<{ success: boolean; message?: string }>;
+  printReceipt(options: { text?: string; receiptData?: string }): Promise<{ success: boolean; message?: string }>;
   checkPrinterStatus(): Promise<{ connected: boolean; hasPermission: boolean; message?: string }>;
   checkRawBTInstalled(): Promise<{ installed: boolean }>;
 }
@@ -597,6 +597,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   };
 
   if (Capacitor.isNativePlatform()) {
+    const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
     try {
       const printerType = typeof window !== "undefined"
         ? localStorage.getItem("gopos-printer-type") || "escpos"
@@ -610,16 +611,15 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       }
       
       const base64Data = uint8ArrayToBase64(bytes);
-      const result = await Printer.printReceipt({ receiptData: base64Data });
+      const result = await Printer.printReceipt({ text: plainText, receiptData: base64Data });
       return { success: result.success, isNative: true, message: result.message || "Berhasil dicetak secara native" };
     } catch (err: any) {
-      console.error("Gagal cetak native USB, fallback ke RawBT:", err);
-      const plainText = generatePlainTextReceipt(receiptPayload, cols);
+      console.error("Gagal cetak native Telpo, fallback ke RawBT:", err);
       printViaRawBT(plainText);
-      return { success: true, isNative: true, message: "Gagal cetak native, dialihkan ke RawBT: " + err.message };
+      return { success: true, isNative: true, message: "Gagal cetak native, dialihkan ke RawBT: " + (err.message || err) };
     }
   } else {
-    const plainText = generatePlainTextReceipt(receiptPayload, cols);
+    const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
     printViaRawBT(plainText);
     return { success: true, isNative: false, message: "Membuka link RawBT (Web Fallback)" };
   }
