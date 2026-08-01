@@ -1,12 +1,18 @@
 package com.gopos.app
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.util.Base64
+import android.util.Log
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -16,6 +22,9 @@ import com.telpo.tps550.api.printer.ThermalPrinter
 
 @CapacitorPlugin(name = "Printer")
 class PrinterPlugin : Plugin() {
+
+    private val TAG = "PrinterPlugin"
+    private val ACTION_USB_PERMISSION = "com.gopos.app.USB_PERMISSION"
 
     @PluginMethod
     fun checkPrinterStatus(call: PluginCall) {
@@ -32,20 +41,24 @@ class PrinterPlugin : Plugin() {
 
                 if (exactDevice != null) {
                     val hasPerm = usbManager.hasPermission(exactDevice)
+                    Log.d(TAG, "checkPrinterStatus: Device ditemukan (${exactDevice.deviceName}, VID: ${exactDevice.vendorId}, PID: ${exactDevice.productId}, Permission: $hasPerm)")
                     ret.put("connected", true)
                     ret.put("hasPermission", hasPerm)
                     ret.put("message", "Printer GD32-USB_Printer Terdeteksi (${exactDevice.deviceName}, VID: ${exactDevice.vendorId}, PID: ${exactDevice.productId}, Permission: $hasPerm)")
                     call.resolve(ret)
                     return@Thread
+                } else {
+                    Log.w(TAG, "checkPrinterStatus: Device GD32 USB tidak ditemukan di USB deviceList")
                 }
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Log.e(TAG, "checkPrinterStatus Error USB: ${e.message}", e)
             }
 
             // 2. Fallback: Coba inisialisasi Hardware Telpo Internal
             try {
                 ThermalPrinter.start()
                 val status = ThermalPrinter.checkStatus()
+                Log.d(TAG, "checkPrinterStatus: Telpo ThermalPrinter siap, status=$status")
                 
                 ret.put("connected", true)
                 ret.put("hasPermission", true)
@@ -54,7 +67,7 @@ class PrinterPlugin : Plugin() {
                 call.resolve(ret)
                 return@Thread
             } catch (e: Throwable) {
-                // Ignore
+                Log.w(TAG, "checkPrinterStatus: Telpo ThermalPrinter gagal (${e.message})")
             } finally {
                 try {
                     ThermalPrinter.stop()
@@ -84,6 +97,85 @@ class PrinterPlugin : Plugin() {
         call.resolve(ret)
     }
 
+    private fun doActualPrint(usbManager: UsbManager, device: UsbDevice, bytesToSend: ByteArray, call: PluginCall) {
+        Log.d(TAG, "Mulai doActualPrint untuk device: ${device.deviceName} (VID: ${device.vendorId}, PID: ${device.productId})")
+
+        var targetEndpoint: UsbEndpoint? = null
+        var targetInterface: UsbInterface? = null
+
+        for (i in 0 until device.interfaceCount) {
+            val intf = device.getInterface(i)
+            for (j in 0 until intf.endpointCount) {
+                val ep = intf.getEndpoint(j)
+                if (ep.direction == UsbConstants.USB_DIR_OUT && ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK) {
+                    targetEndpoint = ep
+                    targetInterface = intf
+                    break
+                }
+            }
+            if (targetEndpoint != null) break
+        }
+
+        if (targetInterface == null || targetEndpoint == null) {
+            Log.e(TAG, "Gagal: Endpoint BULK OUT (0x01) tidak ditemukan pada device ${device.deviceName}")
+            call.reject("Endpoint BULK OUT tidak ditemukan pada printer USB GD32")
+            return
+        }
+
+        Log.d(TAG, "Endpoint OUT ditemukan: address=0x${Integer.toHexString(targetEndpoint.address)}, maxPacketSize=${targetEndpoint.maxPacketSize}")
+
+        val connection = usbManager.openDevice(device)
+        if (connection == null) {
+            Log.e(TAG, "openDevice() mengembalikan NULL (akses USB ditolak atau device terputus)")
+            call.reject("openDevice() gagal (null). Pastikan izin USB diberikan.")
+            return
+        }
+
+        Log.d(TAG, "openDevice() BERHASIL. Membuka koneksi ke printer...")
+
+        try {
+            val claimed = connection.claimInterface(targetInterface, true)
+            Log.d(TAG, "claimInterface() hasil: $claimed")
+
+            if (!claimed) {
+                Log.e(TAG, "Gagal claimInterface() pada interface ${targetInterface.id}")
+                call.reject("Gagal claim USB interface pada printer GD32")
+                return
+            }
+
+            Log.d(TAG, "Mengirim data biner bulkTransfer (${bytesToSend.size} bytes)...")
+            val bytesTransferred = connection.bulkTransfer(targetEndpoint, bytesToSend, bytesToSend.size, 5000)
+            Log.d(TAG, "bulkTransfer() hasil: $bytesTransferred bytes")
+
+            if (bytesTransferred >= 0) {
+                val ret = JSObject()
+                ret.put("success", true)
+                ret.put("bytesTransferred", bytesTransferred)
+                ret.put("message", "Berhasil mencetak ke GD32-USB_Printer ($bytesTransferred bytes terkirim)!")
+                call.resolve(ret)
+            } else {
+                Log.e(TAG, "bulkTransfer() GAGAL dengan kode error: $bytesTransferred")
+                call.reject("Gagal bulkTransfer USB (Error code: $bytesTransferred)")
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Exception saat bulkTransfer: ${e.message}", e)
+            call.reject("Exception cetak USB: ${e.message}")
+        } finally {
+            try {
+                connection.releaseInterface(targetInterface)
+                Log.d(TAG, "releaseInterface() dipanggil")
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error releaseInterface: ${e.message}")
+            }
+            try {
+                connection.close()
+                Log.d(TAG, "connection.close() dipanggil")
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error connection.close: ${e.message}")
+            }
+        }
+    }
+
     @PluginMethod
     fun printReceipt(call: PluginCall) {
         val textParam = call.getString("text")
@@ -103,47 +195,13 @@ class PrinterPlugin : Plugin() {
                 val deviceList = usbManager.deviceList
 
                 if (deviceList.isNotEmpty()) {
-                    // a. Cari device persis VID 10473 PID 653
                     val device = deviceList.values.find { it.vendorId == 10473 && it.productId == 653 }
                         ?: deviceList.values.find { it.vendorId == 10473 }
                         ?: deviceList.values.firstOrNull()
 
                     if (device != null) {
-                        // d. Request permission via UsbManager bila belum ada
-                        if (!usbManager.hasPermission(device)) {
-                            try {
-                                val flags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                    android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                                } else {
-                                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                                }
-                                val permissionIntent = android.app.PendingIntent.getBroadcast(
-                                    context, 0, android.content.Intent("com.gopos.app.USB_PERMISSION"), flags
-                                )
-                                usbManager.requestPermission(device, permissionIntent)
-                            } catch (permErr: Throwable) {
-                                permErr.printStackTrace()
-                            }
-                        }
+                        Log.d(TAG, "Device GD32-USB_Printer ditemukan: ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})")
 
-                        // b. Cari endpoint OUT (USB_DIR_OUT & USB_ENDPOINT_XFER_BULK) - Address 0x01
-                        var targetEndpoint: UsbEndpoint? = null
-                        var targetInterface: UsbInterface? = null
-
-                        for (i in 0 until device.interfaceCount) {
-                            val intf = device.getInterface(i)
-                            for (j in 0 until intf.endpointCount) {
-                                val ep = intf.getEndpoint(j)
-                                if (ep.direction == UsbConstants.USB_DIR_OUT && ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK) {
-                                    targetEndpoint = ep
-                                    targetInterface = intf
-                                    break
-                                }
-                            }
-                            if (targetEndpoint != null) break
-                        }
-
-                        // Siapkan payload bytes ESC/POS
                         val bytesToSend: ByteArray? = when {
                             !receiptData.isNullOrEmpty() -> {
                                 try { Base64.decode(receiptData, Base64.DEFAULT) } catch (e: Exception) { null }
@@ -158,44 +216,78 @@ class PrinterPlugin : Plugin() {
                             else -> null
                         }
 
-                        // c. Claim interface, send bulkTransfer, lalu release & close di blok finally
-                        if (targetInterface != null && targetEndpoint != null && bytesToSend != null && bytesToSend.isNotEmpty()) {
-                            val connection = usbManager.openDevice(device)
-                            if (connection != null) {
-                                try {
-                                    if (connection.claimInterface(targetInterface, true)) {
-                                        val bytesTransferred = connection.bulkTransfer(targetEndpoint, bytesToSend, bytesToSend.size, 5000)
-                                        if (bytesTransferred >= 0) {
-                                            val ret = JSObject()
-                                            ret.put("success", true)
-                                            ret.put("message", "Berhasil mencetak ke GD32-USB_Printer (VID 10473, PID 653, Transferred: $bytesTransferred bytes)!")
-                                            call.resolve(ret)
-                                            return@Thread
+                        if (bytesToSend == null || bytesToSend.isEmpty()) {
+                            Log.e(TAG, "Payload byte cetak kosong atau invalid")
+                            call.reject("Payload byte cetak tidak valid")
+                            return@Thread
+                        }
+
+                        val hasPerm = usbManager.hasPermission(device)
+                        Log.d(TAG, "Cek USB Permission untuk ${device.deviceName}: $hasPerm")
+
+                        if (hasPerm) {
+                            Log.d(TAG, "Permission SUDAH ada. Langsung memanggil doActualPrint...")
+                            doActualPrint(usbManager, device, bytesToSend, call)
+                            return@Thread
+                        } else {
+                            Log.d(TAG, "Permission BELUM ada. Memasang BroadcastReceiver dan meminta izin...")
+
+                            val permissionReceiver = object : BroadcastReceiver() {
+                                override fun onReceive(reqContext: Context?, intent: Intent?) {
+                                    if (intent?.action == ACTION_USB_PERMISSION) {
+                                        try {
+                                            context.unregisterReceiver(this)
+                                            Log.d(TAG, "BroadcastReceiver berhasil di-unregister")
+                                        } catch (e: Throwable) {
+                                            Log.e(TAG, "Gagal unregister BroadcastReceiver: ${e.message}")
                                         }
-                                    }
-                                } finally {
-                                    try {
-                                        connection.releaseInterface(targetInterface)
-                                    } catch (e: Throwable) {
-                                        e.printStackTrace()
-                                    }
-                                    try {
-                                        connection.close()
-                                    } catch (e: Throwable) {
-                                        e.printStackTrace()
+
+                                        val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                                        Log.d(TAG, "BroadcastReceiver menerima tanggapan permission: granted = $granted")
+
+                                        if (granted) {
+                                            Log.d(TAG, "Izin USB Diberikan oleh User! Melanjutkan ke doActualPrint...")
+                                            doActualPrint(usbManager, device, bytesToSend, call)
+                                        } else {
+                                            Log.e(TAG, "Izin USB Ditolak oleh User")
+                                            call.reject("Izin USB ditolak oleh user")
+                                        }
                                     }
                                 }
                             }
+
+                            val filter = IntentFilter(ACTION_USB_PERMISSION)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                            } else {
+                                context.registerReceiver(permissionReceiver, filter)
+                            }
+
+                            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                            } else {
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                            }
+                            val permissionIntent = PendingIntent.getBroadcast(
+                                context, 0, Intent(ACTION_USB_PERMISSION), flags
+                            )
+
+                            Log.d(TAG, "Memanggil usbManager.requestPermission()...")
+                            usbManager.requestPermission(device, permissionIntent)
+                            return@Thread
                         }
+                    } else {
+                        Log.w(TAG, "Device GD32-USB_Printer TIDAK ditemukan di USB deviceList")
                     }
                 }
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Log.e(TAG, "Exception pada USB Strategi: ${e.message}", e)
             }
 
             // -------------------------------------------------------------
             // STRATEGI 2: Telpo SDK ThermalPrinter (Backup untuk Telpo)
             // -------------------------------------------------------------
+            Log.d(TAG, "Mencoba Strategi 2: Telpo SDK ThermalPrinter...")
             var textToPrint = textParam
             if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
                 textToPrint = try {
@@ -223,8 +315,8 @@ class PrinterPlugin : Plugin() {
                 call.resolve(ret)
                 return@Thread
             } catch (e: Throwable) {
-                e.printStackTrace()
-                call.reject("Gagal mencetak secara native USB: ${e.message ?: "Printer USB/Telpo tidak merespon"}")
+                Log.e(TAG, "Gagal Telpo SDK: ${e.message}", e)
+                call.reject("Gagal mencetak secara native USB & Telpo SDK: ${e.message ?: "Printer tidak merespon"}")
             } finally {
                 try {
                     ThermalPrinter.stop()
@@ -240,6 +332,7 @@ class PrinterPlugin : Plugin() {
         printReceipt(call)
     }
 }
+
 
 
 
