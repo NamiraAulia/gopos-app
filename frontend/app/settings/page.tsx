@@ -51,7 +51,7 @@ export default function SettingsPage() {
   const [shopAddress, setShopAddress] = useState("");
   const [shopPhone, setShopPhone] = useState("");
   const [footerText, setFooterText] = useState("");
-  const [paperSize, setPaperSize] = useState<"58mm" | "80mm">("80mm");
+  const [paperSize, setPaperSize] = useState<"37mm" | "58mm" | "80mm">("37mm");
   const [logoBase64, setLogoBase64] = useState("");
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -172,7 +172,7 @@ export default function SettingsPage() {
       setShopAddress(localStorage.getItem("gopos_shop_address") || "");
       setShopPhone(localStorage.getItem("gopos_shop_phone") || "");
       setFooterText(localStorage.getItem("gopos_shop_footer") || "");
-      setPaperSize((localStorage.getItem("gopos_paper_size") as "58mm" | "80mm") || "80mm");
+      setPaperSize((localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm") || "37mm");
       setLogoBase64(localStorage.getItem("gopos_shop_logo") || "");
     }
   }, []);
@@ -390,14 +390,16 @@ export default function SettingsPage() {
     setPrinting(true);
     setPrintStatus(null);
     
+    const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
+    const lineDivider = "-".repeat(cols) + "\n";
     const testText = 
-      "================================================\n" +
+      lineDivider +
       "          GOPOS PRINTER TEST (RAWBT)            \n" +
-      "================================================\n" +
+      lineDivider +
       "Tanggal: " + new Date().toLocaleString("id-ID") + "\n" +
       "Koneksi: BERHASIL MENGHUBUNGKAN KE RAWBT\n" +
-      "Status : Printer Thermal 80mm via RawBT\n" +
-      "================================================\n" +
+      `Status : Printer Thermal ${paperSize} via RawBT\n` +
+      lineDivider +
       "             Powered by GoPOS app\n\n\n\n\n";
 
     try {
@@ -459,7 +461,7 @@ export default function SettingsPage() {
               {/* Kolom 1: Konfigurasi Printer */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <h3 className="font-bold text-base text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <PrinterIcon className="h-5 w-5 text-blue-600" /> Koneksi Printer Thermal 80mm
+                  <PrinterIcon className="h-5 w-5 text-blue-600" /> Koneksi Printer Thermal ({paperSize})
                 </h3>
 
                 {/* Bagian A: Printer Utama (Direct USB Native) */}
@@ -927,11 +929,12 @@ export default function SettingsPage() {
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ukuran Kertas & Kolom</label>
                     <select
                       value={paperSize}
-                      onChange={(e) => setPaperSize(e.target.value as "58mm" | "80mm")}
+                      onChange={(e) => setPaperSize(e.target.value as "37mm" | "58mm" | "80mm")}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
                     >
-                      <option value="80mm">80mm (Lebar - 48 Kolom)</option>
+                      <option value="37mm">37mm (Sangat Kecil - 20 Kolom)</option>
                       <option value="58mm">58mm (Kecil - 32 Kolom)</option>
+                      <option value="80mm">80mm (Lebar - 48 Kolom)</option>
                     </select>
                   </div>
 

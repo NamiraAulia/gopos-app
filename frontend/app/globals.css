@@ -127,8 +127,15 @@
 
 @media print {
   @page {
-    size: 58mm auto;
-    margin: 0;
+    margin: 0 !important;
+    size: auto;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    width: 100% !important;
   }
 
   body * {
@@ -141,13 +148,13 @@
   }
 
   .struk-thermal {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 58mm !important;
-    max-width: 58mm !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
-    padding: 2mm !important;
+    padding: 2mm 3mm !important;
     background: white !important;
     box-shadow: none !important;
     box-sizing: border-box !important;

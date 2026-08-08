@@ -41,12 +41,12 @@ export interface HandlePrintParams {
   shopAddress?: string;
   shopPhone?: string;
   cashierName?: string;
-  paperSize?: '58mm' | '80mm';
+  paperSize?: '37mm' | '58mm' | '80mm';
   shopSettings?: ShopSettings;
 }
 
 // -------------------------------------------------------------
-// ESC/POS Command Builder for 80mm Thermal Printer (Zero Dep)
+// ESC/POS Command Builder for Thermal Printer (58mm / 80mm) (Zero Dep)
 // -------------------------------------------------------------
 export class EscPosBuilder {
   private buffer: number[] = [];
@@ -124,7 +124,7 @@ export class EscPosBuilder {
 }
 
 // -------------------------------------------------------------
-// Formatters and String Layout Utilities for 80mm (48 columns)
+// Formatters and String Layout Utilities for 37mm (20 columns) / 58mm (32 columns) / 80mm (48 columns)
 // -------------------------------------------------------------
 function wrapText(text: string, limit: number): string[] {
   const words = text.split(" ");
@@ -151,7 +151,7 @@ function wrapText(text: string, limit: number): string[] {
   return lines;
 }
 
-function formatTwoColumns(label: string, value: string, width = 48): string {
+function formatTwoColumns(label: string, value: string, width = 20): string {
   const spaces = width - label.length - value.length;
   if (spaces < 0) {
     const maxLabelLen = width - value.length - 1;
@@ -163,7 +163,7 @@ function formatTwoColumns(label: string, value: string, width = 48): string {
   return label + " ".repeat(spaces) + value;
 }
 
-export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
+export function generateEscPosReceiptBytes(data: ReceiptData, width = 20): Uint8Array {
   const builder = new EscPosBuilder();
 
   // 0. Print Logo if present
@@ -277,7 +277,7 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8
 // -------------------------------------------------------------
 // PCL Command Builder & Receipt Generator for PCL thermal printer
 // -------------------------------------------------------------
-export function generatePclReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
+export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Array {
   let receipt = "";
 
   const centerPcl = (text: string) => {
@@ -380,7 +380,7 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 48): Uint8Arr
 // -------------------------------------------------------------
 // Legacy text helper for Web / RawBT fallback
 // -------------------------------------------------------------
-function centerAlign(text: string, width = 48): string {
+function centerAlign(text: string, width = 20): string {
   if (text.length >= width) {
     return text.substring(0, width);
   }
@@ -390,12 +390,12 @@ function centerAlign(text: string, width = 48): string {
   return " ".repeat(leftSpaces) + text + " ".repeat(rightSpaces);
 }
 
-function centerAlignWrapped(text: string, width = 48): string {
+function centerAlignWrapped(text: string, width = 20): string {
   const lines = wrapText(text, width);
   return lines.map(line => centerAlign(line, width)).join("%0A");
 }
 
-export function generatePlainTextReceipt(data: ReceiptData, width = 48): string {
+export function generatePlainTextReceipt(data: ReceiptData, width = 20): string {
   let receipt = "";
 
   receipt += centerAlignWrapped(data.storeName, width) + "%0A";
@@ -575,7 +575,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   let localShopAddress = "";
   let localShopPhone = "";
   let localShopFooter = "";
-  let localPaperSize = "80mm";
+  let localPaperSize = "37mm";
   let localLogo = "";
 
   if (typeof window !== "undefined") {
@@ -584,7 +584,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       localShopAddress = localStorage.getItem("gopos_shop_address") || "";
       localShopPhone = localStorage.getItem("gopos_shop_phone") || "";
       localShopFooter = localStorage.getItem("gopos_shop_footer") || "";
-      localPaperSize = localStorage.getItem("gopos_paper_size") || "80mm";
+      localPaperSize = localStorage.getItem("gopos_paper_size") || "37mm";
       localLogo = localStorage.getItem("gopos_shop_logo") || "";
     } catch (e) {
       console.error("Gagal membaca settings dari localStorage:", e);
@@ -592,8 +592,8 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   }
 
   // Resolve final values
-  const paperSize = params.paperSize || localPaperSize || "80mm";
-  const cols = paperSize === "58mm" ? 32 : 48;
+  const paperSize = params.paperSize || localPaperSize || "37mm";
+  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "GoPOS STORE";
   const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "";
@@ -605,7 +605,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   let logoBytes: Uint8Array | undefined = undefined;
   if (logoSrc) {
     try {
-      const logoWidth = paperSize === "58mm" ? 256 : 384;
+      const logoWidth = paperSize === "37mm" ? 160 : paperSize === "58mm" ? 256 : 384;
       logoBytes = await convertImageToEscPosRaster(logoSrc, logoWidth);
     } catch (logoErr) {
       console.warn("Gagal memproses logo struk, mencetak tanpa logo:", logoErr);
