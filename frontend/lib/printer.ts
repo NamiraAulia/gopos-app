@@ -486,31 +486,41 @@ function uint8ArrayToBase64(uint8: Uint8Array): string {
 }
 
 export function printViaRawBT(text: string): void {
-  const cleanText = text.replace(/%0A/g, "\n").replace(/\r\n/g, "\n");
-  const base64Data = utf8ToBase64(cleanText);
-  const url = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  if (typeof window === "undefined") return;
 
-  console.log("DEBUG - rawbt intent url:", url);
-  window.location.href = url;
+  const isAndroid = /Android/i.test(navigator.userAgent) || Capacitor.getPlatform() === "android";
 
-  if (!Capacitor.isNativePlatform()) {
-    const start = Date.now();
-    let hasNavigated = false;
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        hasNavigated = true;
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+  if (isAndroid) {
+    const cleanText = text.replace(/%0A/g, "\n").replace(/\r\n/g, "\n");
+    const base64Data = utf8ToBase64(cleanText);
+    const url = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
-    setTimeout(() => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
-        if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
-          window.open("https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter", "_blank");
+    console.log("DEBUG - rawbt intent url:", url);
+    window.location.href = url;
+
+    if (!Capacitor.isNativePlatform()) {
+      const start = Date.now();
+      let hasNavigated = false;
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          hasNavigated = true;
         }
-      }
-    }, 1000);
+      };
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+
+      setTimeout(() => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        if (!hasNavigated && !document.hidden && Date.now() - start < 1500) {
+          if (confirm("Gagal membuka RawBT. Apakah Anda ingin mengunduh aplikasi RawBT dari Google Play Store?")) {
+            window.open("https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter", "_blank");
+          }
+        }
+      }, 1000);
+    }
+  } else {
+    // Pada Windows / Desktop Browser, panggil window.print() untuk cetak via Windows Print Spooler (POS-58)
+    console.log("Pencetakan Desktop: Menggunakan Browser Print (window.print())");
+    window.print();
   }
 }
 
@@ -665,7 +675,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   } else {
     const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
     printViaRawBT(plainText);
-    return { success: true, isNative: false, message: "Membuka link RawBT (Web Fallback)" };
+    return { success: true, isNative: false, message: "Pencetakan diproses via Browser / Windows Print Spooler" };
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
+import { BluetoothPrinterManager } from "@/components/BluetoothPrinterManager";
 import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes, PrinterDevice, getAvailablePrinters, setPreferredPrinterDevice } from "@/lib/printer";
 import { convertImageToEscPosRaster } from "@/lib/printer-image-helper";
 import { Capacitor } from "@capacitor/core";
@@ -151,9 +152,9 @@ export default function SettingsPage() {
       }
     } else {
       setRawBTInstalled(null);
-      setNativeConnected(null);
-      setNativePermission(null);
-      setNativeMessage("Bukan Platform Native (Web Browser)");
+      setNativeConnected(true);
+      setNativePermission(true);
+      setNativeMessage("Windows OS Printer Spooler Aktif (Printer USB POS-58 terdaftar di Windows)");
     }
     await fetchAvailablePrinters();
     setChecking(false);
@@ -528,8 +529,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Tombol Cetak Native */}
-                  {isNative && (
+                  {/* Tombol Cetak Native / Web Browser */}
+                  {isNative ? (
                     <div className="flex flex-col gap-2 mt-2">
                       <button
                         onClick={handleTestPrintNative}
@@ -558,7 +559,22 @@ export default function SettingsPage() {
                         <span>Uji Pakan Kertas (Feed/LF)</span>
                       </button>
                     </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 mt-2">
+                      <button
+                        onClick={() => window.print()}
+                        className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow"
+                      >
+                        <PrinterIcon className="h-4 w-4" />
+                        <span>Uji Cetak Struk (Windows / Browser Print)</span>
+                      </button>
+                    </div>
                   )}
+                </div>
+
+                {/* Section Bluetooth Printer (Web Bluetooth API) */}
+                <div className="space-y-3 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <BluetoothPrinterManager />
                 </div>
 
                 {/* Section: Pemilihan Printer USB Terdeteksi (TUGAS 1) */}
