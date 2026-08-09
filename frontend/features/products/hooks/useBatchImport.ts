@@ -104,7 +104,7 @@ export function useBatchImport() {
         const res = await productsApi.batchImport(chunk, signal);
         if (signal.aborted) return;
 
-        if (res && res.data) {
+        if (res && res.ok && res.data) {
           const { success_count, updated_count, skipped_count, failed_count, details } = res.data;
           currentSuccess += success_count || 0;
           currentUpdated += updated_count || 0;
@@ -121,6 +121,7 @@ export function useBatchImport() {
           }
         } else {
           // Chunk call didn't return success payload -> treat chunk items as failed
+          const errorMsg = res?.errorDetail || res?.message || "Gagal memproses batch di server";
           currentFailed += chunk.length;
           failedChunksAcc.push(...chunk);
           chunk.forEach((item, i) => {
@@ -129,7 +130,7 @@ export function useBatchImport() {
               status: "failed",
               name: item.name,
               barcode: item.barcode,
-              error: res?.message || "Gagal memproses batch di server",
+              error: errorMsg,
             });
           });
         }

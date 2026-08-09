@@ -715,9 +715,7 @@ func BatchImportProducts(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":       true,
-		"message":       fmt.Sprintf("Batch selesai diproses: %d dibuat, %d diperbarui, %d dilewati, %d gagal", successCount, updatedCount, skippedCount, failedCount),
+	utils.OK(c, fmt.Sprintf("Batch selesai diproses: %d dibuat, %d diperbarui, %d dilewati, %d gagal", successCount, updatedCount, skippedCount, failedCount), gin.H{
 		"processed":     len(payload.Products),
 		"success_count": successCount,
 		"updated_count": updatedCount,
