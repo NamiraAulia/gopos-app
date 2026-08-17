@@ -10,7 +10,7 @@ export interface PrinterDevice {
 }
 
 export interface PrinterPlugin {
-  printReceipt(options: { text?: string; receiptData?: string }): Promise<{ success: boolean; message?: string }>;
+  printReceipt(options: { text?: string; receiptData?: string; printerType?: string }): Promise<{ success: boolean; message?: string }>;
   checkPrinterStatus(): Promise<{
     connected: boolean;
     hasPermission: boolean;
