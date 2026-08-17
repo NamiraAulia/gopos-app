@@ -59,6 +59,7 @@ export interface Product {
   unit: string;            
   unit_big: string;        
   conversion: number;       
+  supplier_id?: number;
   supplier_name: string;
   is_active: boolean;
   discount_amount: number;
@@ -159,6 +160,7 @@ export interface CheckoutPayload {
   items: CheckoutItemPayload[];
   payment_method: PaymentMethod;
   amount_paid: number;
+  idempotency_key?: string;
 }
 
 export interface RefundItemPayload {

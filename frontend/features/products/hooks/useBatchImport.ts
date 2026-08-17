@@ -7,15 +7,15 @@ export interface BatchProductItem {
   name: string;
   barcode: string;
   price: number;
-  price_member?: number;
-  best_price?: number;
-  unit?: string;
-  min_stock?: number;
-  stock?: number;
-  unit_big?: string;
-  conversion?: number;
-  price_big?: number;
-  supplier_name?: string;
+  price_member: number;
+  best_price: number;
+  unit: string;
+  min_stock: number;
+  stock: number;
+  unit_big: string;
+  conversion: number;
+  price_big: number;
+  supplier_name: string;
   action: "create" | "update" | "skip";
 }
 
@@ -39,6 +39,38 @@ export interface BatchProgressState {
   totalChunks: number;
   details: BatchItemResult[];
   failedChunkItems: BatchProductItem[];
+}
+
+/**
+ * Safely parses integer fields for BatchProductItem.
+ * Returns 0 if empty/undefined/null or if Number() produces NaN (with console warning).
+ */
+export function safeParseInt(val: any, fieldName: string, identifier: string): number {
+  if (val === undefined || val === null || val === "") return 0;
+  const num = Number(val);
+  if (isNaN(num)) {
+    console.warn(
+      `[BatchImport CSV Warning] Field numerik '${fieldName}' pada item '${identifier}' bernilai invalid / NaN (${JSON.stringify(val)}). Dikonversi menjadi 0.`
+    );
+    return 0;
+  }
+  return Math.round(num);
+}
+
+/**
+ * Safely parses float fields (like stock) for BatchProductItem.
+ * Returns 0 if empty/undefined/null or if Number() produces NaN (with console warning).
+ */
+export function safeParseFloat(val: any, fieldName: string, identifier: string): number {
+  if (val === undefined || val === null || val === "") return 0;
+  const num = Number(val);
+  if (isNaN(num)) {
+    console.warn(
+      `[BatchImport CSV Warning] Field numerik '${fieldName}' pada item '${identifier}' bernilai invalid / NaN (${JSON.stringify(val)}). Dikonversi menjadi 0.`
+    );
+    return 0;
+  }
+  return num;
 }
 
 export function useBatchImport() {
@@ -98,10 +130,30 @@ export function useBatchImport() {
         return;
       }
 
-      const chunk = chunks[chunkIdx];
+      const rawChunk = chunks[chunkIdx];
+
+      // Pre-chunk validation: Sanitize each item to ensure no NaN, string, or undefined numbers reach backend Go
+      const sanitizedChunk: BatchProductItem[] = rawChunk.map((item, idx) => {
+        const itemLabel = item.name || item.barcode || `Item #${idx + 1}`;
+        return {
+          name: item.name ? String(item.name).trim() : "",
+          barcode: item.barcode ? String(item.barcode).trim() : "",
+          price: safeParseInt(item.price, "price", itemLabel),
+          price_member: safeParseInt(item.price_member, "price_member", itemLabel),
+          best_price: safeParseInt(item.best_price, "best_price", itemLabel),
+          unit: item.unit ? String(item.unit).trim() : "Pcs",
+          min_stock: safeParseInt(item.min_stock, "min_stock", itemLabel),
+          stock: safeParseFloat(item.stock, "stock", itemLabel),
+          unit_big: item.unit_big ? String(item.unit_big).trim() : "",
+          conversion: safeParseInt(item.conversion, "conversion", itemLabel),
+          price_big: safeParseInt(item.price_big, "price_big", itemLabel),
+          supplier_name: item.supplier_name ? String(item.supplier_name).trim() : "",
+          action: item.action || "create",
+        };
+      });
 
       try {
-        const res = await productsApi.batchImport(chunk, signal);
+        const res = await productsApi.batchImport(sanitizedChunk, signal);
         if (signal.aborted) return;
 
         if (res && res.ok && res.data) {
@@ -121,10 +173,10 @@ export function useBatchImport() {
           }
         } else {
           // Chunk call didn't return success payload -> treat chunk items as failed
-          const errorMsg = res?.errorDetail || res?.message || "Gagal memproses batch di server";
-          currentFailed += chunk.length;
-          failedChunksAcc.push(...chunk);
-          chunk.forEach((item, i) => {
+          const errorMsg = res?.message || "Gagal memproses batch di server";
+          currentFailed += sanitizedChunk.length;
+          failedChunksAcc.push(...sanitizedChunk);
+          sanitizedChunk.forEach((item, i) => {
             accumulatedDetails.push({
               index: currentProcessed + i,
               status: "failed",
@@ -141,9 +193,9 @@ export function useBatchImport() {
         }
 
         // Network or server error on this chunk -> capture failed items and continue
-        currentFailed += chunk.length;
-        failedChunksAcc.push(...chunk);
-        chunk.forEach((item, i) => {
+        currentFailed += sanitizedChunk.length;
+        failedChunksAcc.push(...sanitizedChunk);
+        sanitizedChunk.forEach((item, i) => {
           accumulatedDetails.push({
             index: currentProcessed + i,
             status: "failed",
@@ -154,7 +206,7 @@ export function useBatchImport() {
         });
       }
 
-      currentProcessed += chunk.length;
+      currentProcessed += rawChunk.length;
 
       setProgress((prev) => ({
         ...prev,

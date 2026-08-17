@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"gopos-backend/internal/database"
@@ -60,6 +61,10 @@ func OpenShift(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&newShift).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "idx_shifts") {
+			utils.Fail(c, http.StatusBadRequest, "Gagal membuka shift", "Anda sudah memiliki shift aktif yang belum ditutup")
+			return
+		}
 		utils.Fail(c, http.StatusInternalServerError, "Gagal membuka shift di database", err.Error())
 		return
 	}

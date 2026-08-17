@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { supabase } from "@/utils/supabaseClient";
+import { loginApi } from "../api";
 
 export function useLogin() {
   const router = useRouter();
@@ -20,53 +21,72 @@ export function useLogin() {
     setSuccessMsg("");
 
     try {
-      // 1. Sign in via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      let token = "";
+      let user: any = null;
 
-      if (authError) {
-        setErrorMsg(authError.message === "Invalid login credentials"
-          ? "Email atau password salah."
-          : authError.message);
-        setIsLoading(false);
-        return;
+      // 1. Try signing in via local Go Backend API first
+      try {
+        const res = await loginApi.login({ email, password, rememberMe });
+        if ((res as any)?.success && (res as any)?.data?.token) {
+          token = (res as any).data.token;
+          const dbUser = (res as any).data.user;
+          user = {
+            id: dbUser.id,
+            username: dbUser.name,
+            role: dbUser.role as 'admin' | 'kasir',
+            is_active: dbUser.is_active,
+          };
+        }
+      } catch (backendErr) {
+        console.warn("Go Backend login error, attempting Supabase fallback:", backendErr);
       }
 
-      // 2. Load user details (numeric ID and Role) from public.users table
-      const { data: userProfile, error: profileError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email)
-        .single();
+      // 2. Fallback to Supabase Auth if Go Backend API is not used or didn't return token
+      if (!token) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (profileError || !userProfile) {
-        setErrorMsg("Profil pengguna tidak ditemukan di database.");
-        setIsLoading(false);
-        return;
+        if (authError) {
+          setErrorMsg(authError.message === "Invalid login credentials"
+            ? "Email atau password salah."
+            : authError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: userProfile, error: profileError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("email", email)
+          .single();
+
+        if (profileError || !userProfile) {
+          setErrorMsg("Profil pengguna tidak ditemukan di database.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (!userProfile.is_active) {
+          setErrorMsg("Akun Anda sedang dinonaktifkan oleh administrator.");
+          setIsLoading(false);
+          return;
+        }
+
+        token = authData.session?.access_token || "";
+        user = {
+          id: userProfile.id,
+          username: userProfile.name,
+          role: userProfile.role as 'admin' | 'kasir',
+          is_active: userProfile.is_active,
+        };
       }
-
-      if (!userProfile.is_active) {
-        setErrorMsg("Akun Anda sedang dinonaktifkan oleh administrator.");
-        setIsLoading(false);
-        return;
-      }
-
-      // 3. Set global store session values
-      const token = authData.session?.access_token || "";
-      const user = {
-        id: userProfile.id,
-        username: userProfile.name,
-        role: userProfile.role as 'admin' | 'kasir',
-        is_active: userProfile.is_active,
-      };
 
       setSuccessMsg("Login Berhasil! Mengalihkan ke dashboard...");
       localStorage.setItem("token", token);
       useAuthStore.setState({ user, token });
 
-      // 4. Set session cookie
       const days = rememberMe ? 30 : 1;
       const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
       document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;

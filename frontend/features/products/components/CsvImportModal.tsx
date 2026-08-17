@@ -16,7 +16,12 @@ import {
   FileSpreadsheet,
   Ban
 } from "lucide-react";
-import { useBatchImport, BatchProductItem } from "../hooks/useBatchImport";
+import { 
+  useBatchImport, 
+  BatchProductItem, 
+  safeParseInt, 
+  safeParseFloat 
+} from "../hooks/useBatchImport";
 import { productsApi } from "../api";
 
 export interface ParsedCsvRow {
@@ -302,20 +307,26 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
   const handleSubmitBatch = () => {
     const importableItems: BatchProductItem[] = rows
       .filter((r) => r.action === "create" || r.action === "update")
-      .map((r) => ({
-        name: r.nama_barang,
-        barcode: r.barcode,
-        price: Number(r.harga_jual_eceran) || 0,
-        price_member: Number(r.harga_khusus_member) || undefined,
-        best_price: Number(r.harga_modal_hpp) || 0,
-        unit: r.satuan_eceran || "Pcs",
-        min_stock: Number(r.min_stok) || 5,
-        stock: Number(r.total_stok) || 0,
-        unit_big: r.satuan_besar || undefined,
-        conversion: Number(r.isi_per_satuan_besar) || undefined,
-        price_big: Number(r.harga_per_grosir) || undefined,
-        action: r.action,
-      }));
+      .map((r) => {
+        const itemLabel = r.nama_barang || r.barcode || `Baris #${r.originalIndex}`;
+        return {
+          name: r.nama_barang ? String(r.nama_barang).trim() : "",
+          barcode: r.barcode ? String(r.barcode).trim() : "",
+          price: safeParseInt(r.harga_jual_eceran, "price", itemLabel),
+          price_member: safeParseInt(r.harga_khusus_member, "price_member", itemLabel),
+          best_price: safeParseInt(r.harga_modal_hpp, "best_price", itemLabel),
+          unit: r.satuan_eceran ? String(r.satuan_eceran).trim() : "Pcs",
+          min_stock: r.min_stok !== "" && r.min_stok !== undefined && r.min_stok !== null
+            ? safeParseInt(r.min_stok, "min_stock", itemLabel)
+            : 5,
+          stock: safeParseFloat(r.total_stok, "stock", itemLabel),
+          unit_big: r.satuan_besar ? String(r.satuan_besar).trim() : "",
+          conversion: safeParseInt(r.isi_per_satuan_besar, "conversion", itemLabel),
+          price_big: safeParseInt(r.harga_per_grosir, "price_big", itemLabel),
+          supplier_name: "",
+          action: r.action,
+        };
+      });
 
     if (importableItems.length === 0) return;
     startBatchImport(importableItems);

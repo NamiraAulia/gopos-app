@@ -14,7 +14,6 @@ func SetupRoutes(r *gin.Engine) {
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/login", handlers.Login)
-			auth.POST("/register", handlers.CreateUser)
 		}
 
 		protected := v1.Group("/")
@@ -48,6 +47,15 @@ func SetupRoutes(r *gin.Engine) {
 			protected.POST("/members", handlers.CreateMember)
 			protected.PUT("/members/:id", handlers.EditMember)
 			protected.DELETE("/members/:id", handlers.DeleteMember)
+			protected.GET("/members/:id/kasbon-history", handlers.GetMemberKasbonHistory)
+			protected.POST("/members/:id/repay", handlers.ProcessRepayment)
+			protected.GET("/kasbon/summary", handlers.GetKasbonSummary)
+
+			protected.GET("/suppliers", handlers.GetSuppliers)
+			protected.GET("/suppliers/schedule", handlers.GetTodaySchedule)
+			protected.POST("/suppliers", handlers.CreateSupplier)
+			protected.PUT("/suppliers/:id", handlers.EditSupplier)
+			protected.DELETE("/suppliers/:id", handlers.DeleteSupplier)
 
 			// Admin-only: user management
 			adminOnly := protected.Group("/admin")
