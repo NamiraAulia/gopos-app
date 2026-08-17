@@ -207,27 +207,41 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 20): Uint8
     builder.textLine(formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width));
   }
 
-  // Divider
-  builder.textLine("-".repeat(width));
+  // 2. Items List (Ritgrow Table Column Format)
+  if (width >= 45) {
+    builder.textLine("Barang                    Qty   Harga   Total");
+    builder.textLine("-".repeat(width));
+  } else {
+    builder.textLine("Barang             Qty  Harga  Total");
+    builder.textLine("-".repeat(width));
+  }
 
-  // 2. Items List
   for (const item of data.items) {
-    const subtotalStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
-    const nameLimit = width - subtotalStr.length - 1;
-    const nameLines = wrapText(item.name, nameLimit);
+    const qty = item.qty.toString();
+    const price = item.price.toLocaleString("id-ID");
+    const total = item.subtotal.toLocaleString("id-ID");
 
-    if (nameLines.length > 0) {
-      const firstLineName = nameLines[0];
-      const spacesNeeded = width - firstLineName.length - subtotalStr.length;
-      builder.textLine(firstLineName + " ".repeat(spacesNeeded) + subtotalStr);
-
-      for (let i = 1; i < nameLines.length; i++) {
-        builder.textLine("  " + nameLines[i]);
+    if (width >= 45) {
+      // Format: %-20s %6s %8s %8s
+      const nameLines = wrapText(item.name, 20);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
+        builder.textLine(firstLine);
+        for (let i = 1; i < nameLines.length; i++) {
+          builder.textLine(nameLines[i].padEnd(20, " "));
+        }
+      }
+    } else {
+      // For 32 columns: %-12s %3s %6s %7s
+      const nameLines = wrapText(item.name, 12);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
+        builder.textLine(firstLine);
+        for (let i = 1; i < nameLines.length; i++) {
+          builder.textLine(nameLines[i].padEnd(12, " "));
+        }
       }
     }
-
-    const qtyDetailStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`;
-    builder.textLine(qtyDetailStr);
   }
 
   // Divider
@@ -306,25 +320,39 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "\r\n";
   }
 
-  receipt += "-".repeat(width) + "\r\n";
+  // 2. Items List (Ritgrow Table Column Format)
+  if (width >= 45) {
+    receipt += "Barang                    Qty   Harga   Total\r\n";
+    receipt += "-".repeat(width) + "\r\n";
+  } else {
+    receipt += "Barang             Qty  Harga  Total\r\n";
+    receipt += "-".repeat(width) + "\r\n";
+  }
 
   for (const item of data.items) {
-    const priceStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
-    const qtyStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`.padEnd(width, " ");
-    const rightWidth = priceStr.length;
-    const firstLineLimit = width - rightWidth - 1;
-    const nameLines = wrapText(item.name, firstLineLimit);
+    const qty = item.qty.toString();
+    const price = item.price.toLocaleString("id-ID");
+    const total = item.subtotal.toLocaleString("id-ID");
 
-    if (nameLines.length > 0) {
-      const firstLineName = nameLines[0];
-      const spacesNeeded = width - firstLineName.length - rightWidth;
-      receipt += firstLineName + " ".repeat(spacesNeeded) + priceStr + "\r\n";
-
-      for (let i = 1; i < nameLines.length; i++) {
-        receipt += ("  " + nameLines[i]).padEnd(width, " ") + "\r\n";
+    if (width >= 45) {
+      const nameLines = wrapText(item.name, 20);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
+        receipt += firstLine + "\r\n";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(20, " ") + "\r\n";
+        }
+      }
+    } else {
+      const nameLines = wrapText(item.name, 12);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
+        receipt += firstLine + "\r\n";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(12, " ") + "\r\n";
+        }
       }
     }
-    receipt += qtyStr + "\r\n";
   }
 
   receipt += "-".repeat(width) + "\r\n";
@@ -419,25 +447,39 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "%0A";
   }
 
-  receipt += "-".repeat(width) + "%0A";
+  // 2. Items List (Ritgrow Table Column Format)
+  if (width >= 45) {
+    receipt += "Barang                    Qty   Harga   Total%0A";
+    receipt += "-".repeat(width) + "%0A";
+  } else {
+    receipt += "Barang             Qty  Harga  Total%0A";
+    receipt += "-".repeat(width) + "%0A";
+  }
 
   for (const item of data.items) {
-    const priceStr = `Rp${item.subtotal.toLocaleString("id-ID")}`;
-    const qtyStr = `  ${item.qty} x Rp${item.price.toLocaleString("id-ID")}`.padEnd(width, " ");
-    const rightWidth = priceStr.length;
-    const firstLineLimit = width - rightWidth - 1;
-    const nameLines = wrapText(item.name, firstLineLimit);
+    const qty = item.qty.toString();
+    const price = item.price.toLocaleString("id-ID");
+    const total = item.subtotal.toLocaleString("id-ID");
 
-    if (nameLines.length > 0) {
-      const firstLineName = nameLines[0];
-      const spacesNeeded = width - firstLineName.length - rightWidth;
-      receipt += firstLineName + " ".repeat(spacesNeeded) + priceStr + "%0A";
-
-      for (let i = 1; i < nameLines.length; i++) {
-        receipt += ("  " + nameLines[i]).padEnd(width, " ") + "%0A";
+    if (width >= 45) {
+      const nameLines = wrapText(item.name, 20);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
+        receipt += firstLine + "%0A";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(20, " ") + "%0A";
+        }
+      }
+    } else {
+      const nameLines = wrapText(item.name, 12);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
+        receipt += firstLine + "%0A";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(12, " ") + "%0A";
+        }
       }
     }
-    receipt += qtyStr + "%0A";
   }
 
   receipt += "-".repeat(width) + "%0A";
