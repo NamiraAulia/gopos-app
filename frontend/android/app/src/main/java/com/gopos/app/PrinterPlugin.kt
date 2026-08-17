@@ -156,27 +156,20 @@ class PrinterPlugin : Plugin() {
                 Log.e(TAG, "checkPrinterStatus Error USB: ${e.message}", e)
             }
 
-            // 2. Fallback: Coba inisialisasi Hardware Telpo Internal
+            // 2. Fallback: Coba inisialisasi Hardware Telpo Internal (Menggunakan konsep Ritgrow)
             try {
-                ThermalPrinter.start()
-                val status = ThermalPrinter.checkStatus()
-                Log.d(TAG, "checkPrinterStatus: Telpo ThermalPrinter siap, status=$status")
-                
-                ret.put("connected", true)
-                ret.put("hasPermission", true)
-                ret.put("status", status)
-                ret.put("printerType", "telpo_internal")
-                ret.put("message", "Printer Internal Telpo Siap Gunakan (Status: $status)")
-                call.resolve(ret)
-                return@Thread
-            } catch (e: Throwable) {
-                Log.w(TAG, "checkPrinterStatus: Telpo ThermalPrinter gagal (${e.message})")
-            } finally {
-                try {
-                    ThermalPrinter.stop()
-                } catch (e: Throwable) {
-                    // Ignore
+                val telpoWrapper = TelpoPrinterWrapper(context)
+                if (telpoWrapper.isAvailable()) {
+                    Log.d(TAG, "checkPrinterStatus: Telpo Printer (Reflect) siap")
+                    ret.put("connected", true)
+                    ret.put("hasPermission", true)
+                    ret.put("printerType", "telpo_internal")
+                    ret.put("message", "Printer Internal Telpo Siap Gunakan (Reflect SDK)")
+                    call.resolve(ret)
+                    return@Thread
                 }
+            } catch (e: Throwable) {
+                Log.w(TAG, "checkPrinterStatus: Telpo Printer (Reflect) gagal (${e.message})")
             }
 
             // 3. Status jika bukan USB & Telpo
@@ -283,6 +276,7 @@ class PrinterPlugin : Plugin() {
     fun printReceipt(call: PluginCall) {
         val textParam = call.getString("text")
         val receiptData = call.getString("receiptData")
+        val printerTypeParam = call.getString("printerType")
 
         if (textParam.isNullOrEmpty() && receiptData.isNullOrEmpty()) {
             call.reject("Data cetak tidak boleh kosong")
@@ -290,6 +284,39 @@ class PrinterPlugin : Plugin() {
         }
 
         Thread {
+            val isTelpo = "pcl" == printerTypeParam || "telpo_internal" == printerTypeParam
+            
+            if (isTelpo) {
+                Log.d(TAG, "printReceipt: Menggunakan Telpo Wrapper untuk cetak (Konsep Ritgrow)...")
+                try {
+                    val telpoWrapper = TelpoPrinterWrapper(context)
+                    if (telpoWrapper.isAvailable()) {
+                        var textToPrint = textParam
+                        if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
+                            textToPrint = try {
+                                val bytes = Base64.decode(receiptData, Base64.DEFAULT)
+                                val cleanedBytes = bytes.filter { it in 32..126 || it == 10.toByte() || it == 13.toByte() || it == 9.toByte() }.toByteArray()
+                                val decoded = String(cleanedBytes, Charsets.UTF_8)
+                                if (decoded.trim().isNotEmpty()) decoded else receiptData
+                            } catch (e: Exception) {
+                                receiptData
+                            }
+                        }
+                        
+                        telpoWrapper.printText(textToPrint ?: "")
+                        val ret = JSObject()
+                        ret.put("success", true)
+                        ret.put("message", "Berhasil mencetak via Telpo SDK (Reflect)!")
+                        call.resolve(ret)
+                        return@Thread
+                    } else {
+                        Log.w(TAG, "Telpo Printer Wrapper tidak tersedia, fallback ke USB...")
+                    }
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Gagal print via Telpo Wrapper: ${e.message}", e)
+                }
+            }
+
             // -------------------------------------------------------------
             // STRATEGI 1: Direct Generic USB Host Bulk Transfer (Device Class USB_CLASS_PRINTER = 7)
             // -------------------------------------------------------------
@@ -436,5 +463,234 @@ class PrinterPlugin : Plugin() {
     @PluginMethod
     fun printText(call: PluginCall) {
         printReceipt(call)
+    }
+}
+
+// =============================================================================
+// CLASSES REFLECTION UNTUK MENYESUAIKAN DENGAN RITGROW (TELPO INTERNAL SERVICES)
+// =============================================================================
+
+class UsbThermalPrinterReflect(private val context: Context) {
+    private var printerClass: Class<*>? = null
+    private var printerInstance: Any? = null
+    private val TAG = "UsbThermalPrinterRef"
+
+    init {
+        try {
+            val serviceContext = context.createPackageContext("com.common.service", Context.CONTEXT_INCLUDE_CODE or Context.CONTEXT_IGNORE_SECURITY)
+            printerClass = serviceContext.classLoader.loadClass("com.telpo.tps550.api.printer.UsbThermalPrinter")
+            
+            val constructors = printerClass?.declaredConstructors
+            var constructor: java.lang.reflect.Constructor<*>? = null
+            if (constructors != null) {
+                for (c in constructors) {
+                    if (c.genericParameterTypes.size == 1) {
+                        constructor = c
+                        break
+                    }
+                }
+            }
+            
+            if (constructor != null) {
+                printerInstance = constructor.newInstance(context)
+                Log.d(TAG, "Inisialisasi UsbThermalPrinter via reflection BERHASIL!")
+            } else {
+                Log.e(TAG, "Constructor UsbThermalPrinter(Context) tidak ditemukan")
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "UsbThermalPrinter tidak didukung: ${e.message}")
+        }
+    }
+
+    fun isAvailable(): Boolean {
+        return printerInstance != null
+    }
+
+    fun addString(text: String) {
+        try {
+            printerClass?.getMethod("addString", String::class.java)?.invoke(printerInstance, text)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal addString: ${e.message}")
+        }
+    }
+
+    fun printString() {
+        try {
+            printerClass?.getMethod("printString")?.invoke(printerInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal printString: ${e.message}")
+        }
+    }
+
+    fun walkPaper(lines: Int) {
+        try {
+            printerClass?.getMethod("walkPaper", Int::class.javaPrimitiveType)?.invoke(printerInstance, lines)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal walkPaper: ${e.message}")
+        }
+    }
+
+    fun setAlgin(align: Int) {
+        try {
+            printerClass?.getMethod("setAlgin", Int::class.javaPrimitiveType)?.invoke(printerInstance, align)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setAlgin: ${e.message}")
+        }
+    }
+
+    fun setBold(bold: Boolean) {
+        try {
+            printerClass?.getMethod("setBold", Boolean::class.javaPrimitiveType)?.invoke(printerInstance, bold)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setBold: ${e.message}")
+        }
+    }
+
+    fun setTextSize(size: Int) {
+        try {
+            printerClass?.getMethod("setTextSize", Int::class.javaPrimitiveType)?.invoke(printerInstance, size)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setTextSize: ${e.message}")
+        }
+    }
+    
+    fun reset() {
+        try {
+            printerClass?.getMethod("reset")?.invoke(printerInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal reset: ${e.message}")
+        }
+    }
+    
+    fun paperCut() {
+        try {
+            printerClass?.getMethod("paperCut")?.invoke(printerInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal paperCut: ${e.message}")
+        }
+    }
+}
+
+class ThermalPrinterServiceReflect(private val context: Context) {
+    private var serviceClass: Class<*>? = null
+    private var serviceInstance: Any? = null
+    private val TAG = "ThermalPrinterSvcRef"
+
+    init {
+        try {
+            serviceClass = Class.forName("com.common.sdk.thermalprinter.ThermalPrinterServiceManager")
+            serviceInstance = context.getSystemService("ThermalPrinter")
+            Log.d(TAG, "Inisialisasi ThermalPrinterServiceManager via reflection BERHASIL!")
+        } catch (e: Throwable) {
+            Log.w(TAG, "ThermalPrinterServiceManager tidak didukung: ${e.message}")
+        }
+    }
+
+    fun isAvailable(): Boolean {
+        return serviceInstance != null
+    }
+
+    fun addString(text: String) {
+        try {
+            serviceClass?.getMethod("addString", String::class.java)?.invoke(serviceInstance, text)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal addString: ${e.message}")
+        }
+    }
+
+    fun printString() {
+        try {
+            serviceClass?.getMethod("printString")?.invoke(serviceInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal printString: ${e.message}")
+        }
+    }
+
+    fun walkPaper(lines: Int) {
+        try {
+            serviceClass?.getMethod("walkPaper", Int::class.javaPrimitiveType)?.invoke(serviceInstance, lines)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal walkPaper: ${e.message}")
+        }
+    }
+
+    fun setAlgin(align: Int) {
+        try {
+            serviceClass?.getMethod("setAlgin", Int::class.javaPrimitiveType)?.invoke(serviceInstance, align)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setAlgin: ${e.message}")
+        }
+    }
+
+    fun setBold(bold: Boolean) {
+        try {
+            serviceClass?.getMethod("setBold", Boolean::class.javaPrimitiveType)?.invoke(serviceInstance, bold)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setBold: ${e.message}")
+        }
+    }
+
+    fun setTextSize(size: Int) {
+        try {
+            serviceClass?.getMethod("setTextSize", Int::class.javaPrimitiveType)?.invoke(serviceInstance, size)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setTextSize: ${e.message}")
+        }
+    }
+    
+    fun reset() {
+        try {
+            serviceClass?.getMethod("reset")?.invoke(serviceInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal reset: ${e.message}")
+        }
+    }
+    
+    fun paperCut() {
+        try {
+            serviceClass?.getMethod("paperCut")?.invoke(serviceInstance)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal paperCut: ${e.message}")
+        }
+    }
+}
+
+class TelpoPrinterWrapper(private val context: Context) {
+    private var usbPrinter: UsbThermalPrinterReflect? = null
+    private var servicePrinter: ThermalPrinterServiceReflect? = null
+    private val TAG = "TelpoPrinterWrapper"
+
+    init {
+        usbPrinter = UsbThermalPrinterReflect(context)
+        if (usbPrinter?.isAvailable() != true) {
+            Log.w(TAG, "UsbThermalPrinter tidak tersedia, mencoba ThermalPrinterService...")
+            servicePrinter = ThermalPrinterServiceReflect(context)
+        }
+    }
+
+    fun isAvailable(): Boolean {
+        return usbPrinter?.isAvailable() == true || servicePrinter?.isAvailable() == true
+    }
+
+    fun printText(text: String) {
+        if (usbPrinter?.isAvailable() == true) {
+            Log.d(TAG, "Printing via UsbThermalPrinter...")
+            usbPrinter?.reset()
+            usbPrinter?.setAlgin(1) // Center
+            usbPrinter?.setTextSize(24)
+            usbPrinter?.addString(text)
+            usbPrinter?.printString()
+            usbPrinter?.walkPaper(20)
+        } else if (servicePrinter?.isAvailable() == true) {
+            Log.d(TAG, "Printing via ThermalPrinterService...")
+            servicePrinter?.reset()
+            servicePrinter?.setAlgin(1) // Center
+            servicePrinter?.setTextSize(24)
+            servicePrinter?.addString(text)
+            servicePrinter?.printString()
+            servicePrinter?.walkPaper(20)
+        } else {
+            Log.e(TAG, "Tidak ada printer internal Telpo yang terhubung atau tersedia!")
+        }
     }
 }
