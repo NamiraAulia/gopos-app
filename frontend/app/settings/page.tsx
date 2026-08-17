@@ -22,6 +22,13 @@ export default function SettingsPage() {
   const [isNative, setIsNative] = useState(false);
   const [rawBTInstalled, setRawBTInstalled] = useState<boolean | null>(null);
   
+  // Custom debug log console state
+  const [logs, setLogs] = useState<string[]>([]);
+  const addLog = (msg: string) => {
+    console.log(msg);
+    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString("id-ID")}] ${msg}`]);
+  };
+  
   // Native USB Printer States
   const [nativeConnected, setNativeConnected] = useState<boolean | null>(null);
   const [nativePermission, setNativePermission] = useState<boolean | null>(null);
@@ -125,18 +132,23 @@ export default function SettingsPage() {
 
   // Cek status instalasi printer & RawBT
   const checkStatus = async () => {
+    addLog("Memeriksa status koneksi printer...");
     setChecking(true);
     const native = Capacitor.isNativePlatform();
     setIsNative(native);
+    addLog(`Platform isNative: ${native}`);
 
     if (native) {
       // 1. Cek status RawBT (backup)
       const installed = await isRawBTInstalled();
       setRawBTInstalled(installed);
+      addLog(`Status RawBT Installed: ${installed}`);
 
       // 2. Cek status Direct USB Printer
       try {
+        addLog("Memanggil Printer.checkPrinterStatus()...");
         const status = await Printer.checkPrinterStatus();
+        addLog(`checkPrinterStatus respon: connected=${status.connected}, hasPermission=${status.hasPermission}, type=${status.printerType}, msg=${status.message}`);
         setNativeConnected(status.connected);
         setNativePermission(status.hasPermission);
         setNativeMessage(status.message || "");
@@ -145,6 +157,7 @@ export default function SettingsPage() {
           setPreferredVidPid(`${status.vendorId}:${status.productId}`);
         }
       } catch (err: any) {
+        addLog(`ERROR checkPrinterStatus: ${err.message || err}`);
         console.error("Gagal mendeteksi printer native:", err);
         setNativeConnected(false);
         setNativePermission(false);
@@ -158,6 +171,7 @@ export default function SettingsPage() {
     }
     await fetchAvailablePrinters();
     setChecking(false);
+    addLog("Selesai memeriksa status.");
   };
 
   useEffect(() => {
@@ -214,20 +228,25 @@ export default function SettingsPage() {
 
   // Uji cetak menggunakan Direct USB Native
   const handleTestPrintNative = async () => {
+    addLog("Uji cetak native dimulai.");
     setPrinting(true);
     setPrintStatus(null);
 
     let logoBytes: Uint8Array | undefined = undefined;
     if (logoBase64) {
       try {
+        addLog("Memproses gambar logo...");
         const logoWidth = paperSize === "58mm" ? 256 : 384;
         logoBytes = await convertImageToEscPosRaster(logoBase64, logoWidth);
+        addLog("Logo berhasil diproses.");
       } catch (err: any) {
+        addLog("Gagal memproses logo: " + (err.message || err));
         console.warn("Gagal memproses logo uji cetak:", err);
       }
     }
 
     const cols = paperSize === "58mm" ? 32 : 48;
+    addLog(`Resolving cols: ${cols}, printerType: ${printerType}`);
 
     const testReceiptData = {
       storeName: shopName || "GoPOS STORE",
@@ -252,10 +271,13 @@ export default function SettingsPage() {
     };
 
     try {
+      addLog("Menghasilkan payload byte...");
       const bytes = printerType === "pcl"
         ? generatePclReceiptBytes(testReceiptData, cols)
         : generateEscPosReceiptBytes(testReceiptData, cols);
+      addLog(`Byte berhasil dibuat (${bytes.length} bytes). Mengonversi ke Base64...`);
       const base64Data = uint8ArrayToBase64(bytes);
+      
       const testText = 
         `========== ${testReceiptData.storeName} ==========\n` +
         `${testReceiptData.storeAddress}\n` +
@@ -274,7 +296,9 @@ export default function SettingsPage() {
         `------------------------------------------------\n` +
         `${testReceiptData.footerText}\n\n\n`;
 
+      addLog("Memanggil Printer.printReceipt via Capacitor...");
       const res = await Printer.printReceipt({ text: testText, receiptData: base64Data });
+      addLog(`Respon printReceipt: success=${res.success}, message=${res.message}`);
 
       setPrintStatus({
         success: res.success,
@@ -282,6 +306,7 @@ export default function SettingsPage() {
         timestamp: new Date().toLocaleTimeString("id-ID")
       });
     } catch (err: any) {
+      addLog(`ERROR printReceipt: ${err.message || err}`);
       setPrintStatus({
         success: false,
         message: `Gagal mencetak secara native: ${err.message || err}`,
@@ -765,6 +790,28 @@ export default function SettingsPage() {
                     <p className="leading-relaxed text-[11px]">{printStatus.message}</p>
                   </div>
                 )}
+
+                {/* Box Konsol Log Debug */}
+                <div className="bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl p-4 shadow-inner space-y-2 font-mono">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                    <span className="font-bold text-[10px] text-slate-200 tracking-wider">LOG DEBUG (ON-SCREEN CONSOLE)</span>
+                    <button
+                      onClick={() => setLogs([])}
+                      className="text-[9px] text-slate-400 hover:text-slate-200 transition-colors uppercase font-bold"
+                    >
+                      Bersihkan
+                    </button>
+                  </div>
+                  <div className="h-44 overflow-y-auto text-[9px] space-y-1 scrollbar-thin scrollbar-thumb-slate-800 select-all leading-normal">
+                    {logs.length === 0 ? (
+                      <span className="text-slate-500 italic">Belum ada aktivitas...</span>
+                    ) : (
+                      logs.map((log, i) => (
+                        <div key={i} className="break-all">{log}</div>
+                      ))
+                    )}
+                  </div>
+                </div>
 
                 {/* Panduan Setup Awal */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[11px] text-slate-600 space-y-2.5">
