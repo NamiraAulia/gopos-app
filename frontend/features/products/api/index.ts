@@ -1,13 +1,71 @@
 import { supabase } from "@/utils/supabaseClient";
 import type { ApiResponse, Product } from '@/types/api';
 
+const GO_BACKEND_URL = "http://localhost:8080/api/v1";
+
+// Cek mode data source dari .env.local (default: "local")
+const DATA_SOURCE = process.env.NEXT_PUBLIC_DATA_SOURCE || "local";
+const IS_LOCAL_MODE = DATA_SOURCE === "local";
+
+async function fetchLocalGoBackend(endpoint: string, options?: RequestInit) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: Record<string, string> = {
+        ...(options?.headers as Record<string, string>),
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${GO_BACKEND_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+    if (!res.ok) {
+        throw new Error(`Go Backend error status: ${res.status}`);
+    }
+    return res.json();
+}
+
 export const productsApi = {
     getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
-        try {
-            const page = params?.page || 1;
-            const limit = params?.limit || 10;
-            const search = params?.search || "";
+        const page = params?.page || 1;
+        const limit = params?.limit || 10;
+        const search = params?.search || "";
 
+        // 1. Jika Mode Local, Panggil Go Backend SQLite (gopos.db)
+        if (IS_LOCAL_MODE) {
+            try {
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                });
+                if (search) queryParams.append("name", search);
+
+                const localRes = await fetchLocalGoBackend(`/products?${queryParams.toString()}`);
+                if (localRes?.success && localRes?.data) {
+                    const rawProds = localRes.data.products || (Array.isArray(localRes.data) ? localRes.data : []);
+                    const total = localRes.data.total || rawProds.length;
+                    return {
+                        success: true,
+                        message: "Berhasil memuat produk (Go Backend Local)",
+                        data: {
+                            products: rawProds as Product[],
+                            total,
+                            page,
+                            limit
+                        }
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal memuat produk dari Go Backend Local",
+                    data: { products: [], total: 0, page, limit }
+                };
+            }
+        }
+
+        // 2. Jika Mode Supabase Cloud
+        try {
             let query = supabase.from("products").select("*", { count: "exact" }).eq("is_active", true);
 
             if (search) {
@@ -25,7 +83,7 @@ export const productsApi = {
 
             return {
                 success: true,
-                message: "Berhasil memuat produk",
+                message: "Berhasil memuat produk (Supabase Cloud)",
                 data: {
                     products: (data as Product[]) || [],
                     total: count || 0,
@@ -37,17 +95,31 @@ export const productsApi = {
             return {
                 success: false,
                 message: err.message || "Gagal memuat produk",
-                data: {
-                    products: [],
-                    total: 0,
-                    page: params?.page || 1,
-                    limit: params?.limit || 10
-                }
+                data: { products: [], total: 0, page, limit }
             };
         }
     },
 
     getById: async (id: number) => {
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend(`/products/${id}`);
+                if (localRes?.success && localRes?.data) {
+                    return {
+                        success: true,
+                        message: "Detail produk ditemukan (Go Backend Local)",
+                        data: localRes.data as Product
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal mengambil detail produk local",
+                    data: null
+                };
+            }
+        }
+
         try {
             const { data, error } = await supabase
                 .from("products")
@@ -72,8 +144,32 @@ export const productsApi = {
     },
 
     create: async (data: Partial<Product>) => {
+        const { min_stock, unit_choice, ...dbPayload } = data as any;
+
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend("/products", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dbPayload),
+                });
+                if (localRes?.success) {
+                    return {
+                        success: true,
+                        message: "Produk berhasil ditambahkan (Go Backend Local)",
+                        data: localRes.data as Product
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal menambahkan produk di Go Backend Local",
+                    data: null
+                };
+            }
+        }
+
         try {
-            const { min_stock, unit_choice, ...dbPayload } = data as any;
             const { data: newProduct, error } = await supabase
                 .from("products")
                 .insert(dbPayload)
@@ -97,8 +193,32 @@ export const productsApi = {
     },
 
     update: async (id: number, data: Partial<Product>) => {
+        const { min_stock, unit_choice, ...dbPayload } = data as any;
+
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend(`/products/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dbPayload),
+                });
+                if (localRes?.success) {
+                    return {
+                        success: true,
+                        message: "Produk berhasil diperbarui (Go Backend Local)",
+                        data: localRes.data as Product
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal memperbarui produk di Go Backend Local",
+                    data: null
+                };
+            }
+        }
+
         try {
-            const { min_stock, unit_choice, ...dbPayload } = data as any;
             const { data: updatedProduct, error } = await supabase
                 .from("products")
                 .update(dbPayload)
@@ -123,6 +243,27 @@ export const productsApi = {
     },
 
     softDelete: async (id: number) => {
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend(`/products/${id}`, {
+                    method: "DELETE",
+                });
+                if (localRes?.success) {
+                    return {
+                        success: true,
+                        message: "Produk berhasil dinonaktifkan (Go Backend Local)",
+                        data: localRes.data as Product
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal menonaktifkan produk di Go Backend Local",
+                    data: null
+                };
+            }
+        }
+
         try {
             const { data: deactivatedProduct, error } = await supabase
                 .from("products")
@@ -148,6 +289,32 @@ export const productsApi = {
     },
 
     importCsv: async (file: File) => {
+        if (IS_LOCAL_MODE) {
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+                const localRes = await fetchLocalGoBackend("/products/import", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (localRes?.success) {
+                    return {
+                        success: true,
+                        message: localRes.message || "Berhasil mengimpor CSV ke Go Backend Local",
+                        data: localRes.data,
+                        meta: null,
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    message: err.message || "Gagal mengimpor CSV ke Go Backend Local",
+                    data: null,
+                    meta: null,
+                };
+            }
+        }
+
         return new Promise<ApiResponse<any>>((resolve) => {
             const reader = new FileReader();
             reader.onload = async (e) => {
@@ -178,7 +345,7 @@ export const productsApi = {
 
                     resolve({
                         success: true,
-                        message: `Berhasil mengimpor ${data?.length} produk`,
+                        message: `Berhasil mengimpor ${data?.length} produk (Supabase)`,
                         data: data,
                         meta: null,
                     });
@@ -196,6 +363,30 @@ export const productsApi = {
     },
 
     batchImport: async (products: any[], signal?: AbortSignal) => {
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend("/products/batch-import", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ products }),
+                });
+                if (localRes?.success || localRes?.data) {
+                    return {
+                        ok: true,
+                        success: true,
+                        data: localRes.data,
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    ok: false,
+                    success: false,
+                    message: err.message || "Gagal memproses batch import Go Backend Local",
+                    data: null,
+                };
+            }
+        }
+
         try {
             let success_count = 0;
             let updated_count = 0;
@@ -280,6 +471,25 @@ export const productsApi = {
     },
 
     getBarcodes: async () => {
+        if (IS_LOCAL_MODE) {
+            try {
+                const localRes = await fetchLocalGoBackend("/products/barcodes");
+                if (localRes?.success && Array.isArray(localRes.data)) {
+                    return {
+                        success: true,
+                        ok: true,
+                        data: localRes.data,
+                    };
+                }
+            } catch (err: any) {
+                return {
+                    success: false,
+                    ok: false,
+                    data: [],
+                };
+            }
+        }
+
         try {
             const { data, error } = await supabase
                 .from("products")

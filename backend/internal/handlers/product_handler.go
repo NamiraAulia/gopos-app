@@ -3,9 +3,10 @@ package handlers
 import (
 	"encoding/csv"
 	"fmt"
-	"io"
+	// "io"
 	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,379 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var (
+	suffixRegexGo = regexp.MustCompile(`(?i)\s+(DUS|BOX|PAK|RCG|RENCENG|SLOP|BAL|PCS|BUNGKUS|BOTOL|IKAT|TRAY)$`)
+	bigUnitsGo    = map[string]bool{
+		"DUS": true, "BOX": true, "PAK": true, "RCG": true,
+		"RENCENG": true, "SLOP": true, "BAL": true, "IKAT": true, "TRAY": true,
+	}
+)
+
+func sanitizeBarcodeGo(val string) string {
+	s := strings.TrimSpace(val)
+	if s == "" || strings.ToLower(s) == "nan" {
+		return ""
+	}
+	if strings.Contains(strings.ToLower(s), "e+") || strings.Contains(strings.ToLower(s), "e-") {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			s = fmt.Sprintf("%.0f", f)
+		}
+	}
+	s = strings.TrimSuffix(s, ".0")
+	return s
+}
+
+func cleanProductNameGo(name string) (string, string) {
+	nameUpper := strings.ToUpper(strings.TrimSpace(name))
+	loc := suffixRegexGo.FindStringIndex(nameUpper)
+	strippedUnit := ""
+	if loc != nil {
+		strippedUnit = strings.ToUpper(strings.TrimSpace(nameUpper[loc[0]:loc[1]]))
+		nameUpper = strings.TrimSpace(nameUpper[:loc[0]])
+	}
+	// Normalize space variations like "KUS KUS" -> "KUSKUS" for grouping key
+	nameUpper = regexp.MustCompile(`\s+`).ReplaceAllString(nameUpper, " ")
+	return nameUpper, strippedUnit
+}
+
+func isEggTransactionRowGo(name string) bool {
+	nameUpper := strings.ToUpper(name)
+	if strings.Contains(nameUpper, "TELUR") {
+		eggPatterns := []string{
+			`TELUR\s+\d+`,
+			`TELUR\s+\d+/\d+`,
+			`TELUR\s+PECAH\s+\d+`,
+			`TELUR\s+\d+\s*(KG|BUAH|PCS|BUTIR)`,
+		}
+		for _, p := range eggPatterns {
+			if matched, _ := regexp.MatchString(p, nameUpper); matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func applyCategoryDefaultsGo(prod *models.Product, category string) {
+	catUpper := strings.ToUpper(category)
+	switch {
+	case strings.Contains(catUpper, "MIE") || strings.Contains(catUpper, "PASTA"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Dus" }
+		if prod.Conversion <= 0 { prod.Conversion = 40 }
+	case strings.Contains(catUpper, "MINYAK GORENG 2L"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Dus" }
+		if prod.Conversion <= 0 { prod.Conversion = 6 }
+	case strings.Contains(catUpper, "MINYAK GORENG"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Dus" }
+		if prod.Conversion <= 0 { prod.Conversion = 12 }
+	case strings.Contains(catUpper, "MINUMAN KEMASAN"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Dus" }
+		if prod.Conversion <= 0 { prod.Conversion = 24 }
+	case strings.Contains(catUpper, "KOPI"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Renceng" }
+		if prod.Conversion <= 0 { prod.Conversion = 10 }
+	case strings.Contains(catUpper, "BUMBU") || strings.Contains(catUpper, "KECAP") || strings.Contains(catUpper, "SABUN") || strings.Contains(catUpper, "SAMPO") || strings.Contains(catUpper, "DETERJEN"):
+		if prod.Unit == "" { prod.Unit = "Pcs" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Renceng" }
+		if prod.Conversion <= 0 { prod.Conversion = 12 }
+	case strings.Contains(catUpper, "ROKOK"):
+		if prod.Unit == "" { prod.Unit = "Bungkus" }
+		if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "Slop" }
+		if prod.Conversion <= 0 { prod.Conversion = 10 }
+	}
+}
+
+func getStandardEggMastersGo() []models.Product {
+	return []models.Product{
+		{Barcode: "899000000001", Name: "TELUR AYAM NEGERI", Price: 27000, PriceMember: 26500, BestPrice: 24000, Unit: "Kg", MinStock: 10, Stock: 150, UnitBig: "Ikat", Conversion: 15, PriceBig: 390000, IsActive: true},
+		{Barcode: "899000000002", Name: "TELUR OMEGA", Price: 32000, PriceMember: 31500, BestPrice: 28000, Unit: "Kg", MinStock: 10, Stock: 100, UnitBig: "Ikat", Conversion: 15, PriceBig: 465000, IsActive: true},
+		{Barcode: "899000000003", Name: "TELUR PUYUH", Price: 36000, PriceMember: 35000, BestPrice: 30000, Unit: "Kg", MinStock: 5, Stock: 50, UnitBig: "-", Conversion: 0, PriceBig: 0, IsActive: true},
+		{Barcode: "899000000004", Name: "TELUR AYAM KAMPUNG", Price: 3000, PriceMember: 2900, BestPrice: 2400, Unit: "Pcs", MinStock: 30, Stock: 300, UnitBig: "Tray", Conversion: 30, PriceBig: 85000, IsActive: true},
+		{Barcode: "899000000005", Name: "TELUR BEBEK", Price: 3000, PriceMember: 2900, BestPrice: 2400, Unit: "Pcs", MinStock: 30, Stock: 300, UnitBig: "Tray", Conversion: 30, PriceBig: 85000, IsActive: true},
+		{Barcode: "899000000006", Name: "TELUR ASIN", Price: 4000, PriceMember: 3800, BestPrice: 3200, Unit: "Pcs", MinStock: 20, Stock: 150, UnitBig: "Box", Conversion: 10, PriceBig: 38000, IsActive: true},
+		{Barcode: "899000000007", Name: "TELUR RETAK / PECAH", Price: 1250, PriceMember: 1250, BestPrice: 1000, Unit: "Pcs", MinStock: 0, Stock: 20, UnitBig: "-", Conversion: 0, PriceBig: 0, IsActive: true},
+	}
+}
+
+// ImportProductsCSV godoc
+// @Summary      Import products via CSV with automated 5-stage cleaning pipeline
+// @Description  Bulk import raw product CSV into the database, cleaning suffixes, barcodes, deduplicating parent-child rows, applying category defaults, and inserting egg masters.
+// @Tags         Products
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "CSV file to upload"
+// @Security     BearerAuth
+// @Success      200   {object}  map[string]interface{} "Successfully imported products"
+// @Failure      400   {object}  map[string]interface{} "Invalid file format or validation error"
+// @Failure      500   {object}  map[string]interface{} "Database error"
+// @Router       /api/v1/products/import [post]
+func ImportProductsCSV(c *gin.Context) {
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Gagal menerima unggahan berkas CSV", "error": err.Error()})
+		return
+	}
+	defer file.Close()
+
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format berkas salah", "error": "File harus berupa ekstensi .csv"})
+		return
+	}
+
+	csvReader := csv.NewReader(file)
+	csvReader.FieldsPerRecord = -1 // Allow variable column counts
+
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Gagal membaca struktur berkas CSV", "error": err.Error()})
+		return
+	}
+
+	if len(records) <= 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Berkas CSV kosong atau hanya berisi baris header"})
+		return
+	}
+
+	// Detect if 12-column GoPOS standard or 10-column legacy
+	is12ColStandard := false
+	headerCols := records[0]
+	for _, col := range headerCols {
+		colClean := strings.ToLower(strings.TrimSpace(col))
+		if colClean == "harga_jual_eceran" || colClean == "satuan_eceran" || colClean == "satuan_besar" {
+			is12ColStandard = true
+			break
+		}
+	}
+
+	groupedProducts := make(map[string]*models.Product)
+	categoryMap := make(map[string]string)
+	type AnomalyItem struct {
+		NamaBarang  string `json:"nama_barang"`
+		Kategori    string `json:"kategori"`
+		SatuanBesar string `json:"satuan_besar"`
+		Pertanyaan  string `json:"pertanyaan"`
+	}
+	var anomalies []AnomalyItem
+	rawRowsCount := 0
+
+	for i := 1; i < len(records); i++ {
+		record := records[i]
+		if len(record) == 0 {
+			continue
+		}
+
+		rawName := ""
+		rawBarcode := ""
+		kategori := "UMUM"
+		priceRow := 0
+		priceMemberRow := 0
+		bestPriceRow := 0
+		unitRow := ""
+		minStockRow := 5
+		stockRow := float64(0)
+		unitBigRow := ""
+		conversionRow := 0
+		priceBigRow := 0
+		supplierName := ""
+
+		if is12ColStandard && len(record) >= 12 {
+			rawBarcode = record[0]
+			rawName = record[1]
+			kategori = record[2]
+			priceRow, _ = strconv.Atoi(record[3])
+			priceMemberRow, _ = strconv.Atoi(record[4])
+			bestPriceRow, _ = strconv.Atoi(record[5])
+			unitRow = record[6]
+			minStockRow, _ = strconv.Atoi(record[7])
+			stockRow, _ = strconv.ParseFloat(record[8], 64)
+			unitBigRow = record[9]
+			conversionRow, _ = strconv.Atoi(record[10])
+			priceBigRow, _ = strconv.Atoi(record[11])
+		} else if len(record) >= 10 {
+			rawName = record[0]
+			rawBarcode = record[1]
+			bestPriceRow, _ = strconv.Atoi(record[2])
+			priceRow, _ = strconv.Atoi(record[3])
+			priceBigRow, _ = strconv.Atoi(record[4])
+			stockRow, _ = strconv.ParseFloat(record[5], 64)
+			unitRow = record[6]
+			unitBigRow = record[7]
+			conversionRow, _ = strconv.Atoi(record[8])
+			supplierName = record[9]
+		} else if len(record) >= 2 {
+			rawName = record[0]
+			rawBarcode = record[1]
+		}
+
+		rawName = strings.TrimSpace(rawName)
+		if rawName == "" {
+			continue
+		}
+
+		rawRowsCount++
+
+		// Stage 3: Filter egg transaction rows
+		if isEggTransactionRowGo(rawName) {
+			continue
+		}
+
+		// Stage 1 & 2: Normalization & Suffix Stripping
+		barcodeClean := sanitizeBarcodeGo(rawBarcode)
+		baseName, strippedUnit := cleanProductNameGo(rawName)
+		if baseName == "" {
+			baseName = rawName
+		}
+
+		unitClean := strings.ToUpper(strings.TrimSpace(unitRow))
+		if unitClean == "" {
+			unitClean = strippedUnit
+		}
+
+		unitBigClean := strings.ToUpper(strings.TrimSpace(unitBigRow))
+		isBig := bigUnitsGo[unitClean] || bigUnitsGo[strippedUnit] || bigUnitsGo[unitBigClean]
+
+		categoryMap[baseName] = kategori
+
+		prod, exists := groupedProducts[baseName]
+		if !exists {
+			prod = &models.Product{
+				Name:         baseName,
+				Barcode:      barcodeClean,
+				BestPrice:    bestPriceRow,
+				Price:        0,
+				PriceBig:     priceBigRow,
+				Stock:        stockRow,
+				MinStock:     minStockRow,
+				Unit:         "Pcs",
+				UnitBig:      "-",
+				Conversion:   conversionRow,
+				SupplierName: supplierName,
+				IsActive:     true,
+			}
+			if isBig {
+				bigUnitName := strippedUnit
+				if bigUnitName == "" { bigUnitName = unitClean }
+				if bigUnitName == "" { bigUnitName = unitBigClean }
+				if bigUnitName == "" { bigUnitName = "DUS" }
+				prod.UnitBig = bigUnitName
+				if priceBigRow > 0 {
+					prod.PriceBig = priceBigRow
+				} else {
+					prod.PriceBig = priceRow
+				}
+			} else {
+				prod.Price = priceRow
+				prod.PriceMember = priceMemberRow
+				if unitClean != "" && !bigUnitsGo[unitClean] {
+					prod.Unit = unitClean
+				}
+				if unitBigClean != "" && unitBigClean != "-" {
+					prod.UnitBig = unitBigClean
+				}
+			}
+			groupedProducts[baseName] = prod
+		} else {
+			// Merge adjacent duplicate row into parent
+			if isBig {
+				bigUnitName := strippedUnit
+				if bigUnitName == "" { bigUnitName = unitClean }
+				if bigUnitName == "" { bigUnitName = unitBigClean }
+				if bigUnitName == "" { bigUnitName = "PAK" }
+				prod.UnitBig = bigUnitName
+				if priceBigRow > 0 {
+					prod.PriceBig = priceBigRow
+				} else if priceRow > 0 {
+					prod.PriceBig = priceRow
+				}
+				if conversionRow > 0 {
+					prod.Conversion = conversionRow
+				}
+			} else {
+				// Smart Price-Ratio Deduplication (detecting Pak vs Pcs even if supplier omitted PAK suffix or wrote Pcs)
+				if priceRow > 0 {
+					if prod.Price > 0 && priceRow >= int(float64(prod.Price)*1.5) {
+						// Current row has higher price -> treat as Big Packaging unit!
+						prod.PriceBig = priceRow
+						if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "PAK" }
+						if prod.Conversion <= 0 && prod.Price > 0 { prod.Conversion = priceRow / prod.Price }
+					} else if prod.Price > 0 && prod.Price >= int(float64(priceRow)*1.5) {
+						// Existing row had higher price -> move old price to PriceBig, set new lower price as retail Price!
+						oldPrice := prod.Price
+						prod.Price = priceRow
+						prod.PriceBig = oldPrice
+						if prod.UnitBig == "" || prod.UnitBig == "-" { prod.UnitBig = "PAK" }
+						if prod.Conversion <= 0 && priceRow > 0 { prod.Conversion = oldPrice / priceRow }
+						if barcodeClean != "" { prod.Barcode = barcodeClean }
+					} else {
+						if prod.Price == 0 { prod.Price = priceRow }
+						if priceMemberRow > 0 { prod.PriceMember = priceMemberRow }
+						if bestPriceRow > 0 && prod.BestPrice == 0 { prod.BestPrice = bestPriceRow }
+						if unitClean != "" && !bigUnitsGo[unitClean] { prod.Unit = unitClean }
+						if prod.Barcode == "" && barcodeClean != "" { prod.Barcode = barcodeClean }
+					}
+				}
+			}
+		}
+	}
+
+	var productsToUpsert []models.Product
+
+	// Stage 4: Apply Category Defaults & Anomaly Checks
+	for name, prod := range groupedProducts {
+		cat := categoryMap[name]
+		applyCategoryDefaultsGo(prod, cat)
+
+		// Check anomalies for reporting
+		if (strings.Contains(name, "LOKAL") || strings.Contains(name, "UMKM") || strings.Contains(name, "ROTI") || strings.Contains(name, "JAJAN")) && prod.UnitBig != "-" && prod.Conversion <= 0 {
+			anomalies = append(anomalies, AnomalyItem{
+				NamaBarang:  name,
+				Kategori:    cat,
+				SatuanBesar: prod.UnitBig,
+				Pertanyaan:  fmt.Sprintf("Berapa jumlah isi %s pasti dalam 1 %s? (Produk UMKM tidak memiliki konversi baku).", prod.Unit, prod.UnitBig),
+			})
+		}
+
+		productsToUpsert = append(productsToUpsert, *prod)
+	}
+
+	// Stage 5: Append 7 Standard Egg Masters
+	productsToUpsert = append(productsToUpsert, getStandardEggMastersGo()...)
+
+	if len(productsToUpsert) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tidak ada data produk valid untuk diimpor"})
+		return
+	}
+
+	// Database Upsert via Transaction
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		return tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "barcode"}},
+			DoUpdates: clause.AssignmentColumns([]string{"name", "best_price", "price", "price_big", "price_member", "unit", "unit_big", "conversion", "supplier_name"}),
+		}).Create(&productsToUpsert).Error
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menyimpan master data catalog ke database GoPOS", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Berhasil membersihkan & mengimpor %d master produk ke sistem GoPOS", len(productsToUpsert)),
+		"data": gin.H{
+			"raw_rows_received":      rawRowsCount,
+			"processed_master_count": len(productsToUpsert),
+			"anomalies_count":        len(anomalies),
+			"anomalies":              anomalies,
+		},
+	})
+}
 
 type AddProductPayload struct {
 	Name           string  `json:"name" binding:"required"`
@@ -399,112 +773,112 @@ func GetRestockSuggestions(c *gin.Context) {
 // @Failure      400   {object}  map[string]interface{} "Invalid file format or validation error"
 // @Failure      500   {object}  map[string]interface{} "Database error"
 // @Router       /api/v1/products/import [post]
-func ImportProductsCSV(c *gin.Context) {
-	file, header, err := c.Request.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Gorontalo upload gagal", "error": err.Error()})
-		return
-	}
-	defer file.Close()
+// func ImportProductsCSV(c *gin.Context) {
+// 	file, header, err := c.Request.FormFile("file")
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Gorontalo upload gagal", "error": err.Error()})
+// 		return
+// 	}
+// 	defer file.Close()
 
-	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format file salah", "error": "File harus berupa ekstensi .csv"})
-		return
-	}
+// 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format file salah", "error": "File harus berupa ekstensi .csv"})
+// 		return
+// 	}
 
-	csvReader := csv.NewReader(file)
-	isHeader := true
-	var productsToUpsert []models.Product
-	lineCount := 0
+// 	csvReader := csv.NewReader(file)
+// 	isHeader := true
+// 	var productsToUpsert []models.Product
+// 	lineCount := 0
 
-	for {
-		lineCount++
-		record, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Gagal membaca baris ke-%d", lineCount), "error": err.Error()})
-			return
-		}
+// 	for {
+// 		lineCount++
+// 		record, err := csvReader.Read()
+// 		if err == io.EOF {
+// 			break
+// 		}
+// 		if err != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Gagal membaca baris ke-%d", lineCount), "error": err.Error()})
+// 			return
+// 		}
 
-		if isHeader {
-			isHeader = false
-			continue
-		}
+// 		if isHeader {
+// 			isHeader = false
+// 			continue
+// 		}
 
-		if len(record) != 10 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false, 
-				"message": fmt.Sprintf("Format kolom tidak sesuai pada baris %d", lineCount), 
-				"error":   fmt.Sprintf("Terdeteksi %d kolom. Pastikan CSV memiliki tepat 10 kolom sesuai template", len(record)),
-			})
-			return
-		}
+// 		if len(record) != 10 {
+// 			c.JSON(http.StatusBadRequest, gin.H{
+// 				"success": false, 
+// 				"message": fmt.Sprintf("Format kolom tidak sesuai pada baris %d", lineCount), 
+// 				"error":   fmt.Sprintf("Terdeteksi %d kolom. Pastikan CSV memiliki tepat 10 kolom sesuai template", len(record)),
+// 			})
+// 			return
+// 		}
 
-		name := strings.TrimSpace(record[0])
-		barcode := strings.TrimSpace(record[1])
-		bestPrice, _ := strconv.Atoi(record[2])
-		price, _ := strconv.Atoi(record[3])
-		priceBig, _ := strconv.Atoi(record[4])
-		stock, _ := strconv.ParseFloat(record[5], 64)
-		unit := strings.TrimSpace(record[6])
-		unitBig := strings.TrimSpace(record[7])
-		conversion, _ := strconv.Atoi(record[8])
-		supplierName := strings.TrimSpace(record[9])
+// 		name := strings.TrimSpace(record[0])
+// 		barcode := strings.TrimSpace(record[1])
+// 		bestPrice, _ := strconv.Atoi(record[2])
+// 		price, _ := strconv.Atoi(record[3])
+// 		priceBig, _ := strconv.Atoi(record[4])
+// 		stock, _ := strconv.ParseFloat(record[5], 64)
+// 		unit := strings.TrimSpace(record[6])
+// 		unitBig := strings.TrimSpace(record[7])
+// 		conversion, _ := strconv.Atoi(record[8])
+// 		supplierName := strings.TrimSpace(record[9])
 
-		if name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal di baris %d", lineCount), "error": "Nama produk tidak boleh kosong"})
-			return
-		}
-		if price <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal pada produk '%s'", name), "error": "Harga jual retail (price) harus lebih besar dari 0"})
-			return
-		}
-		if conversion <= 0 {
-			conversion = 1 
-		}
+// 		if name == "" {
+// 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal di baris %d", lineCount), "error": "Nama produk tidak boleh kosong"})
+// 			return
+// 		}
+// 		if price <= 0 {
+// 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Validasi gagal pada produk '%s'", name), "error": "Harga jual retail (price) harus lebih besar dari 0"})
+// 			return
+// 		}
+// 		if conversion <= 0 {
+// 			conversion = 1 
+// 		}
 
-		productsToUpsert = append(productsToUpsert, models.Product{
-			Name:         name,
-			Barcode:      barcode,
-			BestPrice:    bestPrice,
-			Price:        price,
-			PriceBig:     priceBig,
-			Stock:        stock,
-			Unit:         unit,
-			UnitBig:      unitBig,
-			Conversion:   conversion,
-			SupplierName: supplierName,
-			IsActive:     true,
-		})
-	}
+// 		productsToUpsert = append(productsToUpsert, models.Product{
+// 			Name:         name,
+// 			Barcode:      barcode,
+// 			BestPrice:    bestPrice,
+// 			Price:        price,
+// 			PriceBig:     priceBig,
+// 			Stock:        stock,
+// 			Unit:         unit,
+// 			UnitBig:      unitBig,
+// 			Conversion:   conversion,
+// 			SupplierName: supplierName,
+// 			IsActive:     true,
+// 		})
+// 	}
 
-	if len(productsToUpsert) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tidak ada data produk yang valid untuk diimpor"})
-		return
-	}
+// 	if len(productsToUpsert) == 0 {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tidak ada data produk yang valid untuk diimpor"})
+// 		return
+// 	}
 
-	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		return tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "barcode"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "best_price", "price", "price_big", "supplier_name"}),
-		}).Create(&productsToUpsert).Error
-	})
+// 	err = database.DB.Transaction(func(tx *gorm.DB) error {
+// 		return tx.Clauses(clause.OnConflict{
+// 			Columns:   []clause.Column{{Name: "barcode"}},
+// 			DoUpdates: clause.AssignmentColumns([]string{"name", "best_price", "price", "price_big", "supplier_name"}),
+// 		}).Create(&productsToUpsert).Error
+// 	})
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menyimpan data ke database", "error": err.Error()})
-		return
-	}
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menyimpan data ke database", "error": err.Error()})
+// 		return
+// 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Berhasil memproses massal %d produk ke sistem GoPOS", len(productsToUpsert)),
-		"data": gin.H{
-			"processed_count": len(productsToUpsert),
-		},
-	})
-}
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"success": true,
+// 		"message": fmt.Sprintf("Berhasil memproses massal %d produk ke sistem GoPOS", len(productsToUpsert)),
+// 		"data": gin.H{
+// 			"processed_count": len(productsToUpsert),
+// 		},
+// 	})
+// }
 
 type BatchProductItem struct {
 	Name         string  `json:"name"`

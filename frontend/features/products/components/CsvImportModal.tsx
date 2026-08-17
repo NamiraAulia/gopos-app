@@ -93,24 +93,84 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
   const validateRows = (rawRows: any[], dbBarcodes: Set<string>): ParsedCsvRow[] => {
     const seenCsvBarcodes = new Set<string>();
 
+    // Helper to normalize base product names (collapsing spaces & stripping suffixes)
+    const getCleanNameKey = (rawName: string): string => {
+      let upper = String(rawName || "").trim().toUpperCase();
+      upper = upper.replace(/\s+(DUS|BOX|PAK|RCG|RENCENG|SLOP|BAL|PCS|BUNGKUS|BOTOL|IKAT|TRAY)$/i, "").trim();
+      upper = upper.replace(/\s+/g, ""); // Collapse all spaces "KUS KUS" -> "KUSKUS"
+      return upper;
+    };
+
+    // Pre-pass: map rows by normalized base name to detect Pak vs Pcs price ratios
+    const nameMap = new Map<string, { parentIdx: number; retailPrice: number; pakPrice: number }>();
+    
+    rawRows.forEach((raw, idx) => {
+      const nama = String(raw.nama_barang || raw.nama_produk || raw.nama || raw.Name || "").trim();
+      if (!nama) return;
+      const key = getCleanNameKey(nama);
+      const price = Number(raw.harga_jual_eceran ?? raw.harga_jual ?? raw.harga ?? raw.price ?? 0);
+      
+      if (!nameMap.has(key)) {
+        nameMap.set(key, { parentIdx: idx, retailPrice: price, pakPrice: 0 });
+      } else {
+        const existing = nameMap.get(key)!;
+        if (price > 0 && existing.retailPrice > 0) {
+          if (price >= existing.retailPrice * 1.5) {
+            existing.pakPrice = Math.max(existing.pakPrice, price);
+          } else if (existing.retailPrice >= price * 1.5) {
+            existing.pakPrice = Math.max(existing.pakPrice, existing.retailPrice);
+            existing.retailPrice = price;
+            existing.parentIdx = idx;
+          }
+        }
+      }
+    });
+
+    const seenNameKeys = new Set<string>();
+
     return rawRows.map((raw, idx) => {
       const barcode = String(raw.barcode || raw.Barcode || "").trim();
       const nama_barang = String(raw.nama_barang || raw.nama_produk || raw.nama || raw.Name || "").trim();
-      const harga_jual_eceran = raw.harga_jual_eceran ?? raw.harga_jual ?? raw.harga ?? raw.price ?? "";
+      const rawPrice = raw.harga_jual_eceran ?? raw.harga_jual ?? raw.harga ?? raw.price ?? "";
+      let harga_jual_eceran = rawPrice;
       const harga_khusus_member = raw.harga_khusus_member ?? raw.harga_member ?? raw.price_member ?? "";
       const harga_modal_hpp = raw.harga_modal_hpp ?? raw.hpp ?? raw.best_price ?? "";
-      const satuan_eceran = String(raw.satuan_eceran || raw.satuan || raw.unit || "").trim();
+      let satuan_eceran = String(raw.satuan_eceran || raw.satuan || raw.unit || "").trim();
       const min_stok = raw.min_stok ?? raw.min_stock ?? "";
       const total_stok = raw.total_stok ?? raw.stok ?? raw.stock ?? "";
-      const satuan_besar = String(raw.satuan_besar || raw.unit_big || "").trim();
-      const isi_per_satuan_besar = raw.isi_per_satuan_besar ?? raw.conversion ?? "";
-      const harga_per_grosir = raw.harga_per_grosir ?? raw.harga_grosir ?? raw.price_big ?? "";
+      let satuan_besar = String(raw.satuan_besar || raw.unit_big || "").trim();
+      let isi_per_satuan_besar = raw.isi_per_satuan_besar ?? raw.conversion ?? "";
+      let harga_per_grosir = raw.harga_per_grosir ?? raw.harga_grosir ?? raw.price_big ?? "";
 
       const errors: string[] = [];
       const defaults: string[] = [];
 
+      const cleanKey = getCleanNameKey(nama_barang);
+      const groupInfo = nameMap.get(cleanKey);
+
+      let isCsvDuplicate = false;
+
+      // Smart Name Deduplication: If this row is the higher-priced Pak row of a duplicate group
+      if (groupInfo && groupInfo.pakPrice > 0) {
+        const currentPrice = Number(rawPrice);
+        if (idx === groupInfo.parentIdx) {
+          // This is the parent retail row! Merge grosir fields from the Pak row
+          if (!satuan_besar || satuan_besar === "-") satuan_besar = "PAK";
+          if (!harga_per_grosir || Number(harga_per_grosir) <= 0) harga_per_grosir = groupInfo.pakPrice;
+          if (!isi_per_satuan_besar || Number(isi_per_satuan_besar) <= 0) {
+            if (groupInfo.retailPrice > 0) {
+              isi_per_satuan_besar = Math.floor(groupInfo.pakPrice / groupInfo.retailPrice);
+            }
+          }
+          defaults.push(`Otomatis gabung Grosir ${satuan_besar} Rp ${groupInfo.pakPrice.toLocaleString()}`);
+        } else if (currentPrice >= groupInfo.retailPrice * 1.5) {
+          // This is the Pak duplicate row! Mark as CSV Duplicate so it's skipped
+          isCsvDuplicate = true;
+          defaults.push("Digabung ke varian eceran");
+        }
+      }
+
       const parsedPrice = Number(harga_jual_eceran);
-      const isPriceValid = !isNaN(parsedPrice) && parsedPrice > 0;
 
       if (!nama_barang) {
         errors.push("Nama barang wajib diisi");
@@ -119,8 +179,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
         errors.push("Harga jual eceran wajib diisi & > 0");
       }
 
-      // Check intra-CSV duplicate
-      let isCsvDuplicate = false;
+      // Check intra-CSV barcode duplicate
       if (barcode !== "") {
         if (seenCsvBarcodes.has(barcode)) {
           isCsvDuplicate = true;
@@ -138,7 +197,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
       if (total_stok === "") defaults.push("Stok default 0");
       if (harga_modal_hpp === "") defaults.push("HPP default 0");
 
-      if (satuan_besar !== "") {
+      if (satuan_besar !== "" && satuan_besar !== "-") {
         const conv = Number(isi_per_satuan_besar);
         const pBig = Number(harga_per_grosir);
         if (!conv || conv <= 0 || !pBig || pBig <= 0) {
@@ -157,7 +216,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
         action = "skip";
       } else if (isDbDuplicate) {
         status = "db_duplicate";
-        action = "skip"; // Default "Lewati" unless explicitly checked by user
+        action = "skip";
       } else if (defaults.length > 0) {
         status = "warning";
         action = "create";
