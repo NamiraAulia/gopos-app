@@ -53,6 +53,9 @@ func ConnectDB() {
 		&models.RefundItem{},
 		&models.Member{},
 		&models.StockAdjustment{},
+		&models.DebtLog{},
+		&models.Supplier{},
+		&models.SupplierSales{},
 	)
 	if err != nil {
 		log.Fatal("Gagal migrasi database: ", err)
@@ -64,6 +67,9 @@ func ConnectDB() {
 	DB.Exec("ALTER TABLE refund_items ALTER COLUMN qty_refunded TYPE double precision")
 	DB.Exec("ALTER TABLE stock_adjustments ALTER COLUMN qty TYPE double precision")
 	DB.Exec("ALTER TABLE stock_adjustments ALTER COLUMN stock_after TYPE double precision")
+	DB.Exec("ALTER TABLE members ADD COLUMN IF NOT EXISTS total_debt bigint DEFAULT 0")
+	DB.Exec("ALTER TABLE members ADD COLUMN IF NOT EXISTS last_debt_at timestamp")
+	DB.Exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_id bigint")
 
 	createIndexes()
 }
@@ -103,6 +109,21 @@ func createIndexes() {
 	// Drop old non-unique index and create a UNIQUE index
 	DB.Exec("DROP INDEX IF EXISTS idx_products_barcode")
 	DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
+
+	// Pembersihan aman data legacy: jika ada data ganda shift 'open' untuk user yang sama, tutup shift lama secara otomatis
+	DB.Exec(`
+		UPDATE shifts 
+		SET status = 'closed', 
+		    end_time = CURRENT_TIMESTAMP,
+		    cash_difference = 0
+		WHERE status = 'open' 
+		  AND id NOT IN (
+		      SELECT MAX(id) 
+		      FROM shifts 
+		      WHERE status = 'open' 
+		      GROUP BY user_id
+		  );
+	`)
 
 	// Create a unique partial index to ensure at most one active shift per user
 	DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_shifts_user_open_unique ON shifts (user_id) WHERE status = 'open'")

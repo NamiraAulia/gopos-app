@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,15 @@ import (
 	"gopos-backend/internal/models"
 	"gopos-backend/internal/utils"
 )
+
+type IdempotencyRecord struct {
+	Response  models.Transaction
+	Timestamp time.Time
+	mu        sync.Mutex
+	completed bool
+}
+
+var processedIdempotencyKeys sync.Map // map[string]*IdempotencyRecord
 
 // Checkout godoc
 // @Summary      Process a point-of-sale checkout transaction
@@ -33,9 +44,30 @@ func Checkout(c *gin.Context) {
 		return
 	}
 
+	idempotencyKey := req.IdempotencyKey
+	if idempotencyKey == "" {
+		idempotencyKey = c.GetHeader("X-Idempotency-Key")
+	}
+
+	var rec *IdempotencyRecord
+	if idempotencyKey != "" {
+		val, _ := processedIdempotencyKeys.LoadOrStore(idempotencyKey, &IdempotencyRecord{})
+		rec = val.(*IdempotencyRecord)
+
+		rec.mu.Lock()
+		if rec.completed {
+			if time.Since(rec.Timestamp) < 10*time.Minute {
+				rec.mu.Unlock()
+				utils.OK(c, "Transaksi sudah pernah diproses", rec.Response)
+				return
+			}
+		}
+		defer rec.mu.Unlock()
+	}
+
 	req.PaymentMethod = strings.ToLower(req.PaymentMethod)
-	if req.PaymentMethod != "cash" && req.PaymentMethod != "qris" && req.PaymentMethod != "transfer" {
-		utils.Fail(c, http.StatusBadRequest, "Metode pembayaran tidak valid", "payment_method harus 'cash', 'qris', atau 'transfer'")
+	if req.PaymentMethod != "cash" && req.PaymentMethod != "qris" && req.PaymentMethod != "transfer" && req.PaymentMethod != "kasbon" {
+		utils.Fail(c, http.StatusBadRequest, "Metode pembayaran tidak valid", "payment_method harus 'cash', 'qris', 'transfer', atau 'kasbon'")
 		return
 	}
 
@@ -116,9 +148,10 @@ func Checkout(c *gin.Context) {
 			}
 		}
 
-		subtotal := int64(float64(unitPrice) * item.Qty)
+		// Gunakan math.Round untuk mencegah truncation pecahan float desimal (misal: 0.3 kg x Rp 15.000)
+		subtotal := int64(math.Round(float64(unitPrice) * item.Qty))
 		preflightTotal += subtotal
-		normalTotal += int64(float64(normalPrice) * item.Qty)
+		normalTotal += int64(math.Round(float64(normalPrice) * item.Qty))
 
 		calcMap[item.ProductID] = itemCalc{
 			unitPrice:   unitPrice,
@@ -127,10 +160,31 @@ func Checkout(c *gin.Context) {
 		}
 	}
 
-	netTotal := preflightTotal
-	finalDiscount = normalTotal - preflightTotal
-	if finalDiscount < 0 {
-		finalDiscount = 0
+	netTotal, finalDiscount := CalculateNetTotalAndDiscount(normalTotal, preflightTotal, req.DiscountAmount)
+
+	var kasbonMember models.Member
+	var kasbonAmount int64
+	if req.PaymentMethod == "kasbon" {
+		if req.MemberID == nil || *req.MemberID == 0 {
+			utils.Fail(c, http.StatusBadRequest, "Member tidak dipilih", "Transaksi kasbon wajib memilih pelanggan / member yang terdaftar")
+			return
+		}
+		if err := database.DB.First(&kasbonMember, *req.MemberID).Error; err != nil {
+			utils.Fail(c, http.StatusBadRequest, "Member tidak ditemukan", "Data member tidak valid")
+			return
+		}
+		if !kasbonMember.IsActive {
+			utils.Fail(c, http.StatusBadRequest, "Member tidak aktif", "Member yang dinonaktifkan tidak dapat mengambil kasbon")
+			return
+		}
+
+		if req.AmountPaid < 0 {
+			req.AmountPaid = 0
+		}
+		if req.AmountPaid > netTotal {
+			req.AmountPaid = netTotal
+		}
+		kasbonAmount = netTotal - req.AmountPaid
 	}
 
 	if req.PaymentMethod == "cash" && req.AmountPaid < netTotal {
@@ -170,7 +224,10 @@ func Checkout(c *gin.Context) {
 			}
 		}
 
-		changeAmount := req.AmountPaid - netTotal
+		changeAmount := int64(0)
+		if req.PaymentMethod == "cash" {
+			changeAmount = req.AmountPaid - netTotal
+		}
 
 		transaction := models.Transaction{
 			UserID:          userID,
@@ -197,12 +254,75 @@ func Checkout(c *gin.Context) {
 			return err
 		}
 
-		if req.PaymentMethod == "cash" {
+		switch req.PaymentMethod {
+		case "cash":
 			if err := tx.Model(&models.Shift{}).
 				Where("user_id = ? AND status = 'open'", userID).
 				UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected + ?", netTotal)).
 				Error; err != nil {
 				return err
+			}
+		case "kasbon":
+			// Tambahkan DP Tunai ke shift kasir jika ada
+			if req.AmountPaid > 0 {
+				if err := tx.Model(&models.Shift{}).
+					Where("user_id = ? AND status = 'open'", userID).
+					UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected + ?", req.AmountPaid)).
+					Error; err != nil {
+					return err
+				}
+			}
+
+			// Tambahkan utang ke member & catat DebtLog
+			if kasbonAmount > 0 {
+				now := time.Now()
+				dueDate := now.AddDate(0, 0, 30) // Default 30 hari jatuh tempo
+
+				if err := tx.Model(&models.Member{}).
+					Where("id = ?", kasbonMember.ID).
+					Updates(map[string]interface{}{
+						"total_debt":   gorm.Expr("total_debt + ?", kasbonAmount),
+						"last_debt_at": now,
+					}).Error; err != nil {
+					return err
+				}
+
+				newTotalDebt := kasbonMember.TotalDebt + kasbonAmount
+				debtLog := models.DebtLog{
+					MemberID:      kasbonMember.ID,
+					TransactionID: &transaction.ID,
+					Type:          "kasbon",
+					Amount:        kasbonAmount,
+					DownPayment:   req.AmountPaid,
+					RemainingDebt: newTotalDebt,
+					PaymentMethod: "kasbon",
+					Notes:         fmt.Sprintf("Kasbon transaksi %s (Total: Rp %d, DP: Rp %d)", transaction.TransactionCode, netTotal, req.AmountPaid),
+					UserID:        userID,
+					CreatedAt:     now,
+					DueDate:       &dueDate,
+				}
+
+				if err := tx.Create(&debtLog).Error; err != nil {
+					return err
+				}
+
+				_ = utils.RecordActivity(tx, userID, "KASBON_CHECKOUT", "debt_logs", debtLog.ID, "",
+					fmt.Sprintf("Member: %s (ID %d), Nominal Utang: %d, DP: %d, TrxCode: %s", kasbonMember.Name, kasbonMember.ID, kasbonAmount, req.AmountPaid, transaction.TransactionCode),
+					c.ClientIP())
+			}
+		}
+
+		// Audit log jika kasir mengubah/meng-override harga produk saat checkout berlangsung
+		for _, item := range req.Items {
+			product := productMap[item.ProductID]
+			normalPrice := int64(product.Price)
+			if item.UnitChoice == "big" && product.Conversion > 0 {
+				normalPrice = int64(product.PriceBig)
+			}
+			if item.UnitPrice > 0 && item.UnitPrice != normalPrice {
+				oldVal := fmt.Sprintf("Produk: %s (ID %d), Harga Normal: %d", product.Name, product.ID, normalPrice)
+				newVal := fmt.Sprintf("Harga Kustom Kasir: %d, Qty: %v, TrxCode: %s", item.UnitPrice, item.Qty, transaction.TransactionCode)
+				_ = utils.RecordActivity(tx, userID, "CUSTOM_PRICE_CHECKOUT", "transaction_items", product.ID, oldVal, newVal, c.ClientIP())
 			}
 		}
 
@@ -217,6 +337,11 @@ func Checkout(c *gin.Context) {
 	}
 
 	database.DB.Preload("Items").Preload("Member").Preload("User").First(&createdTransaction, createdTransaction.ID)
+	if rec != nil {
+		rec.completed = true
+		rec.Response = createdTransaction
+		rec.Timestamp = time.Now()
+	}
 	utils.OK(c, "Transaksi berhasil diselesaikan!", createdTransaction)
 }
 
@@ -225,6 +350,26 @@ func generateTrxCode() string {
 		time.Now().Format("20060102"),
 		uuid.New().String()[:8],
 	)
+}
+
+// CalculateNetTotalAndDiscount menghitung total bayar bersih dan total diskon dengan guard agar netTotal tidak pernah negatif
+func CalculateNetTotalAndDiscount(normalTotal, preflightTotal, reqDiscount int64) (netTotal int64, totalDiscount int64) {
+	if reqDiscount < 0 {
+		reqDiscount = 0
+	}
+	appliedManualDiscount := reqDiscount
+	if appliedManualDiscount > preflightTotal {
+		appliedManualDiscount = preflightTotal
+	}
+
+	netTotal = preflightTotal - appliedManualDiscount
+	productDiscount := normalTotal - preflightTotal
+	if productDiscount < 0 {
+		productDiscount = 0
+	}
+
+	totalDiscount = productDiscount + appliedManualDiscount
+	return netTotal, totalDiscount
 }
 
 // GetTransactions godoc
@@ -361,8 +506,8 @@ func VoidTransaction(c *gin.Context) {
 			return err
 		}
 
-		oldVal := fmt.Sprintf("Status: %s, TotalAmount: %d", transaction.Status, transaction.TotalAmount)
-		newVal := "Status: voided"
+		oldVal := fmt.Sprintf("TrxCode: %s, TotalAmount: %d, PaymentMethod: %s, Status: %s", transaction.TransactionCode, transaction.TotalAmount, transaction.PaymentMethod, transaction.Status)
+		newVal := fmt.Sprintf("Status: voided, Pembatalan oleh UserID: %d", userID)
 		errLog := utils.RecordActivity(tx, userID, "VOID_TRANSACTION", "transactions", transaction.ID, oldVal, newVal, c.ClientIP())
 		if errLog != nil {
 			return errLog

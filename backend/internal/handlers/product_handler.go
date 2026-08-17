@@ -30,6 +30,7 @@ type AddProductPayload struct {
 	UnitBig        string  `json:"unit_big"`
 	Conversion     int     `json:"conversion"`
 	UnitChoice     string  `json:"unit_choice"`
+	SupplierID     *uint   `json:"supplier_id"`
 	SupplierName   string  `json:"supplier_name"`
 	DiscountAmount int     `json:"discount_amount"`
 	IsPromo        bool    `json:"is_promo"`
@@ -122,6 +123,7 @@ func AddProducts(c *gin.Context) {
 		Unit:           input.Unit,
 		UnitBig:        input.UnitBig,
 		Conversion:     input.Conversion,
+		SupplierID:     input.SupplierID,
 		SupplierName:   input.SupplierName,
 		IsActive:       true,
 		DiscountAmount: input.DiscountAmount,
@@ -175,6 +177,9 @@ func EditProducts(c *gin.Context) {
 	}
 
 	oldPrice := product.Price
+	oldPriceBig := product.PriceBig
+	oldPriceMember := product.PriceMember
+	oldBestPrice := product.BestPrice
 	oldStock := product.Stock
 
 	product.Name = input.Name
@@ -182,6 +187,7 @@ func EditProducts(c *gin.Context) {
 	product.BestPrice = input.BestPrice
 	product.Price = input.Price
 	product.Stock = input.Stock
+	product.SupplierID = input.SupplierID
 	product.SupplierName = input.SupplierName
 	product.Unit = input.Unit
 	product.PriceBig = input.PriceBig
@@ -197,20 +203,15 @@ func EditProducts(c *gin.Context) {
 		return
 	}
 
-	if oldPrice != input.Price {
-		oldVal := fmt.Sprintf("Price: %d", oldPrice)
-		newVal := fmt.Sprintf("Price: %d", input.Price)
+	if oldPrice != input.Price || oldPriceBig != input.PriceBig || oldPriceMember != input.PriceMember || oldBestPrice != input.BestPrice {
+		oldVal := fmt.Sprintf("Produk: %s, Price: %d, PriceBig: %d, PriceMember: %d, BestPrice: %d", product.Name, oldPrice, oldPriceBig, oldPriceMember, oldBestPrice)
+		newVal := fmt.Sprintf("Produk: %s, Price: %d, PriceBig: %d, PriceMember: %d, BestPrice: %d", input.Name, input.Price, input.PriceBig, input.PriceMember, input.BestPrice)
 		_ = utils.RecordActivity(nil, userID, "CHANGE_PRICE", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 	if oldStock != input.Stock {
-		oldVal := fmt.Sprintf("Stock: %v", oldStock)
-		newVal := fmt.Sprintf("Stock: %v", input.Stock)
+		oldVal := fmt.Sprintf("Produk: %s, Stock: %v", product.Name, oldStock)
+		newVal := fmt.Sprintf("Produk: %s, Stock: %v", input.Name, input.Stock)
 		_ = utils.RecordActivity(nil, userID, "MANUAL_STOCK_ADJUST", "products", product.ID, oldVal, newVal, c.ClientIP())
-	}
-	if oldPrice == input.Price && oldStock == input.Stock {
-		oldVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %v", product.Name, product.Price, product.Stock)
-		newVal := fmt.Sprintf("Name: %s, Price: %d, Stock: %v", input.Name, input.Price, input.Stock)
-		_ = utils.RecordActivity(nil, userID, "EDIT_PRODUCT", "products", product.ID, oldVal, newVal, c.ClientIP())
 	}
 
 	response := utils.Success("Barang berhasil diupdate!", product)

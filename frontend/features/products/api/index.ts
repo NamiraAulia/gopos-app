@@ -196,14 +196,107 @@ export const productsApi = {
     },
 
     batchImport: async (products: any[], signal?: AbortSignal) => {
-        const { productsApi } = await import("@/lib/api");
-        return productsApi.batchImport(products, signal);
+        try {
+            let success_count = 0;
+            let updated_count = 0;
+            let skipped_count = 0;
+            let failed_count = 0;
+            const details: any[] = [];
+
+            for (let i = 0; i < products.length; i++) {
+                if (signal?.aborted) break;
+                const item = products[i];
+                if (item.action === "skip") {
+                    skipped_count++;
+                    details.push({
+                        index: i,
+                        status: "skipped",
+                        name: item.name,
+                        barcode: item.barcode,
+                    });
+                    continue;
+                }
+
+                const dbPayload: any = {
+                    name: item.name,
+                    barcode: item.barcode || `PRD-${Date.now()}-${i}`,
+                    price: item.price || 0,
+                    price_member: item.price_member || null,
+                    best_price: item.best_price || 0,
+                    unit: item.unit || "Pcs",
+                    stock: item.stock || 0,
+                    unit_big: item.unit_big || null,
+                    conversion: item.conversion || null,
+                    price_big: item.price_big || null,
+                    is_active: true,
+                };
+
+                if (item.action === "update" && item.barcode) {
+                    const { error } = await supabase
+                        .from("products")
+                        .update(dbPayload)
+                        .eq("barcode", item.barcode);
+                    if (error) {
+                        failed_count++;
+                        details.push({ index: i, status: "failed", name: item.name, barcode: item.barcode, error: error.message });
+                    } else {
+                        updated_count++;
+                        details.push({ index: i, status: "updated", name: item.name, barcode: item.barcode });
+                    }
+                } else {
+                    const { error } = await supabase
+                        .from("products")
+                        .insert(dbPayload);
+                    if (error) {
+                        failed_count++;
+                        details.push({ index: i, status: "failed", name: item.name, barcode: item.barcode, error: error.message });
+                    } else {
+                        success_count++;
+                        details.push({ index: i, status: "success", name: item.name, barcode: item.barcode });
+                    }
+                }
+            }
+
+            return {
+                ok: true,
+                success: true,
+                data: {
+                    processed: products.length,
+                    success_count,
+                    updated_count,
+                    skipped_count,
+                    failed_count,
+                    details,
+                },
+            };
+        } catch (err: any) {
+            return {
+                ok: false,
+                success: false,
+                message: err.message || "Gagal memproses batch import",
+                data: null,
+            };
+        }
     },
 
     getBarcodes: async () => {
-        const { productsApi } = await import("@/lib/api");
-        return productsApi.getBarcodes();
+        try {
+            const { data, error } = await supabase
+                .from("products")
+                .select("barcode");
+            if (error) throw error;
+            const barcodes = (data || []).map((p: any) => p.barcode).filter(Boolean);
+            return {
+                success: true,
+                ok: true,
+                data: barcodes,
+            };
+        } catch (err: any) {
+            return {
+                success: false,
+                ok: false,
+                data: [],
+            };
+        }
     }
 };
-
-

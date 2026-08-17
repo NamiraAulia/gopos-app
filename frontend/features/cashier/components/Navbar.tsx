@@ -49,6 +49,8 @@ export default function Navbar({
     { name: "Kasir", href: "/cashier" },
     { name: "Riwayat", href: "/cashier/historyTransactions" },
     { name: "Rekap Kas", href: "/cashier/cashSummary" },
+    { name: "Kasbon", href: "/kasbon" },
+    { name: "Distributor", href: "/suppliers" },
     { name: "Gudang", href: "/products" },
   ];
 

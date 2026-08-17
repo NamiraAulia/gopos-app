@@ -51,7 +51,7 @@ export const productsApi = {
     const form = new FormData();
     form.append('file', file);
     return handleResponse<{ imported: number; skipped: number; errors: string[] }>(
-      api.post('/admin/products/import', form, {
+      api.post('/products/import', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     );

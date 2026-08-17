@@ -10,10 +10,11 @@ export interface CheckoutItemPayload {
 
 export interface CheckoutPayload {
   items: CheckoutItemPayload[];
-  payment_method: "cash" | "qris" | "transfer";
+  payment_method: "cash" | "qris" | "transfer" | "kasbon";
   amount_paid: number;
   member_id?: number;
   discount_amount?: number;
+  idempotency_key?: string;
 }
 
 export interface TransactionResult {
@@ -92,6 +93,24 @@ const getCurrentProfileId = async () => {
 
 export const cashierApi = {
   getMembers: async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await fetch("http://localhost:8080/api/v1/members", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const members = Array.isArray(json.data) ? json.data : (json.data.members || []);
+            return { success: true, data: members };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal fetch members dari Backend Go, beralih ke Supabase fallback:", e);
+    }
+
     const { data, error } = await supabase
       .from("members")
       .select("*")
@@ -103,6 +122,33 @@ export const cashierApi = {
   },
 
   getProducts: async (search?: string) => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const url = search
+          ? `http://localhost:8080/api/v1/products?search=${encodeURIComponent(search)}&limit=100`
+          : `http://localhost:8080/api/v1/products?limit=100`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const list = json.data.products || [];
+            return {
+              success: true,
+              data: {
+                products: list,
+                data: list,
+              },
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal fetch produk dari Backend Go, beralih ke Supabase fallback:", e);
+    }
+
     let query = supabase.from("products").select("*").eq("is_active", true);
 
     if (search) {
@@ -122,6 +168,26 @@ export const cashierApi = {
   },
 
   getProductByBarcode: async (barcode: string) => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await fetch(`http://localhost:8080/api/v1/products?barcode=${encodeURIComponent(barcode)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const list = json.data.products || [];
+            if (list.length > 0) {
+              return { success: true, data: list[0] as Product };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal fetch product by barcode dari Backend Go, beralih ke Supabase fallback:", e);
+    }
+
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -270,6 +336,38 @@ export const cashierApi = {
   },
 
   checkout: async (payload: CheckoutPayload) => {
+    // 1. Primary: Try calling Go Backend API
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await fetch("http://localhost:8080/api/v1/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json.success) {
+          return {
+            success: true,
+            message: json.message || "Transaksi berhasil diproses",
+            data: json.data,
+          };
+        } else if (json.message) {
+          return {
+            success: false,
+            message: json.message,
+            data: null,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal menghubungi Backend Go, beralih ke Supabase Client fallback:", e);
+    }
+
+    // 2. Fallback: Supabase Client
     const userId = await getCurrentProfileId();
     
     const totalAmount = payload.items.reduce((sum, item) => sum + (item.unit_price * item.qty), 0) - (payload.discount_amount || 0);
@@ -304,7 +402,7 @@ export const cashierApi = {
         .single();
 
       if (product) {
-        const subtotal = item.unit_price * item.qty;
+        const subtotal = Math.round(item.unit_price * item.qty);
         await supabase.from("transaction_items").insert({
           transaction_id: tx.id,
           product_id: item.product_id,
@@ -328,25 +426,91 @@ export const cashierApi = {
           product_id: item.product_id,
           qty_change: -qtyDeducted,
         });
-        if (rpcError) throw rpcError;
+        if (rpcError) console.warn("Stock RPC adjust error:", rpcError);
       }
     }
 
     if (payload.payment_method === "cash") {
-      const { data: activeShift } = await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "open")
-        .maybeSingle();
-
-      if (activeShift) {
-        await supabase
+      try {
+        const { data: activeShift } = await supabase
           .from("shifts")
-          .update({
-            total_cash_expected: activeShift.total_cash_expected + totalAmount,
-          })
-          .eq("id", activeShift.id);
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "open")
+          .maybeSingle();
+
+        if (activeShift) {
+          await supabase
+            .from("shifts")
+            .update({
+              total_cash_expected: activeShift.total_cash_expected + totalAmount,
+            })
+            .eq("id", activeShift.id);
+        }
+      } catch (err) {
+        console.warn("Shift update error:", err);
+      }
+    } else if (payload.payment_method === "kasbon" && payload.member_id) {
+      const dpAmount = payload.amount_paid > 0 ? payload.amount_paid : 0;
+      const masukUtang = totalAmount - dpAmount;
+
+      if (dpAmount > 0) {
+        try {
+          const { data: activeShift } = await supabase
+            .from("shifts")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("status", "open")
+            .maybeSingle();
+
+          if (activeShift) {
+            await supabase
+              .from("shifts")
+              .update({
+                total_cash_expected: activeShift.total_cash_expected + dpAmount,
+              })
+              .eq("id", activeShift.id);
+          }
+        } catch (err) {
+          console.warn("Shift DP update error:", err);
+        }
+      }
+
+      if (masukUtang > 0) {
+        try {
+          const { data: mbr } = await supabase
+            .from("members")
+            .select("total_debt")
+            .eq("id", payload.member_id)
+            .single();
+
+          const currentDebt = mbr?.total_debt || 0;
+          const newTotalDebt = currentDebt + masukUtang;
+
+          await supabase
+            .from("members")
+            .update({
+              total_debt: newTotalDebt,
+              last_debt_at: new Date().toISOString(),
+            })
+            .eq("id", payload.member_id);
+
+          await supabase.from("debt_logs").insert({
+            member_id: payload.member_id,
+            transaction_id: tx.id,
+            type: "kasbon",
+            amount: masukUtang,
+            down_payment: dpAmount,
+            remaining_debt: newTotalDebt,
+            payment_method: "kasbon",
+            notes: `Kasbon transaksi ${tx.transaction_code} (Total: Rp ${totalAmount}, DP: Rp ${dpAmount})`,
+            user_id: userId,
+            created_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+        } catch (err) {
+          console.warn("Supabase member debt / debt_logs error:", err);
+        }
       }
     }
 

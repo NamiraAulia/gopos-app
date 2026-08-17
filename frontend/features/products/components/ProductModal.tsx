@@ -106,6 +106,7 @@ export const ProductModal = ({
   existingProduct,
 }: ProductModalProps) => {
   const [formData, setFormData] = useState<Partial<Product>>(EMPTY_FORM);
+  const [suppliersList, setSuppliersList] = useState<Array<{ id: number; name: string }>>([]);
 
   const [parentStock, setParentStock] = useState(0);
   const [childStock, setChildStock] = useState(0);
@@ -121,6 +122,20 @@ export const ProductModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Load supplier list for dropdown
+    const loadSuppliers = async () => {
+      try {
+        const { supplierApi } = await import("@/features/suppliers/api");
+        const res = await supplierApi.getSuppliers();
+        if (res.success && res.data) {
+          setSuppliersList(res.data);
+        }
+      } catch (err) {
+        console.warn("Gagal memuat supplier list:", err);
+      }
+    };
+    loadSuppliers();
 
     if (existingProduct) {
       setFormData(existingProduct);
@@ -141,14 +156,12 @@ export const ProductModal = ({
     }
   }, [existingProduct, isOpen]);
 
-
   useEffect(() => {
     if (!isGrosirActive || conversion <= 0) return;
 
     const totalStock = parentStock * conversion + childStock;
     setFormData((prev) => ({ ...prev, stock: totalStock }));
   }, [parentStock, childStock, conversion, isGrosirActive]);
-
 
   useEffect(() => {
     if (!isGrosirActive) {
@@ -163,7 +176,6 @@ export const ProductModal = ({
     }
   }, [isGrosirActive]);
 
-
   const totalEceranNormal = (formData.price ?? 0) * conversion;
   const selisihHemat = totalEceranNormal - (formData.price_big ?? 0);
   const showPricePreview =
@@ -171,7 +183,6 @@ export const ProductModal = ({
     conversion > 0 &&
     (formData.price ?? 0) > 0 &&
     (formData.price_big ?? 0) > 0;
-
 
   const setField = useCallback(
     <K extends keyof Product>(field: K, value: Product[K]) => {
@@ -267,6 +278,31 @@ export const ProductModal = ({
                   value={formData.name ?? ""}
                   onChange={(e) => setField("name", e.target.value)}
                 />
+              </Field>
+            </div>
+
+            <div className="mt-3">
+              <Field label="Distributor / Supplier">
+                <select
+                  className={inputClass + " bg-white"}
+                  value={formData.supplier_id ?? ""}
+                  onChange={(e) => {
+                    const selectedId = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    const foundSup = suppliersList.find((s) => s.id === selectedId);
+                    setFormData((prev) => ({
+                      ...prev,
+                      supplier_id: selectedId,
+                      supplier_name: foundSup ? foundSup.name : "",
+                    }));
+                  }}
+                >
+                  <option value="">-- Pilih / Tanpa Distributor --</option>
+                  {suppliersList.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.name}
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
           </div>

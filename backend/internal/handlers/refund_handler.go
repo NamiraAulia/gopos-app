@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"gopos-backend/internal/database"
 	"gopos-backend/internal/models"
@@ -93,7 +95,8 @@ func ProcessRefund(c *gin.Context) {
 				return fmt.Errorf("jumlah retur produk '%s' melampaui batas beli asli", txItem.ProductName)
 			}
 
-			itemRefundAmount := int64(float64(txItem.UnitPrice) * reqItem.QtyRefunded)
+			// Gunakan math.Round untuk mencegah truncation desimal float pada retur barang pecahan
+			itemRefundAmount := int64(math.Round(float64(txItem.UnitPrice) * reqItem.QtyRefunded))
 
 			totalRefundAmount = totalRefundAmount + itemRefundAmount
 
@@ -137,11 +140,15 @@ func ProcessRefund(c *gin.Context) {
 		// 	return err
 		// }
 
-		if err := tx.Model(&models.Shift{}).
-			Where("id = ?", activeShift.ID).
-			UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", totalRefundAmount)).
-			Error; err != nil {
-			return err
+		// Hanya perbarui total_refunded_cash pada shift jika transaksi asli menggunakan pembayaran TUNAI (cash).
+		// Pembayaran non-tunai (QRIS, Transfer) tidak mempengaruhi saldo kas fisik di laci kasir.
+		if strings.ToLower(transaction.PaymentMethod) == "cash" {
+			if err := tx.Model(&models.Shift{}).
+				Where("id = ?", activeShift.ID).
+				UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", totalRefundAmount)).
+				Error; err != nil {
+				return err
+			}
 		}
 
 		var totalOriginalQty float64 = 0

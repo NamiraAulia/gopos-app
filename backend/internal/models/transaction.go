@@ -10,11 +10,12 @@ type CheckoutInput struct {
 }
 
 type CheckoutRequest struct {
-	Items         []CheckoutInput `json:"items"          binding:"required,min=1"`
-	PaymentMethod string          `json:"payment_method" binding:"required,oneof=cash qris transfer"`
-	AmountPaid    int64           `json:"amount_paid"    binding:"required,min=1"`
-	MemberID      *uint           `json:"member_id"`
-	DiscountAmount int64          `json:"discount_amount"`
+	Items          []CheckoutInput `json:"items"          binding:"required,min=1"`
+	PaymentMethod  string          `json:"payment_method" binding:"required,oneof=cash qris transfer kasbon"`
+	AmountPaid     int64           `json:"amount_paid"`
+	MemberID       *uint           `json:"member_id"`
+	DiscountAmount int64           `json:"discount_amount"`
+	IdempotencyKey string          `json:"idempotency_key"`
 }
 
 type Transaction struct {
