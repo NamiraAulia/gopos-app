@@ -681,6 +681,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             usbPrinter?.addString(text)
             usbPrinter?.printString()
             usbPrinter?.walkPaper(20)
+            usbPrinter?.paperCut()
         } else if (servicePrinter?.isAvailable() == true) {
             Log.d(TAG, "Printing via ThermalPrinterService...")
             servicePrinter?.reset()
@@ -689,6 +690,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             servicePrinter?.addString(text)
             servicePrinter?.printString()
             servicePrinter?.walkPaper(20)
+            servicePrinter?.paperCut()
         } else {
             Log.e(TAG, "Tidak ada printer internal Telpo yang terhubung atau tersedia!")
         }
