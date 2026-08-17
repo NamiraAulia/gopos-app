@@ -297,7 +297,7 @@ export default function SettingsPage() {
         `${testReceiptData.footerText}\n\n\n`;
 
       addLog("Memanggil Printer.printReceipt via Capacitor...");
-      const res = await Printer.printReceipt({ text: testText, receiptData: base64Data });
+      const res = await Printer.printReceipt({ text: testText, receiptData: base64Data, printerType: printerType });
       addLog(`Respon printReceipt: success=${res.success}, message=${res.message}`);
 
       setPrintStatus({

@@ -665,7 +665,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       }
       
       const base64Data = uint8ArrayToBase64(bytes);
-      const result = await Printer.printReceipt({ text: plainText, receiptData: base64Data });
+      const result = await Printer.printReceipt({ text: plainText, receiptData: base64Data, printerType });
       return { success: result.success, isNative: true, message: result.message || "Berhasil dicetak secara native" };
     } catch (err: any) {
       console.error("Gagal cetak native Telpo, fallback ke RawBT:", err);
