@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { BluetoothPrinterManager } from "@/components/BluetoothPrinterManager";
-import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes, PrinterDevice, getAvailablePrinters, setPreferredPrinterDevice } from "@/lib/printer";
+import { isRawBTInstalled, printViaRawBT, Printer, generateEscPosReceiptBytes, generatePclReceiptBytes, PrinterDevice, getAvailablePrinters, setPreferredPrinterDevice } from "@/lib/printer";
 import { convertImageToEscPosRaster } from "@/lib/printer-image-helper";
 import { Capacitor } from "@capacitor/core";
 import { AlertCircle, CheckCircle, Download, Printer as PrinterIcon, RefreshCw, Monitor, HelpCircle, ShieldCheck, Loader2, Usb, Check } from "lucide-react";
@@ -247,12 +247,14 @@ export default function SettingsPage() {
       total: 35000,
       amountPaid: 50000,
       changeAmount: 15000,
-      footerText: footerText || "Direct ESC/POS Native USB Print - Sukses!",
+      footerText: footerText || `Direct ${printerType === "pcl" ? "PCL" : "ESC/POS"} Native USB Print - Sukses!`,
       logoBytes
     };
 
     try {
-      const bytes = generateEscPosReceiptBytes(testReceiptData, cols);
+      const bytes = printerType === "pcl"
+        ? generatePclReceiptBytes(testReceiptData, cols)
+        : generateEscPosReceiptBytes(testReceiptData, cols);
       const base64Data = uint8ArrayToBase64(bytes);
       const testText = 
         `========== ${testReceiptData.storeName} ==========\n` +
@@ -540,7 +542,7 @@ export default function SettingsPage() {
                         className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow"
                       >
                         <PrinterIcon className="h-4 w-4" />
-                        <span>Uji Cetak ESC/POS (Format Lengkap)</span>
+                        <span>Uji Cetak {printerType === "pcl" ? "PCL" : "ESC/POS"} (Format Lengkap)</span>
                       </button>
 
                       <button
