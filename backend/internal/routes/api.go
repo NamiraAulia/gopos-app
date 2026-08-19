@@ -64,8 +64,7 @@ func SetupRoutes(r *gin.Engine) {
 				adminOnly.POST("/users", handlers.CreateUser)
 				adminOnly.GET("/users", handlers.GetUsers)
 				adminOnly.PUT("/users/:id/deactivate", handlers.DeactivateUser)
-				adminOnly.PUT("/users/:id/activate", handlers.ActivateUser)
-				// adminOnly.PATCH("/users/:id/reset-password", handlers.ResetPassword)
+
 				adminOnly.GET("/shifts/active", handlers.GetActiveShifts)
 				adminOnly.POST("/shifts/:id/force-close", handlers.ForceCloseShift)
 				adminOnly.GET("/alerts", handlers.GetSystemAlerts)

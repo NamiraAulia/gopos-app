@@ -1,5 +1,6 @@
 import React from 'react';
 import { useBluetoothPrinter } from '@/lib/useBluetoothPrinter';
+import { AlertTriangle, Printer, Search } from 'lucide-react';
 
 export const BluetoothPrinterManager: React.FC = () => {
   const {
@@ -65,8 +66,9 @@ export const BluetoothPrinterManager: React.FC = () => {
 
       {/* Error Message Alert */}
       {errorMessage && (
-        <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300">
-          ⚠️ {errorMessage}
+        <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -76,9 +78,10 @@ export const BluetoothPrinterManager: React.FC = () => {
           <>
             <button
               onClick={sendTestData}
-              className="flex-1 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition shadow-sm"
+              className="flex-1 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition shadow-sm flex items-center justify-center gap-2"
             >
-              🖨️ Test Print Struk
+              <Printer className="h-4 w-4" />
+              <span>Test Print Struk</span>
             </button>
             <button
               onClick={disconnectPrinter}
@@ -93,7 +96,8 @@ export const BluetoothPrinterManager: React.FC = () => {
             disabled={status === 'Connecting...'}
             className="w-full px-4 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-xl transition shadow-sm flex items-center justify-center gap-2"
           >
-            {status === 'Connecting...' ? 'Sedang Menghubungkan...' : '🔍 Cari & Hubungkan Printer'}
+            <Search className="h-4 w-4" />
+            <span>{status === 'Connecting...' ? 'Sedang Menghubungkan...' : 'Cari & Hubungkan Printer'}</span>
           </button>
         )}
       </div>

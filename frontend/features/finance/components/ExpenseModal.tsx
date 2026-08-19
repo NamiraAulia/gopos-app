@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { ExpenseModalProps } from "../types";
+import { supabase } from "@/utils/supabaseClient";
 
 export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) => {
   const [newExpense, setNewExpense] = useState({ name: "", amount: "", category: "Operasional" });
@@ -13,31 +14,55 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
     setIsLoading(true);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const token = localStorage.getItem("token");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("User tidak terautentikasi.");
+      
+      const { data: profile, error: profErr } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", authUser.email)
+        .single();
 
-      const response = await fetch(`${API_URL}/api/v1/expenses`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: newExpense.name,
-          amount: parseInt(newExpense.amount.replace(/\D/g, "") || "0", 10), // Masking aman
-          category: newExpense.category
-        }),
-      });
+      if (profErr || !profile) throw new Error("Profil pengguna tidak ditemukan.");
+      const userId = profile.id;
 
-      if (response.ok) {
-        setNewExpense({ name: "", amount: "", category: "Operasional" });
-        onSuccess(); // Refresh data di page utama
-        onClose();   // Tutup modal
-      } else {
-        alert("Gagal mencatat pengeluaran");
+      const payload = {
+        user_id: userId,
+        name: newExpense.name,
+        amount: parseInt(newExpense.amount.replace(/\D/g, "") || "0", 10),
+        category: newExpense.category,
+      };
+
+      const { error } = await supabase
+        .from("expenses")
+        .insert(payload);
+
+      if (error) throw error;
+
+      // Adjust shift expected cash if category is Operasional
+      if (payload.category.toLowerCase() === "operasional" || payload.category.toLowerCase() === "lainnya") {
+        const { data: activeShift } = await supabase
+          .from("shifts")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "open")
+          .maybeSingle();
+
+        if (activeShift) {
+          await supabase
+            .from("shifts")
+            .update({
+              total_cash_expected: activeShift.total_cash_expected - payload.amount,
+            })
+            .eq("id", activeShift.id);
+        }
       }
-    } catch (error) {
-      alert("Terjadi kesalahan sistem.");
+
+      setNewExpense({ name: "", amount: "", category: "Operasional" });
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      alert(error.message || "Terjadi kesalahan sistem.");
     } finally {
       setIsLoading(false);
     }

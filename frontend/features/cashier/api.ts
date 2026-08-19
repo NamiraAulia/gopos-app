@@ -93,24 +93,6 @@ const getCurrentProfileId = async () => {
 
 export const cashierApi = {
   getMembers: async () => {
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch("http://localhost:8080/api/v1/members", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            const members = Array.isArray(json.data) ? json.data : (json.data.members || []);
-            return { success: true, data: members };
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal fetch members dari Backend Go, beralih ke Supabase fallback:", e);
-    }
-
     const { data, error } = await supabase
       .from("members")
       .select("*")
@@ -122,33 +104,6 @@ export const cashierApi = {
   },
 
   getProducts: async (search?: string) => {
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const url = search
-          ? `http://localhost:8080/api/v1/products?search=${encodeURIComponent(search)}&limit=100`
-          : `http://localhost:8080/api/v1/products?limit=100`;
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            const list = json.data.products || [];
-            return {
-              success: true,
-              data: {
-                products: list,
-                data: list,
-              },
-            };
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal fetch produk dari Backend Go, beralih ke Supabase fallback:", e);
-    }
-
     let query = supabase.from("products").select("*").eq("is_active", true);
 
     if (search) {
@@ -168,26 +123,6 @@ export const cashierApi = {
   },
 
   getProductByBarcode: async (barcode: string) => {
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch(`http://localhost:8080/api/v1/products?barcode=${encodeURIComponent(barcode)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            const list = json.data.products || [];
-            if (list.length > 0) {
-              return { success: true, data: list[0] as Product };
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal fetch product by barcode dari Backend Go, beralih ke Supabase fallback:", e);
-    }
-
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -336,38 +271,6 @@ export const cashierApi = {
   },
 
   checkout: async (payload: CheckoutPayload) => {
-    // 1. Primary: Try calling Go Backend API
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch("http://localhost:8080/api/v1/checkout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok && json.success) {
-          return {
-            success: true,
-            message: json.message || "Transaksi berhasil diproses",
-            data: json.data,
-          };
-        } else if (json.message) {
-          return {
-            success: false,
-            message: json.message,
-            data: null,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal menghubungi Backend Go, beralih ke Supabase Client fallback:", e);
-    }
-
-    // 2. Fallback: Supabase Client
     const userId = await getCurrentProfileId();
     
     const totalAmount = payload.items.reduce((sum, item) => sum + (item.unit_price * item.qty), 0) - (payload.discount_amount || 0);
@@ -678,5 +581,3 @@ export const cashierApi = {
     return { success: true, message: "Retur transaksi berhasil diproses." };
   }
 };
-
-

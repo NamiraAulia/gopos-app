@@ -318,10 +318,10 @@ export default function SuppliersManagementPage() {
                                     )}
                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700">
                                       {sc.visit_type === "taking_order"
-                                        ? "📦 Order Barang"
+                                        ? "Order Barang"
                                         : sc.visit_type === "billing"
-                                        ? "💵 Penagihan"
-                                        : "📦 Order & 💵 Penagihan"}
+                                        ? "Penagihan"
+                                        : "Order & Penagihan"}
                                     </span>
                                   </div>
                                 </div>

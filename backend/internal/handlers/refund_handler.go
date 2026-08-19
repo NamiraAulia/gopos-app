@@ -133,12 +133,6 @@ func ProcessRefund(c *gin.Context) {
 			return err
 		}
 
-		// if err := tx.Model(&models.Shift{}).
-		// 	Where("id = ?", activeShift.ID).
-		// 	UpdateColumn("total_cash_expected", gorm.Expr("total_cash_expected - ?", totalRefundAmount)).
-		// 	Error; err != nil {
-		// 	return err
-		// }
 
 		// Hanya perbarui total_refunded_cash pada shift jika transaksi asli menggunakan pembayaran TUNAI (cash).
 		// Pembayaran non-tunai (QRIS, Transfer) tidak mempengaruhi saldo kas fisik di laci kasir.

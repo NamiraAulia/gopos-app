@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// 🌟 BAGIAN INI SANGAT PENTING 🌟
+// Bagian konfigurasi matcher route Next.js
 // Jangan jalankan middleware ini untuk file sistem Next.js (seperti gambar, CSS, dll)
 export const config = {
   matcher: [

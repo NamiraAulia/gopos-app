@@ -319,9 +319,9 @@ export const SupplierModal = ({
                         onChange={(e) => updateSalesRow(idx, "visit_type", e.target.value as VisitType)}
                         className="w-full h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-900 focus:border-blue-600 outline-none bg-white cursor-pointer"
                       >
-                        <option value="both">📦 Order & 💵 Penagihan</option>
-                        <option value="taking_order">📦 Order Barang (TO)</option>
-                        <option value="billing">💵 Menagih / Tukar Faktur</option>
+                        <option value="both">Order & Penagihan</option>
+                        <option value="taking_order">Order Barang (TO)</option>
+                        <option value="billing">Menagih / Tukar Faktur</option>
                       </select>
                     </div>
                   </div>

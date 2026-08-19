@@ -29,12 +29,6 @@ const UNIT_BIG_OPTIONS = [
   { value: "ikat", label: "Ikat" },
 ];
 
-// const unitLabel = (val: string) =>
-//   UNIT_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
-
-// const unitBigLabel = (val: string) =>
-//   UNIT_BIG_OPTIONS.find((o) => o.value === val)?.label.split(" ")[0] ?? val;
-
 const unitLabel = (val: string) => {
   if (!val) return "pcs"; // Fallback default jika unit kosong
   const found = UNIT_OPTIONS.find((o) => o.value === val.toLowerCase().trim());

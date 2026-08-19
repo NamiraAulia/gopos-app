@@ -5,6 +5,7 @@ import { ChevronRight, Wallet, ArrowUpRight, ArrowDownRight, Plus, Calendar, Tre
 import Sidebar from "@/components/Sidebar";
 import { Transaction, Expense } from "../../features/finance/types";
 import { ExpenseModal } from "../../features/finance/components/ExpenseModal";
+import { supabase } from "@/utils/supabaseClient";
 
 export default function FinancialPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -21,23 +22,23 @@ export default function FinancialPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
       const [resTrx, resExp] = await Promise.all([
-        fetch(`${API_URL}/api/v1/transactions`, { headers }),
-        fetch(`${API_URL}/api/v1/expenses`, { headers })
+        supabase
+          .from("transactions")
+          .select("*")
+          .eq("status", "completed")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("expenses")
+          .select(`*, user:users(id, name, email)`)
+          .order("created_at", { ascending: false }),
       ]);
 
-      const dataTrx = await resTrx.json();
-      const dataExp = await resExp.json();
-
-      if (dataTrx.success && dataTrx.data && dataTrx.data.data) {
-        setTransactions(dataTrx.data.data);
+      if (!resTrx.error && resTrx.data) {
+        setTransactions(resTrx.data as Transaction[]);
       }
-      if (dataExp.success && dataExp.data) {
-        setExpenses(dataExp.data);
+      if (!resExp.error && resExp.data) {
+        setExpenses(resExp.data as Expense[]);
       }
     } catch (error) {
       console.error("Gagal memuat data keuangan:", error);

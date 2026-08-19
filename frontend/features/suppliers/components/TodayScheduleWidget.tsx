@@ -19,11 +19,11 @@ export const TodayScheduleWidget = ({
     const takingOrder = scheduleData.taking_order || [];
     const billing = scheduleData.billing || [];
 
-    let text = `📅 *JADWAL KUNJUNGAN SALES & SUPPLIER (${day.toUpperCase()})*\n`;
+    let text = `*JADWAL KUNJUNGAN SALES & SUPPLIER (${day.toUpperCase()})*\n`;
     text += `Total Sales Berkunjung: ${scheduleData.total_sales || 0} Salesman\n\n`;
 
     if (takingOrder.length > 0) {
-      text += `📦 *PENAWARAN / ORDER STOK BARANG (${takingOrder.length}):*\n`;
+      text += `*PENAWARAN / ORDER STOK BARANG (${takingOrder.length}):*\n`;
       takingOrder.forEach((s, idx) => {
         text += `${idx + 1}. *${s.supplier_name}* - ${s.sales_name}`;
         if (s.category) text += ` (${s.category})`;
@@ -34,7 +34,7 @@ export const TodayScheduleWidget = ({
     }
 
     if (billing.length > 0) {
-      text += `💵 *PENAGIHAN / TUKAR FAKTUR JATUH TEMPO (${billing.length}):*\n`;
+      text += `*PENAGIHAN / TUKAR FAKTUR JATUH TEMPO (${billing.length}):*\n`;
       billing.forEach((s, idx) => {
         text += `${idx + 1}. *${s.supplier_name}* - ${s.sales_name}`;
         if (s.category) text += ` (${s.category})`;
@@ -109,7 +109,7 @@ export const TodayScheduleWidget = ({
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-sm space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-              <Package className="h-4 w-4 text-blue-600" /> 📦 Order Stok Barang ({takingOrderList.length})
+              <Package className="h-4 w-4 text-blue-600" /> Order Stok Barang ({takingOrderList.length})
             </span>
           </div>
 
@@ -145,7 +145,7 @@ export const TodayScheduleWidget = ({
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-sm space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-              <Receipt className="h-4 w-4 text-amber-600" /> 💵 Penagihan / Tukar Faktur ({billingList.length})
+              <Receipt className="h-4 w-4 text-amber-600" /> Penagihan / Tukar Faktur ({billingList.length})
             </span>
           </div>
 

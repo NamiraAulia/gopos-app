@@ -5,18 +5,6 @@ import type { KasbonSummary, MemberKasbonDetail, RepayPayload, DebtLog } from ".
 export const kasbonApi = {
   getSummary: async (): Promise<ApiResponse<KasbonSummary>> => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch("http://localhost:8080/api/v1/kasbon/summary", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success) return json;
-        }
-      }
-
-      // Supabase Fallback
       const { data: members, error } = await supabase
         .from("members")
         .select("total_debt, last_debt_at")
@@ -63,18 +51,6 @@ export const kasbonApi = {
 
   getMemberHistory: async (memberId: number): Promise<ApiResponse<MemberKasbonDetail>> => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch(`http://localhost:8080/api/v1/members/${memberId}/kasbon-history`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success) return json;
-        }
-      }
-
-      // Supabase Fallback
       const { data: member, error: mbrErr } = await supabase
         .from("members")
         .select("*")
@@ -119,23 +95,6 @@ export const kasbonApi = {
 
   processRepayment: async (memberId: number, payload: RepayPayload): Promise<ApiResponse<any>> => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        const res = await fetch(`http://localhost:8080/api/v1/members/${memberId}/repay`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success) return json;
-        }
-      }
-
-      // Supabase Fallback
       const { data: member, error: mbrErr } = await supabase
         .from("members")
         .select("total_debt, name")

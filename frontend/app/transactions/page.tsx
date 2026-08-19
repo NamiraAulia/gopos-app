@@ -5,11 +5,7 @@ import { ChevronRight, Receipt, Search } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { Transaction } from "../../features/transactions/types";
 import { TransactionTable } from "../../features/transactions/components/TransactionTable";
-
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { supabase } from "@/utils/supabaseClient";
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -22,13 +18,19 @@ export default function TransactionsPage() {
 
   const fetchTransactions = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const response = await fetch(`${API_URL}/api/v1/transactions`, {
-        headers: getAuthHeaders(),
-      });
-      const result = await response.json();
-      if (result.success && result.data) {
-        setTransactions(result.data);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(`
+          *,
+          user:users(id, name, email, role),
+          member:members(id, name, phone),
+          items:transaction_items(*)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        setTransactions(data as Transaction[]);
       }
     } catch (error) {
       console.error("Gagal ambil data transaksi:", error);
