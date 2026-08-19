@@ -30,17 +30,16 @@ export default function Sidebar() {
 
   const activeMenuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Terminal Kasir", href: "/cashier", icon: ShoppingCart },
-    { name: "Gudang & Stok", href: "/products", icon: Package },
-    // { name: "Keuangan", href: "/finance", icon: Wallet },
+    { name: "Kasir Toko", href: "/cashier", icon: ShoppingCart },
+    { name: "Katalog & Stok Barang", href: "/products", icon: Package },
     { name: "Data Member", href: "/member", icon: Users },
-    { name: "Asumsi Restock", href: "/restock", icon: AlertTriangle },
+    { name: "Lembar Belanja Stok", href: "/restock", icon: AlertTriangle },
     { name: "Pengaturan", href: "/settings", icon: Printer },
     ...(isAdmin ? [
       { name: "Kelola Kasir", href: "/admin/users", icon: Users },
-      { name: "Riwayat Transaksi", href: "/admin/transactions", icon: Receipt },
-      { name: "Kelola Pengeluaran", href: "/admin/expenses", icon: Wallet },
-      { name: "Log Aktivitas", href: "/admin/audit-logs", icon: Shield }
+      { name: "Riwayat Nota Transaksi", href: "/admin/transactions", icon: Receipt },
+      { name: "Pengeluaran Toko", href: "/admin/expenses", icon: Wallet },
+      { name: "Catatan Aktivitas Kasir", href: "/admin/audit-logs", icon: Shield }
     ] : []),
   ];
 

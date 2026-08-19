@@ -258,9 +258,6 @@ export const PrintableReceipt = ({
           })}
         </div>
 
-        {/* Pembatas Line */}
-        <div className="border-t-2 border-dashed border-black my-2.5" />
-
         {/* Total & Rincian Pembayaran Bold */}
         <div className="space-y-1.5 text-[11.5px] font-bold text-black">
           {discount > 0 && (
@@ -269,7 +266,7 @@ export const PrintableReceipt = ({
               <span className="font-black">-Rp {discount.toLocaleString("id-ID")}</span>
             </div>
           )}
-          <div className="flex justify-between font-black text-base text-black pt-2 pb-1 border-y-2 border-dashed border-black my-1">
+          <div className="flex justify-between font-black text-base text-black pt-2 pb-1 border-y-2 border-black my-1">
             <span>TOTAL AKHIR:</span>
             <span>Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
           </div>
@@ -294,8 +291,6 @@ export const PrintableReceipt = ({
         {/* Footer Struk */}
         <div className="text-center text-[11px] font-bold text-black space-y-1">
           <p className="font-black uppercase tracking-wider text-black text-xs">Terima Kasih</p>
-          <p className="font-bold leading-tight">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
-          <p className="text-[10px] font-bold text-neutral-600 mt-2">Powered by GoPOS</p>
         </div>
       </div>
     </div>

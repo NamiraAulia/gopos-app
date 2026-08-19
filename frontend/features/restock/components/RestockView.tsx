@@ -31,7 +31,7 @@ export function RestockView() {
           <div className="flex items-center gap-2 text-slate-500">
             <AlertTriangle className="h-4 w-4" />
             <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Asumsi Restock</span>
+            <span className="text-sm font-bold text-slate-900">Lembar Belanja Stok</span>
           </div>
         </header>
 
@@ -39,7 +39,7 @@ export function RestockView() {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">Asumsi Restock</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900">Lembar Belanja Stok</h2>
               <p className="text-slate-500 text-sm mt-1">
                 Daftar produk yang harus segera dipesan ulang agar jualan tidak terhenti.
               </p>

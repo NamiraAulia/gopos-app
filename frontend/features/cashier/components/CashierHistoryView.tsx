@@ -360,7 +360,7 @@ export function CashierHistoryView({
                     disabled={detailLoading}
                     className="flex-1 h-11 rounded-xl border-2 border-red-200 text-xs font-black text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
-                    <XCircle className="h-4 w-4" /> Void
+                    <XCircle className="h-4 w-4" /> Batal Transaksi
                   </button>
                   <button
                     type="button"
