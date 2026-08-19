@@ -163,7 +163,7 @@ function formatTwoColumns(label: string, value: string, width = 20): string {
   return label + " ".repeat(spaces) + value;
 }
 
-export function generateEscPosReceiptBytes(data: ReceiptData, width = 20): Uint8Array {
+export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8Array {
   const builder = new EscPosBuilder();
 
   // 0. Print Logo if present
@@ -178,8 +178,7 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 20): Uint8
          .fontSizeLarge()
          .bold(true)
          .textLine(data.storeName)
-         .fontSizeNormal()
-         .bold(false);
+         .fontSizeNormal();
 
   if (data.storeAddress) {
     const wrappedAddr = wrapText(data.storeAddress, width);
@@ -190,96 +189,82 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 20): Uint8
   if (data.storePhone) {
     builder.textLine(`Telp: ${data.storePhone}`);
   }
+  builder.bold(false);
 
   // Divider
-  builder.textLine("-".repeat(width));
+  builder.textLine("=".repeat(width));
 
   // Transaction Info
   builder.alignLeft();
   if (data.transactionCode) {
-    builder.textLine(formatTwoColumns("No. Struk:", data.transactionCode, width));
+    builder.bold(true).textLine(formatTwoColumns("No. Struk:", data.transactionCode, width)).bold(false);
   }
   builder.textLine(formatTwoColumns("Tanggal:", data.transactionDate, width));
   builder.textLine(formatTwoColumns("Kasir:", data.cashierName, width));
   builder.textLine(formatTwoColumns("Pembayaran:", data.paymentMethod.toUpperCase(), width));
   
   if (data.member) {
-    builder.textLine(formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width));
-  }
-
-  // 2. Items List (Ritgrow Table Column Format)
-  if (width >= 45) {
-    builder.textLine("Barang                    Qty   Harga   Total");
-    builder.textLine("-".repeat(width));
-  } else {
-    builder.textLine("Barang             Qty  Harga  Total");
-    builder.textLine("-".repeat(width));
-  }
-
-  for (const item of data.items) {
-    const qty = item.qty.toString();
-    const price = item.price.toLocaleString("id-ID");
-    const total = item.subtotal.toLocaleString("id-ID");
-
-    if (width >= 45) {
-      // Format: %-20s %6s %8s %8s
-      const nameLines = wrapText(item.name, 20);
-      if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
-        builder.textLine(firstLine);
-        for (let i = 1; i < nameLines.length; i++) {
-          builder.textLine(nameLines[i].padEnd(20, " "));
-        }
-      }
-    } else {
-      // For 32 columns: %-12s %3s %6s %7s
-      const nameLines = wrapText(item.name, 12);
-      if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
-        builder.textLine(firstLine);
-        for (let i = 1; i < nameLines.length; i++) {
-          builder.textLine(nameLines[i].padEnd(12, " "));
-        }
-      }
-    }
+    builder.bold(true).textLine(formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width)).bold(false);
   }
 
   // Divider
   builder.textLine("-".repeat(width));
 
-  // 3. Totals
-  if (data.discount > 0) {
-    builder.textLine(formatTwoColumns("Subtotal:", `Rp${data.subtotal.toLocaleString("id-ID")}`, width));
-    builder.textLine(formatTwoColumns("Diskon:", `-Rp${data.discount.toLocaleString("id-ID")}`, width));
-  }
-  if (data.tax > 0) {
-    builder.textLine(formatTwoColumns("Pajak:", `Rp${data.tax.toLocaleString("id-ID")}`, width));
+  // 2. Items List (Clean 2-line layout in bold)
+  builder.bold(true).textLine(formatTwoColumns("ITEM / BELANJAAN", "SUBTOTAL", width)).bold(false);
+  builder.textLine("-".repeat(width));
+
+  for (const item of data.items) {
+    const priceStr = item.price.toLocaleString("id-ID");
+    const totalStr = item.subtotal.toLocaleString("id-ID");
+
+    builder.bold(true).textLine(item.name).bold(false);
+    const detailLine = `  ${item.qty} x Rp ${priceStr}`;
+    const subtotalLine = `Rp ${totalStr}`;
+    builder.textLine(formatTwoColumns(detailLine, subtotalLine, width));
   }
 
-  // Grand Total in Bold
+  // Divider
+  builder.textLine("-".repeat(width));
+
+  // 3. Totals (Bold for Total Akhir)
+  if (data.discount > 0) {
+    builder.textLine(formatTwoColumns("Subtotal:", `Rp ${data.subtotal.toLocaleString("id-ID")}`, width));
+    builder.bold(true).textLine(formatTwoColumns("Diskon Member:", `-Rp ${data.discount.toLocaleString("id-ID")}`, width)).bold(false);
+  }
+  if (data.tax > 0) {
+    builder.textLine(formatTwoColumns("Pajak:", `Rp ${data.tax.toLocaleString("id-ID")}`, width));
+  }
+
+  // Grand Total in Bold & Large
+  builder.textLine("=".repeat(width));
   builder.bold(true)
-         .textLine(formatTwoColumns("TOTAL AKHIR:", `Rp${data.total.toLocaleString("id-ID")}`, width))
+         .textLine(formatTwoColumns("TOTAL AKHIR:", `Rp ${data.total.toLocaleString("id-ID")}`, width))
          .bold(false);
+  builder.textLine("=".repeat(width));
 
   if (data.paymentMethod.toLowerCase() === "cash" || data.paymentMethod.toLowerCase() === "tunai") {
     const paid = data.amountPaid ?? data.total;
     const change = data.changeAmount ?? 0;
-    builder.textLine(formatTwoColumns("TUNAI:", `Rp${paid.toLocaleString("id-ID")}`, width));
-    builder.textLine(formatTwoColumns("KEMBALIAN:", `Rp${change.toLocaleString("id-ID")}`, width));
+    builder.bold(true);
+    builder.textLine(formatTwoColumns("TUNAI:", `Rp ${paid.toLocaleString("id-ID")}`, width));
+    builder.textLine(formatTwoColumns("KEMBALIAN:", `Rp ${change.toLocaleString("id-ID")}`, width));
+    builder.bold(false);
   }
 
   // Divider
   builder.textLine("-".repeat(width));
 
   // 4. Footer
-  builder.alignCenter();
+  builder.alignCenter().bold(true);
   if (data.footerText) {
     const wrappedFooter = wrapText(data.footerText, width);
     for (const line of wrappedFooter) {
       builder.textLine(line);
     }
   }
-  builder.textLine("Powered by GoPOS");
+  builder.textLine("Terima Kasih");
+  builder.bold(false).textLine("Powered by GoPOS");
 
   // Feed 4 lines and cut
   builder.lineFeed(4);
@@ -617,7 +602,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   let localShopAddress = "";
   let localShopPhone = "";
   let localShopFooter = "";
-  let localPaperSize = "37mm";
+  let localPaperSize = "80mm";
   let localLogo = "";
 
   if (typeof window !== "undefined") {
@@ -626,7 +611,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       localShopAddress = localStorage.getItem("gopos_shop_address") || "";
       localShopPhone = localStorage.getItem("gopos_shop_phone") || "";
       localShopFooter = localStorage.getItem("gopos_shop_footer") || "";
-      localPaperSize = localStorage.getItem("gopos_paper_size") || "37mm";
+      localPaperSize = localStorage.getItem("gopos_paper_size") || "80mm";
       localLogo = localStorage.getItem("gopos_shop_logo") || "";
     } catch (e) {
       console.error("Gagal membaca settings dari localStorage:", e);
@@ -634,7 +619,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   }
 
   // Resolve final values
-  const paperSize = params.paperSize || localPaperSize || "37mm";
+  const paperSize = params.paperSize || localPaperSize || "80mm";
   const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "GoPOS STORE";

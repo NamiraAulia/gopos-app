@@ -186,7 +186,7 @@ export default function SettingsPage() {
       setShopAddress(localStorage.getItem("gopos_shop_address") || "");
       setShopPhone(localStorage.getItem("gopos_shop_phone") || "");
       setFooterText(localStorage.getItem("gopos_shop_footer") || "");
-      setPaperSize((localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm") || "37mm");
+      setPaperSize((localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm") || "80mm");
       setLogoBase64(localStorage.getItem("gopos_shop_logo") || "");
     }
   }, []);

@@ -24,8 +24,7 @@ export function useLogin() {
       let token = "";
       let user: any = null;
 
-      // 1. Try signing in via local Go Backend API first
-      try {
+   try {
         const res = await loginApi.login({ email, password, rememberMe });
         if ((res as any)?.success && (res as any)?.data?.token) {
           token = (res as any).data.token;
@@ -41,8 +40,7 @@ export function useLogin() {
         console.warn("Go Backend login error, attempting Supabase fallback:", backendErr);
       }
 
-      // 2. Fallback to Supabase Auth if Go Backend API is not used or didn't return token
-      if (!token) {
+ if (!token) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password,
