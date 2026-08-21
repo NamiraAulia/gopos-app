@@ -15,6 +15,7 @@ import {
   Check,
   Edit,
   Pause,
+  Sparkles,
 } from "lucide-react";
 import { PaymentModal } from "@/features/cashier/components/PaymentModal";
 import { ReceiptModal } from "@/features/cashier/components/ReceiptModal";
@@ -72,7 +73,7 @@ const QuantityInput = ({ itemId, value, onChange, onRemove }: QuantityInputProps
       value={tempValue}
       onChange={(e) => handleChange(e.target.value)}
       onBlur={handleBlur}
-      className="font-mono text-xs font-bold w-12 text-center bg-transparent border-b border-slate-200 outline-none focus:border-blue-600 text-slate-800"
+      className="font-mono text-sm font-black w-14 h-9 text-center bg-white border border-slate-300 rounded-xl shadow-inner outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
     />
   );
 };
@@ -243,47 +244,85 @@ export default function CashierPage() {
               products.map((product: any) => {
                 const cartItem = cart.find((item: any) => item.id === product.id);
                 const inCartQty = cartItem ? cartItem.qty : 0;
-                
+
                 return (
                   <div
                     key={product.id}
-                    onClick={() => {
-                      addToCart(product, "small");
-                    }}
-                    className={`p-4 bg-white border rounded-xl cursor-pointer flex flex-col justify-between transition-all relative ${
+                    className={`p-4 bg-white border rounded-2xl flex flex-col justify-between transition-all relative ${
                       inCartQty > 0
-                        ? "border-blue-600 ring-2 ring-blue-600/20 shadow-sm"
-                        : "border-slate-200 hover:border-blue-600"
+                        ? "border-blue-600 ring-2 ring-blue-600/20 shadow-md bg-blue-50/10"
+                        : "border-slate-200 hover:border-blue-500 shadow-sm"
                     }`}
                   >
                     {inCartQty > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-black h-6 w-6 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                      <span className="absolute -top-2.5 -right-2.5 bg-blue-600 text-white text-xs font-black h-7 w-7 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-pulse z-10">
                         {inCartQty}
                       </span>
                     )}
                     <div>
-                      <h3 className="font-bold text-sm text-slate-800 line-clamp-2">
+                      <h3 className="font-black text-sm text-slate-900 line-clamp-2">
                         {product.name}
                       </h3>
-                      <p className="text-blue-600 font-extrabold text-xs mt-1">
+                      <p className="text-blue-600 font-extrabold text-sm mt-1">
                         Rp {product.price.toLocaleString("id-ID")}
                       </p>
                       {product.unit_big && (
-                        <p className="text-[10px] text-amber-600 font-mono mt-0.5 flex items-center gap-1">
+                        <p className="text-[11px] text-amber-700 font-mono font-bold mt-1 flex items-center gap-1">
                           <Package className="h-3.5 w-3.5" /> Grosir: 1 {product.unit_big} = {product.conversion}{" "}
                           {product.unit}
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded mt-3 w-max ${
-                        product.stock <= (product.min_stock ?? 5)
-                          ? "bg-red-50 text-red-500"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      Stok: {product.stock}
-                    </span>
+
+                    <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          product.stock <= (product.min_stock ?? 5)
+                            ? "bg-red-50 text-red-600"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        Stok: {product.stock}
+                      </span>
+
+                      {inCartQty > 0 ? (
+                        <div className="flex items-center gap-1.5 bg-blue-50 border-2 border-blue-600 p-1 rounded-xl shadow-sm">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              decreaseQty(product.id);
+                            }}
+                            className="h-8 w-8 rounded-lg bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 font-black flex items-center justify-center transition-all cursor-pointer"
+                            title="Kurangi Qty"
+                          >
+                            <Minus className="h-4 w-4 stroke-[3]" />
+                          </button>
+                          <span className="w-6 text-center font-mono font-black text-sm text-blue-700">
+                            {inCartQty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(product, "small");
+                            }}
+                            className="h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black flex items-center justify-center transition-all shadow-md shadow-blue-600/20 cursor-pointer"
+                            title="Tambah Qty"
+                          >
+                            <Plus className="h-4 w-4 stroke-[3]" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => addToCart(product, "small")}
+                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-1 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5 stroke-[3]" /> Tambah
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -364,7 +403,7 @@ export default function CashierPage() {
                       <button
                         type="button"
                         onClick={() => toggleUnitChoice(item.id)}
-                        className={`text-[10px] font-black px-2 py-1 rounded border transition-all cursor-pointer ${
+                        className={`text-[10px] font-black px-2 py-1 rounded-lg border transition-all cursor-pointer ${
                           isBig
                             ? "bg-amber-500 border-amber-600 text-white"
                             : "bg-slate-100 border-slate-200 text-slate-600"
@@ -375,103 +414,138 @@ export default function CashierPage() {
                           : `ECERAN (${item.unit})`}
                       </button>
                     ) : (
-                      <span className="text-[10px] font-medium text-slate-400">
+                      <span className="text-[10px] font-bold text-slate-400">
                         Satuan: {item.unit}
                       </span>
                     )}
-                    <div className="flex items-center gap-3">
-                      {isOutOfStock && (
-                        <span className="text-[10px] font-bold text-red-500 animate-pulse">
-                          Stok habis
+
+                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => decreaseQty(item.id)}
+                        className="h-9 w-9 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-200 text-slate-900 border border-slate-200 shadow-sm font-black flex items-center justify-center transition-all cursor-pointer"
+                        title="Kurangi Qty"
+                      >
+                        <Minus className="h-4 w-4 stroke-[3]" />
+                      </button>
+                      <QuantityInput
+                        itemId={item.id}
+                        value={item.qty}
+                        onChange={(qty) => setQty(item.id, qty)}
+                        onRemove={() => removeFromCart(item.id)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addToCart(item as any, item.unit_choice)
+                        }
+                        disabled={isOutOfStock}
+                        className="h-9 w-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-all shadow-md shadow-blue-600/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title="Tambah Qty"
+                      >
+                        <Plus className="h-4 w-4 stroke-[3]" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {!isBig && item.conversion > 1 && item.unit_big && item.qty >= item.conversion && (
+                    <div className="mt-1 p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-emerald-900 font-bold">
+                        <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>
+                          Dapat dipecah ke <strong>{Math.floor(item.qty / item.conversion)} {item.unit_big}</strong> (Grosir) + <strong>{item.qty % item.conversion} {item.unit}</strong>
                         </span>
-                      )}
-                      <div className="flex items-center gap-2 border border-slate-200 rounded-lg bg-slate-50 p-0.5">
-                        <button
-                          onClick={() => decreaseQty(item.id)}
-                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 cursor-pointer"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </button>
-                        <QuantityInput
-                          itemId={item.id}
-                          value={item.qty}
-                          onChange={(qty) => setQty(item.id, qty)}
-                          onRemove={() => removeFromCart(item.id)}
-                        />
-                        <button
-                          onClick={() =>
-                            addToCart(item as any, item.unit_choice)
-                          }
-                          disabled={isOutOfStock}
-                          className="p-1 hover:bg-white rounded transition-colors text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
                       </div>
-                      {editingPriceId === item.id ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-400 text-[10px] font-bold">Rp</span>
-                          <input
-                            type="text"
-                            value={tempPrice}
-                            onChange={(e) => setTempPrice(e.target.value.replace(/\D/g, ""))}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const newPrice = parseInt(tempPrice) || 0;
-                                setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
-                                setEditingPriceId(null);
-                              } else if (e.key === "Escape") {
-                                setEditingPriceId(null);
-                              }
-                            }}
-                            className="w-16 h-7 px-1 text-[10px] font-bold border border-blue-400 rounded outline-none bg-white text-slate-800"
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => {
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const conversion = item.conversion || 1;
+                          const bigQty = Math.floor(item.qty / conversion);
+                          const remainderQty = item.qty % conversion;
+                          const productObj = products.find((p) => p.id === item.id);
+                          if (productObj && bigQty > 0) {
+                            if (remainderQty > 0) {
+                              setQty(item.id, remainderQty);
+                            } else {
+                              removeFromCart(item.id);
+                            }
+                            for (let i = 0; i < bigQty; i++) {
+                              addToCart(productObj, "big");
+                            }
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-lg shadow-sm transition-all cursor-pointer shrink-0"
+                      >
+                        ⚡ Terapkan Paket Dus
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span className="text-[11px] text-slate-400 font-semibold">Subtotal</span>
+                    {editingPriceId === item.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-400 text-[10px] font-bold">Rp</span>
+                        <input
+                          type="text"
+                          value={tempPrice}
+                          onChange={(e) => setTempPrice(e.target.value.replace(/\D/g, ""))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
                               const newPrice = parseInt(tempPrice) || 0;
                               setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
                               setEditingPriceId(null);
-                            }}
-                            className="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
-                          >
-                            <Check className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => setEditingPriceId(null)}
-                            className="p-1 bg-slate-100 text-slate-500 rounded hover:bg-slate-200 transition-colors cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <span className="font-black text-xs text-blue-600">
-                            {isMemberPrice && !item.custom_price && (
-                              <span className="text-[10px] line-through text-slate-400 font-bold mr-1">
-                                Rp {(item.price * item.qty).toLocaleString("id-ID")}
-                              </span>
-                            )}
-                            {item.custom_price ? (
-                              <span className="text-[9px] text-amber-600 font-bold mr-1 bg-amber-50 px-1 rounded border border-amber-200">
-                                Pas
-                              </span>
-                            ) : null}
-                            Rp {(hargaTampil * item.qty).toLocaleString("id-ID")}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setEditingPriceId(item.id);
-                              setTempPrice(hargaTampil.toString());
-                            }}
-                            className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="Edit Harga Satuan"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                            } else if (e.key === "Escape") {
+                              setEditingPriceId(null);
+                            }
+                          }}
+                          className="w-16 h-7 px-1 text-[10px] font-bold border border-blue-400 rounded outline-none bg-white text-slate-800"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => {
+                            const newPrice = parseInt(tempPrice) || 0;
+                            setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
+                            setEditingPriceId(null);
+                          }}
+                          className="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
+                        >
+                          <Check className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => setEditingPriceId(null)}
+                          className="p-1 bg-slate-100 text-slate-500 rounded hover:bg-slate-200 transition-colors cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="font-black text-xs text-blue-600">
+                          {isMemberPrice && !item.custom_price && (
+                            <span className="text-[10px] line-through text-slate-400 font-bold mr-1">
+                              Rp {(item.price * item.qty).toLocaleString("id-ID")}
+                            </span>
+                          )}
+                          {item.custom_price ? (
+                            <span className="text-[9px] text-amber-600 font-bold mr-1 bg-amber-50 px-1 rounded border border-amber-200">
+                              Pas
+                            </span>
+                          ) : null}
+                          Rp {(hargaTampil * item.qty).toLocaleString("id-ID")}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingPriceId(item.id);
+                            setTempPrice(hargaTampil.toString());
+                          }}
+                          className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Harga Satuan"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

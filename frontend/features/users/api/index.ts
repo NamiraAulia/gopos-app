@@ -58,33 +58,33 @@ export const usersApi = {
 
   createUser: async (data: Partial<DBUser> & { password?: string }): Promise<ApiResponse<unknown>> => {
     try {
-      // 1. Sign up credential validation
-      if (data.email && data.password) {
-        const { error: authError } = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password,
-        });
-        if (authError) throw authError;
-      }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || localStorage.getItem("token") || "";
 
-      // 2. Insert profile into the users table
-      const { data: newUser, error } = await supabase
-        .from("users")
-        .insert({
+      const response = await fetch("/api/users/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           name: data.name,
           email: data.email,
+          password: data.password,
           role: data.role || "kasir",
-          is_active: true,
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (error) throw error;
+      const resData = await response.json();
+
+      if (!response.ok || !resData.success) {
+        throw new Error(resData.message || "Gagal mendaftarkan user kasir baru");
+      }
 
       return {
         success: true,
-        message: "User berhasil dibuat",
-        data: newUser,
+        message: resData.message || "User berhasil dibuat",
+        data: resData.data,
         meta: null,
       };
     } catch (err: any) {
