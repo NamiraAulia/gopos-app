@@ -104,8 +104,46 @@ func CloseShift(c *gin.Context) {
 
 	now := time.Now()
 
-	realExpected := activeShift.TotalCashExpected - activeShift.TotalRefundedCash
+	// 1. Recalculate Cash Sales during shift
+	var cashSales int64
+	_ = database.DB.Model(&models.Transaction{}).
+		Where("user_id = ? AND status IN ('completed', 'partially_refunded', 'refunded') AND created_at >= ? AND created_at <= ?", userID, activeShift.StartTime, now).
+		Select("COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total_amount WHEN payment_method = 'kasbon' THEN amount_paid ELSE 0 END), 0)").
+		Row().Scan(&cashSales)
 
+	// 2. Recalculate Cash Debt Repayments during shift
+	var cashRepayments int64
+	_ = database.DB.Model(&models.DebtLog{}).
+		Where("user_id = ? AND type = 'repayment' AND payment_method = 'cash' AND created_at >= ? AND created_at <= ?", userID, activeShift.StartTime, now).
+		Select("COALESCE(SUM(amount), 0)").
+		Row().Scan(&cashRepayments)
+
+	// 3. Recalculate Cash Expenses during shift
+	var cashExpenses int64
+	_ = database.DB.Model(&models.Expense{}).
+		Where("user_id = ? AND created_at >= ? AND created_at <= ?", userID, activeShift.StartTime, now).
+		Select("COALESCE(SUM(amount), 0)").
+		Row().Scan(&cashExpenses)
+
+	// 4. Recalculate Cash Refunds during shift
+	var cashRefunds int64
+	_ = database.DB.Model(&models.Refund{}).
+		Joins("JOIN transactions ON refunds.transaction_id = transactions.id").
+		Where("refunds.user_id = ? AND LOWER(transactions.payment_method) = 'cash' AND refunds.created_at >= ? AND created_at <= ?", userID, activeShift.StartTime, now).
+		Select("COALESCE(SUM(refunds.total_refunded), 0)").
+		Row().Scan(&cashRefunds)
+
+	if cashRefunds <= 0 {
+		cashRefunds = activeShift.TotalRefundedCash
+	}
+
+	// 5. Calculate Expected Ending Cash & Discrepancy
+	realExpected := activeShift.StartCash + cashSales + cashRepayments - cashRefunds - cashExpenses
+
+	activeShift.TotalCashExpected = realExpected
+	activeShift.TotalExpenseCash = cashExpenses
+	activeShift.TotalRefundedCash = cashRefunds
+	activeShift.TotalCashActual = input.TotalCashActual
 	activeShift.CashDifference = input.TotalCashActual - realExpected
 	activeShift.Status = "closed"
 	activeShift.EndTime = &now
