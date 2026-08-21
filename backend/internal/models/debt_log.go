@@ -8,7 +8,7 @@ type DebtLog struct {
 	Member        *Member      `gorm:"foreignKey:MemberID" json:"member"`
 	TransactionID *uint        `gorm:"index" json:"transaction_id"`
 	Transaction   *Transaction `gorm:"foreignKey:TransactionID" json:"transaction"`
-	Type          string       `gorm:"type:varchar(20);not null" json:"type"` // "kasbon" | "repayment"
+	Type          string       `gorm:"type:varchar(20);not null" json:"type"` // "kasbon" | "repayment" | "void_debt"
 	Amount        int64        `gorm:"not null" json:"amount"`                 // Nominal utang baru / nominal cicilan
 	DownPayment   int64        `gorm:"default:0" json:"down_payment"`         // Uang muka saat checkout (jika ada)
 	RemainingDebt int64        `gorm:"not null" json:"remaining_debt"`         // Sisa utang member setelah transaksi ini

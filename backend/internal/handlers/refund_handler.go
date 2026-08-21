@@ -80,24 +80,42 @@ func ProcessRefund(c *gin.Context) {
 				return fmt.Errorf("produk ID %d tidak ada dalam nota transaksi ini", reqItem.ProductID)
 			}
 
-			var alreadyRefundedQty float64
+			// Calculate original item quantity & unit price in smallest (eceran) units
+			origSmallestQty := txItem.Qty
+			unitPriceEceran := float64(txItem.UnitPrice)
+			if txItem.UnitChoice == "big" && txItem.ConversionUsed > 0 {
+				origSmallestQty = txItem.Qty * float64(txItem.ConversionUsed)
+				unitPriceEceran = float64(txItem.UnitPrice) / float64(txItem.ConversionUsed)
+			}
+
+			// Convert requested refund Qty to smallest (eceran) units
+			reqSmallestQty := reqItem.QtyRefunded
+			if txItem.UnitChoice == "big" && txItem.ConversionUsed > 0 && reqItem.QtyRefunded <= txItem.Qty {
+				reqSmallestQty = reqItem.QtyRefunded * float64(txItem.ConversionUsed)
+			}
+
+			var alreadyRefundedRaw float64
 			errScan := tx.Model(&models.RefundItem{}).
 				Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
 				Where("refunds.transaction_id = ? AND refund_items.product_id = ?", transaction.ID, reqItem.ProductID).
 				Select("COALESCE(SUM(refund_items.qty_refunded), 0.0)").
-				Row().Scan(&alreadyRefundedQty)
+				Row().Scan(&alreadyRefundedRaw)
 
 			if errScan != nil {
 				return errScan
 			}
 
-			if alreadyRefundedQty+reqItem.QtyRefunded > txItem.Qty {
+			alreadyRefundedSmallest := alreadyRefundedRaw
+			if txItem.UnitChoice == "big" && txItem.ConversionUsed > 0 && alreadyRefundedRaw <= txItem.Qty {
+				alreadyRefundedSmallest = alreadyRefundedRaw * float64(txItem.ConversionUsed)
+			}
+
+			if alreadyRefundedSmallest+reqSmallestQty > origSmallestQty {
 				return fmt.Errorf("jumlah retur produk '%s' melampaui batas beli asli", txItem.ProductName)
 			}
 
-			// Gunakan math.Round untuk mencegah truncation desimal float pada retur barang pecahan
-			itemRefundAmount := int64(math.Round(float64(txItem.UnitPrice) * reqItem.QtyRefunded))
-
+			// Calculate refund amount for this item in IDR
+			itemRefundAmount := int64(math.Round(unitPriceEceran * reqSmallestQty))
 			totalRefundAmount = totalRefundAmount + itemRefundAmount
 
 			refundItems = append(refundItems, models.RefundItem{
@@ -107,15 +125,11 @@ func ProcessRefund(c *gin.Context) {
 				RefundAmount: itemRefundAmount,
 			})
 
+			// Restore stock to database (in smallest units)
 			var product models.Product
 			if err := tx.Where("id = ?", reqItem.ProductID).First(&product).Error; err == nil {
-				qtyToRestore := reqItem.QtyRefunded
-				if txItem.UnitChoice == "big" && txItem.ConversionUsed > 0 {
-					qtyToRestore = reqItem.QtyRefunded * float64(txItem.ConversionUsed)
-				}
-
 				if err := tx.Model(&models.Product{}).Where("id = ?", product.ID).
-					UpdateColumn("stock", gorm.Expr("stock + ?", qtyToRestore)).Error; err != nil {
+					UpdateColumn("stock", gorm.Expr("stock + ?", reqSmallestQty)).Error; err != nil {
 					return err
 				}
 			}
@@ -133,7 +147,6 @@ func ProcessRefund(c *gin.Context) {
 			return err
 		}
 
-
 		// Hanya perbarui total_refunded_cash pada shift jika transaksi asli menggunakan pembayaran TUNAI (cash).
 		// Pembayaran non-tunai (QRIS, Transfer) tidak mempengaruhi saldo kas fisik di laci kasir.
 		if strings.ToLower(transaction.PaymentMethod) == "cash" {
@@ -145,30 +158,33 @@ func ProcessRefund(c *gin.Context) {
 			}
 		}
 
-		var totalOriginalQty float64 = 0
+		// Calculate total original vs total refunded in smallest (eceran) units across all items
+		var totalOriginalSmallestQty float64 = 0
+		var totalRefundedSmallestQty float64 = 0
+
 		for _, item := range transaction.Items {
-			totalOriginalQty += item.Qty
-		}
+			itemOrigSmallest := item.Qty
+			if item.UnitChoice == "big" && item.ConversionUsed > 0 {
+				itemOrigSmallest = item.Qty * float64(item.ConversionUsed)
+			}
+			totalOriginalSmallestQty += itemOrigSmallest
 
-		var previouslyRefundedQty float64
-		err := tx.Model(&models.RefundItem{}).
-			Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
-			Where("refunds.transaction_id = ?", transaction.ID).
-			Select("COALESCE(SUM(refund_items.qty_refunded), 0.0)").
-			Row().Scan(&previouslyRefundedQty)
-		if err != nil {
-			return err
-		}
+			var refundedRaw float64
+			_ = tx.Model(&models.RefundItem{}).
+				Joins("JOIN refunds ON refund_items.refund_id = refunds.id").
+				Where("refunds.transaction_id = ? AND refund_items.product_id = ?", transaction.ID, item.ProductID).
+				Select("COALESCE(SUM(refund_items.qty_refunded), 0.0)").
+				Row().Scan(&refundedRaw)
 
-		var currentRefundedQty float64 = 0
-		for _, reqItem := range input.Items {
-			currentRefundedQty += reqItem.QtyRefunded
+			refundedSmallest := refundedRaw
+			if item.UnitChoice == "big" && item.ConversionUsed > 0 && refundedRaw <= item.Qty {
+				refundedSmallest = refundedRaw * float64(item.ConversionUsed)
+			}
+			totalRefundedSmallestQty += refundedSmallest
 		}
-
-		totalRefundedQty := previouslyRefundedQty + currentRefundedQty
 
 		newStatus := "partially_refunded"
-		if totalRefundedQty >= totalOriginalQty {
+		if totalRefundedSmallestQty >= totalOriginalSmallestQty {
 			newStatus = "refunded"
 		}
 

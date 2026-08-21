@@ -18,4 +18,5 @@ type Shift struct {
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 	TotalRefundedCash int64      `gorm:"default:0" json:"total_refunded_cash"`
+	TotalExpenseCash  int64      `gorm:"default:0" json:"total_expense_cash"`
 }

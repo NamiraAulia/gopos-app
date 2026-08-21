@@ -341,11 +341,27 @@ func ImportProductsCSV(c *gin.Context) {
 	}
 
 	var productsToUpsert []models.Product
+	seenBarcodes := make(map[string]string)
 
 	// Stage 4: Apply Category Defaults & Anomaly Checks
 	for name, prod := range groupedProducts {
 		cat := categoryMap[name]
 		applyCategoryDefaultsGo(prod, cat)
+
+		// In-Memory Barcode Deduplication before GORM OnConflict
+		if prod.Barcode != "" {
+			if existingName, exists := seenBarcodes[prod.Barcode]; exists && existingName != prod.Name {
+				anomalies = append(anomalies, AnomalyItem{
+					NamaBarang:  name,
+					Kategori:    cat,
+					SatuanBesar: prod.UnitBig,
+					Pertanyaan:  fmt.Sprintf("Barcode '%s' bentrok dengan produk '%s'. Barcode dikosongkan agar impor tetap sukses.", prod.Barcode, existingName),
+				})
+				prod.Barcode = "" // Clear duplicate barcode so bulk insert succeeds
+			} else {
+				seenBarcodes[prod.Barcode] = prod.Name
+			}
+		}
 
 		// Check anomalies for reporting
 		if (strings.Contains(name, "LOKAL") || strings.Contains(name, "UMKM") || strings.Contains(name, "ROTI") || strings.Contains(name, "JAJAN")) && prod.UnitBig != "-" && prod.Conversion <= 0 {
@@ -361,7 +377,16 @@ func ImportProductsCSV(c *gin.Context) {
 	}
 
 	// Stage 5: Append 7 Standard Egg Masters
-	productsToUpsert = append(productsToUpsert, getStandardEggMastersGo()...)
+	for _, eggProd := range getStandardEggMastersGo() {
+		if eggProd.Barcode != "" {
+			if existingName, exists := seenBarcodes[eggProd.Barcode]; exists && existingName != eggProd.Name {
+				eggProd.Barcode = ""
+			} else {
+				seenBarcodes[eggProd.Barcode] = eggProd.Name
+			}
+		}
+		productsToUpsert = append(productsToUpsert, eggProd)
+	}
 
 	if len(productsToUpsert) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tidak ada data produk valid untuk diimpor"})

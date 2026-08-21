@@ -492,12 +492,69 @@ func VoidTransaction(c *gin.Context) {
 			}
 		}
 
-		// Update shift refund total if active shift exists and payment is cash
+		// Update shift refund total if active shift exists
+		// Refund cash from drawer for cash transactions OR cash down payment on kasbon
+		refundCashAmount := int64(0)
 		if strings.ToLower(transaction.PaymentMethod) == "cash" {
+			refundCashAmount = transaction.TotalAmount
+		} else if strings.ToLower(transaction.PaymentMethod) == "kasbon" && transaction.AmountPaid > 0 {
+			refundCashAmount = transaction.AmountPaid
+		}
+
+		if refundCashAmount > 0 {
 			var activeShift models.Shift
 			if err := tx.Where("user_id = ? AND status = 'open'", transaction.UserID).First(&activeShift).Error; err == nil {
-				if err := tx.Model(&activeShift).UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", transaction.TotalAmount)).Error; err != nil {
+				if err := tx.Model(&activeShift).UpdateColumn("total_refunded_cash", gorm.Expr("total_refunded_cash + ?", refundCashAmount)).Error; err != nil {
 					return err
+				}
+			}
+		}
+
+		// Handle Member Kasbon cancellation (reduce total_debt & record void_debt log)
+		if transaction.MemberID != nil {
+			var origDebtLog models.DebtLog
+			errLog := tx.Where("transaction_id = ? AND type = 'kasbon'", transaction.ID).First(&origDebtLog).Error
+
+			var kasbonToVoid int64
+			if errLog == nil {
+				kasbonToVoid = origDebtLog.Amount
+			} else {
+				kasbonToVoid = transaction.TotalAmount - transaction.AmountPaid
+				if kasbonToVoid < 0 {
+					kasbonToVoid = 0
+				}
+			}
+
+			if kasbonToVoid > 0 {
+				var member models.Member
+				if errM := tx.First(&member, *transaction.MemberID).Error; errM == nil {
+					newDebt := member.TotalDebt - kasbonToVoid
+					if newDebt < 0 {
+						newDebt = 0
+					}
+
+					if err := tx.Model(&member).Updates(map[string]interface{}{
+						"total_debt": newDebt,
+					}).Error; err != nil {
+						return err
+					}
+
+					voidDebtLog := models.DebtLog{
+						MemberID:      member.ID,
+						TransactionID: &transaction.ID,
+						Type:          "void_debt",
+						Amount:        kasbonToVoid,
+						DownPayment:   0,
+						RemainingDebt: newDebt,
+						PaymentMethod: "kasbon",
+						Notes:         fmt.Sprintf("Pembatalan (Void) kasbon nota %s (-Rp %d)", transaction.TransactionCode, kasbonToVoid),
+						UserID:        userID,
+						CreatedAt:     time.Now(),
+					}
+
+					if err := tx.Create(&voidDebtLog).Error; err != nil {
+						return err
+					}
 				}
 			}
 		}
