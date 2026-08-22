@@ -80,7 +80,7 @@ export interface Expense {
 const getCurrentProfileId = async () => {
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) throw new Error("User tidak terautentikasi.");
-  
+
   const { data: profile, error } = await supabase
     .from("users")
     .select("id")
@@ -112,7 +112,7 @@ export const cashierApi = {
 
     const { data, error } = await query;
     if (error) throw error;
-    
+
     return {
       success: true,
       data: {
@@ -177,7 +177,7 @@ export const cashierApi = {
 
   closeShift: async (totalCashActual: number) => {
     const userId = await getCurrentProfileId();
-    
+
     const { data: activeShift, error: findError } = await supabase
       .from("shifts")
       .select("*")
@@ -272,7 +272,7 @@ export const cashierApi = {
 
   checkout: async (payload: CheckoutPayload) => {
     const userId = await getCurrentProfileId();
-    
+
     const totalAmount = payload.items.reduce((sum, item) => sum + (item.unit_price * item.qty), 0) - (payload.discount_amount || 0);
     const changeAmount = payload.amount_paid - totalAmount;
 
@@ -381,16 +381,18 @@ export const cashierApi = {
 
       if (masukUtang > 0) {
         try {
-          const { data: mbr } = await supabase
+          const { data: mbr, error: fetchMbrErr } = await supabase
             .from("members")
             .select("total_debt")
             .eq("id", payload.member_id)
             .single();
 
+          if (fetchMbrErr) console.error("Error fetching member debt:", fetchMbrErr);
+
           const currentDebt = mbr?.total_debt || 0;
           const newTotalDebt = currentDebt + masukUtang;
 
-          await supabase
+          const { error: updateMbrErr } = await supabase
             .from("members")
             .update({
               total_debt: newTotalDebt,
@@ -398,7 +400,9 @@ export const cashierApi = {
             })
             .eq("id", payload.member_id);
 
-          await supabase.from("debt_logs").insert({
+          if (updateMbrErr) console.error("Error updating member total_debt:", updateMbrErr);
+
+          const debtLogPayload: any = {
             member_id: payload.member_id,
             transaction_id: tx.id,
             type: "kasbon",
@@ -410,7 +414,24 @@ export const cashierApi = {
             user_id: userId,
             created_at: new Date().toISOString(),
             due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          });
+          };
+
+          const { error: logInsertErr } = await supabase
+            .from("debt_logs")
+            .insert(debtLogPayload);
+
+          if (logInsertErr) {
+            console.error("Error inserting debt_logs full payload, trying fallback:", logInsertErr);
+            await supabase.from("debt_logs").insert({
+              member_id: payload.member_id,
+              type: "kasbon",
+              amount: masukUtang,
+              remaining_debt: newTotalDebt,
+              payment_method: "kasbon",
+              notes: `Kasbon transaksi ${tx.transaction_code} (Total: Rp ${totalAmount}, DP: Rp ${dpAmount})`,
+              created_at: new Date().toISOString(),
+            });
+          }
         } catch (err) {
           console.warn("Supabase member debt / debt_logs error:", err);
         }

@@ -62,6 +62,12 @@ export function useMemberManagement() {
   };
 
   const handleDeleteClick = async (member: Member) => {
+    const debt = member.total_debt || 0;
+    if (debt > 0) {
+      alert(`Akses Ditolak: Member "${member.name}" masih memiliki sisa utang kasbon sebesar Rp ${debt.toLocaleString("id-ID")}.\n\nMember yang masih memiliki utang kasbon tidak dapat dihapus atau dinonaktifkan.`);
+      return;
+    }
+
     if (confirm(`Apakah Anda yakin ingin menghapus data member "${member.name}" dari database? Tindakan ini permanen.`)) {
       try {
         const res = await memberApi.deleteMember(member.id);

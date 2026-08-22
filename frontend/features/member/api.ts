@@ -11,17 +11,24 @@ const generateMemberCode = (): string => {
 export const memberApi = {
   getMembers: async (): Promise<ApiResponse<Member[]>> => {
     try {
-      const { data, error } = await supabase
+      const { data: membersData, error } = await supabase
         .from("members")
         .select("*")
         .eq("is_active", true)
         .order("name", { ascending: true });
 
       if (error) throw error;
+
+      const membersWithDebt: Member[] = (membersData || []).map((m: any) => ({
+        ...m,
+        total_debt: m.total_debt || 0,
+        last_debt_at: m.last_debt_at || undefined,
+      }));
+
       return {
         success: true,
         message: "Daftar member berhasil diambil",
-        data: (data as Member[]) || [],
+        data: membersWithDebt,
         meta: null,
       };
     } catch (err: any) {
@@ -95,6 +102,24 @@ export const memberApi = {
 
   deleteMember: async (id: number): Promise<ApiResponse<any>> => {
     try {
+      const { data: member, error: fetchErr } = await supabase
+        .from("members")
+        .select("name, total_debt")
+        .eq("id", id)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      const debt = member?.total_debt || 0;
+      if (debt > 0) {
+        return {
+          success: false,
+          message: `Gagal menghapus: Member "${member.name}" masih memiliki sisa utang kasbon sebesar Rp ${debt.toLocaleString("id-ID")}. Pelunasan utang wajib dilakukan terlebih dahulu.`,
+          data: null,
+          meta: null,
+        };
+      }
+
       const { data, error } = await supabase
         .from("members")
         .update({ is_active: false })
