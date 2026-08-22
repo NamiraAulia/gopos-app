@@ -26,6 +26,7 @@ import { HeldCartsModal } from "@/features/cashier/components/HeldCartsModal";
 import { ProductModal } from "@/features/products/components/ProductModal";
 import Navbar from "@/features/cashier/components/Navbar";
 import { useCashierPage } from "@/features/cashier/hooks/useCashierPage";
+import { useAuthStore } from "@/store/authStore";
 
 interface QuantityInputProps {
   itemId: number;
@@ -80,6 +81,7 @@ const QuantityInput = ({ itemId, value, onChange, onRemove }: QuantityInputProps
 
 export default function CashierPage() {
   const router = useRouter();
+  const logout = useAuthStore((s) => s.logout);
   const {
     currentUser,
     isHydrated,
@@ -136,10 +138,11 @@ export default function CashierPage() {
   }, [loadHeldCarts]);
 
   useEffect(() => {
-    if (isHydrated && !currentUser) {
-      router.push("/login");
-    }
-  }, [isHydrated, currentUser, router]);
+  if (isHydrated && !currentUser) {
+    logout();
+    router.push("/login");
+  }
+}, [isHydrated, currentUser, router, logout]);
 
   if (!isHydrated || !currentUser) {
     return (
