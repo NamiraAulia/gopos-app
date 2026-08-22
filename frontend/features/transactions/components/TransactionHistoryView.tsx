@@ -20,6 +20,7 @@ import {
   Tag
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import ForbiddenView from "@/components/ForbiddenView";
 import { RefundModal } from "@/features/cashier/components/RefundModal";
 import { useAdminTransactions } from "../hooks/useAdminTransactions";
 import { PrintableReceipt } from "@/features/cashier/components/PrintableReceipt";
@@ -78,20 +79,22 @@ export function TransactionHistoryView() {
     if (isHydrated) {
       if (!currentUser) {
         router.push("/login");
-      } else if (currentUser.role !== "admin") {
-        router.push("/cashier");
-      } else {
+      } else if (currentUser.role === "admin") {
         fetchTransactions();
       }
     }
   }, [isHydrated, currentUser, router, fetchTransactions]);
 
-  if (!isHydrated || !currentUser || currentUser.role !== "admin") {
+  if (!isHydrated || !currentUser) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
       </div>
     );
+  }
+
+  if (currentUser.role !== "admin") {
+    return <ForbiddenView />;
   }
 
   return (
