@@ -123,6 +123,11 @@ export default function SuppliersManagementPage() {
   };
 
   const handleDeleteSupplier = async (supplier: Supplier) => {
+    if (currentUser?.role !== "admin") {
+      alert("Akses Ditolak: Hanya Admin yang berwenang menghapus data distributor.");
+      return;
+    }
+
     if (
       !confirm(
         `Apakah Anda yakin ingin menonaktifkan distributor "${supplier.name}" dan seluruh kontak sales-nya?`
@@ -339,14 +344,16 @@ export default function SuppliersManagementPage() {
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSupplier(sup)}
-                              className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                              title="Hapus Distributor"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {currentUser?.role === "admin" && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSupplier(sup)}
+                                className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                                title="Hapus Distributor"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
