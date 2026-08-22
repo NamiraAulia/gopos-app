@@ -82,15 +82,21 @@ export const PaymentModal = ({
       : "idemp-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
 
     const payload = {
-      items: cart.map((item) => ({
-        product_id: Number(item.id),
-        qty: Number(item.qty), 
-        unit_price:
-          item.unit_choice === "big"
-            ? Number(item.price_big)
-            : Number(item.price),
-        unit_choice: item.unit_choice || "small", 
-      })),
+      items: cart.map((item) => {
+        const hasCustom = item.custom_price != null && item.custom_price > 0;
+        const effectivePrice = hasCustom
+          ? Number(item.custom_price)
+          : item.unit_choice === "big"
+          ? Number(item.price_big)
+          : Number(item.price);
+        return {
+          product_id: Number(item.id),
+          qty: Number(item.qty),
+          unit_price: effectivePrice,
+          custom_price: hasCustom ? effectivePrice : undefined,
+          unit_choice: item.unit_choice || "small",
+        };
+      }),
       payment_method: paymentMethod.toLowerCase() as "cash" | "qris" | "transfer" | "kasbon",
       amount_paid: paymentMethod === "CASH" ? amountPaidNum : (paymentMethod === "KASBON" ? dpNum : grandTotal),
       member_id: memberId || undefined,
