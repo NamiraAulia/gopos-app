@@ -10,8 +10,10 @@ import {
   FolderOpen,
 } from "lucide-react";
 
+import { useState } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/useCartStore";
+import LogoutModal from "@/components/LogoutModal";
 
 type NavbarProps = {
   isShiftActive?: boolean;
@@ -28,15 +30,8 @@ export default function Navbar({
 }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const logout = useAuthStore((s) => s.logout);
   const heldCarts = useCartStore((s) => s.heldCarts);
-
-  const handleLogout = () => {
-    if (confirm("Yakin ingin mengakhiri sesi kasir?")) {
-      logout();
-      router.push("/login");
-    }
-  };
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const isActive = (path: string) => {
     if (path === "/cashier") {
@@ -132,11 +127,17 @@ export default function Navbar({
         )}
 
         <button
-          onClick={handleLogout}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+          onClick={() => setShowLogoutModal(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors cursor-pointer"
+          title="Keluar dari sistem"
         >
           <LogOut className="h-4 w-4" />
         </button>
+
+        <LogoutModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+        />
       </div>
     </header>
   );
