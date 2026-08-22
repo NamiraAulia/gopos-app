@@ -141,6 +141,57 @@ export const memberApi = {
         data: null,
         meta: null,
       };
+  exportMembersCsv: (members: Member[]) => {
+    let csv = "ID,Kode Member,Nama Lengkap,No HP,Total Utang,Status,Tanggal Daftar\n";
+    members.forEach((m) => {
+      const statusStr = m.is_active ? "Aktif" : "Nonaktif";
+      const code = (m.member_code || "").replace(/"/g, '""');
+      const name = (m.name || "").replace(/"/g, '""');
+      const phone = (m.phone || "").replace(/"/g, '""');
+      const debt = m.total_debt || 0;
+      const date = m.created_at || "";
+      csv += `${m.id},"${code}","${name}","${phone}",${debt},"${statusStr}","${date}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `daftar_member_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  importMembersCsv: async (items: { name: string; phone?: string }[]): Promise<ApiResponse<any>> => {
+    try {
+      const payload = items.map((item) => ({
+        member_code: generateMemberCode(),
+        name: item.name.trim(),
+        phone: item.phone ? item.phone.trim() : "",
+        is_active: true,
+      }));
+
+      const { data, error } = await supabase
+        .from("members")
+        .insert(payload)
+        .select();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: `Berhasil mengimpor ${data?.length || items.length} member.`,
+        data: data,
+        meta: null,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || "Gagal memproses import member",
+        data: null,
+        meta: null,
+      };
     }
   },
 };

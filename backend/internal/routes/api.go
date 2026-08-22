@@ -44,6 +44,8 @@ func SetupRoutes(r *gin.Engine) {
 			protected.GET("/shifts/active", handlers.GetActiveShift)
 
 			protected.GET("/members", handlers.GetMembers)
+			protected.GET("/members/export", handlers.ExportMembersCSV)
+			protected.POST("/members/import", handlers.ImportMembersCSV)
 			protected.POST("/members", handlers.CreateMember)
 			protected.PUT("/members/:id", handlers.EditMember)
 			protected.DELETE("/members/:id", handlers.DeleteMember)

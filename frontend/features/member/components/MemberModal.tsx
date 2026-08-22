@@ -48,10 +48,6 @@ export const MemberModal = ({
       setErrorMsg("Nama lengkap wajib diisi.");
       return;
     }
-    if (!phone.trim()) {
-      setErrorMsg("Nomor telepon wajib diisi.");
-      return;
-    }
 
     setLoading(true);
     try {

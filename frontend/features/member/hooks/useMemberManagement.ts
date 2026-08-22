@@ -16,6 +16,7 @@ export function useMemberManagement() {
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   const fetchMembers = useCallback(async () => {
@@ -114,6 +115,8 @@ export function useMemberManagement() {
     copiedId,
     modalOpen,
     setModalOpen,
+    importModalOpen,
+    setImportModalOpen,
     selectedMember,
     setSelectedMember,
     fetchMembers,
