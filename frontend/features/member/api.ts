@@ -141,6 +141,9 @@ export const memberApi = {
         data: null,
         meta: null,
       };
+    }
+  },
+
   exportMembersCsv: (members: Member[]) => {
     let csv = "ID,Kode Member,Nama Lengkap,No HP,Total Utang,Status,Tanggal Daftar\n";
     members.forEach((m) => {
