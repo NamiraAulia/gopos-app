@@ -184,7 +184,9 @@ export const kasbonApi = {
         .select()
         .single();
 
-      if (logErr) throw logErr;
+      if (logErr) {
+        console.warn("Notice: debt_logs insert warning:", logErr);
+      }
 
       // Updating shift cash expected if paid in CASH
       if (payload.payment_method === "cash") {
