@@ -17,6 +17,15 @@ export function useAuditLogs() {
   const fetchAuditLogs = useCallback(async (targetPage: number) => {
     setLoading(true);
     setError("");
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("Rentang tanggal tidak valid: Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+      setLogs([]);
+      setMeta(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await auditLogsApi.getAuditLogs({
         page: targetPage,
