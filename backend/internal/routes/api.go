@@ -44,6 +44,8 @@ func SetupRoutes(r *gin.Engine) {
 			protected.GET("/shifts/active", handlers.GetActiveShift)
 
 			protected.GET("/members", handlers.GetMembers)
+			protected.GET("/members/export", handlers.ExportMembersCSV)
+			protected.POST("/members/import", handlers.ImportMembersCSV)
 			protected.POST("/members", handlers.CreateMember)
 			protected.PUT("/members/:id", handlers.EditMember)
 			protected.DELETE("/members/:id", handlers.DeleteMember)
@@ -55,7 +57,7 @@ func SetupRoutes(r *gin.Engine) {
 			protected.GET("/suppliers/schedule", handlers.GetTodaySchedule)
 			protected.POST("/suppliers", handlers.CreateSupplier)
 			protected.PUT("/suppliers/:id", handlers.EditSupplier)
-			protected.DELETE("/suppliers/:id", handlers.DeleteSupplier)
+			protected.DELETE("/suppliers/:id", middleware.RequireRole("admin"), handlers.DeleteSupplier)
 
 			// Admin-only: user management
 			adminOnly := protected.Group("/admin")

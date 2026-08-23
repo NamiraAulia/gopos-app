@@ -7,10 +7,37 @@ export const kasbonApi = {
     try {
       const { data: members, error } = await supabase
         .from("members")
-        .select("total_debt, last_debt_at")
+        .select("*")
         .eq("is_active", true);
 
       if (error) throw error;
+
+      let debtMap: Record<number, { total_debt: number; last_debt_at: string | null }> = {};
+      try {
+        const { data: logs, error: logErr } = await supabase
+          .from("debt_logs")
+          .select("member_id, type, amount, remaining_debt, created_at")
+          .order("id", { ascending: true });
+
+        if (!logErr && logs && logs.length > 0) {
+          logs.forEach((log: any) => {
+            if (!debtMap[log.member_id]) {
+              debtMap[log.member_id] = { total_debt: 0, last_debt_at: null };
+            }
+            if (log.type === "kasbon") {
+              debtMap[log.member_id].total_debt += log.amount;
+              debtMap[log.member_id].last_debt_at = log.created_at;
+            } else if (log.type === "repayment" || log.type === "void_debt") {
+              debtMap[log.member_id].total_debt = Math.max(0, debtMap[log.member_id].total_debt - log.amount);
+            }
+            if (log.remaining_debt !== undefined && log.remaining_debt !== null) {
+              debtMap[log.member_id].total_debt = log.remaining_debt;
+            }
+          });
+        }
+      } catch (e) {
+        // Safe ignore
+      }
 
       let totalReceivables = 0;
       let totalDebtors = 0;
@@ -19,11 +46,17 @@ export const kasbonApi = {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       (members || []).forEach((m: any) => {
-        const debt = m.total_debt || 0;
+        const computed = debtMap[m.id];
+        const debt = (m.total_debt !== undefined && m.total_debt !== null && m.total_debt > 0)
+          ? m.total_debt
+          : (computed?.total_debt || 0);
+
+        const lastDebtAt = m.last_debt_at || computed?.last_debt_at;
+
         if (debt > 0) {
           totalReceivables += debt;
           totalDebtors += 1;
-          if (m.last_debt_at && new Date(m.last_debt_at) < thirtyDaysAgo) {
+          if (lastDebtAt && new Date(lastDebtAt) < thirtyDaysAgo) {
             overdueDebtors += 1;
           }
         }
@@ -59,13 +92,20 @@ export const kasbonApi = {
 
       if (mbrErr) throw mbrErr;
 
-      const { data: logs, error: logErr } = await supabase
-        .from("debt_logs")
-        .select("*")
-        .eq("member_id", memberId)
-        .order("id", { ascending: false });
+      let logsList: DebtLog[] = [];
+      try {
+        const { data: logs, error: logErr } = await supabase
+          .from("debt_logs")
+          .select("*")
+          .eq("member_id", memberId)
+          .order("id", { ascending: false });
 
-      if (logErr) throw logErr;
+        if (!logErr && logs) {
+          logsList = logs as DebtLog[];
+        }
+      } catch (e) {
+        console.warn("Notice: debt_logs fetch warning:", e);
+      }
 
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const isOverdue =
@@ -79,7 +119,7 @@ export const kasbonApi = {
         data: {
           member: member,
           is_overdue: !!isOverdue,
-          logs: (logs as DebtLog[]) || [],
+          logs: logsList,
         },
         meta: null,
       };
@@ -144,7 +184,9 @@ export const kasbonApi = {
         .select()
         .single();
 
-      if (logErr) throw logErr;
+      if (logErr) {
+        console.warn("Notice: debt_logs insert warning:", logErr);
+      }
 
       // Updating shift cash expected if paid in CASH
       if (payload.payment_method === "cash") {

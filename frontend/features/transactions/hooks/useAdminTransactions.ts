@@ -34,6 +34,16 @@ export function useAdminTransactions() {
     if (!isHydrated || !currentUser || currentUser.role !== "admin") return;
     setLoading(true);
     setError("");
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("Rentang tanggal tidak valid: Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+      setTransactions([]);
+      setTotalItems(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
+
     try {
       let query = supabase
         .from("transactions")

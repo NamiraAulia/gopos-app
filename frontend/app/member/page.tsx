@@ -14,10 +14,14 @@ import {
   Check,
   ChevronRight,
   Phone,
-  Calendar
+  Calendar,
+  Download,
+  Upload,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { MemberModal } from "@/features/member/components/MemberModal";
+import { MemberImportModal } from "@/features/member/components/MemberImportModal";
+import { memberApi } from "@/features/member/api";
 import { useMemberManagement } from "@/features/member/hooks/useMemberManagement";
 
 export default function MemberPage() {
@@ -32,6 +36,8 @@ export default function MemberPage() {
     copiedId,
     modalOpen,
     setModalOpen,
+    importModalOpen,
+    setImportModalOpen,
     selectedMember,
     handleCopyCode,
     handleEditClick,
@@ -76,13 +82,31 @@ export default function MemberPage() {
                   Kelola profil pelanggan tetap Anda untuk memberikan penawaran harga khusus pedagang.
                 </p>
               </div>
-              <button
-                onClick={handleCreateClick}
-                className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Plus className="h-4.5 w-4.5" />
-                Tambah Member Baru
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => memberApi.exportMembersCsv(filteredMembers)}
+                  className="h-11 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-2xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Ekspor CSV Data Member"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="h-11 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Import Data Member dari CSV"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </button>
+                <button
+                  onClick={handleCreateClick}
+                  className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Plus className="h-4.5 w-4.5" />
+                  Tambah Member Baru
+                </button>
+              </div>
             </div>
 
             {/* Error state */}
@@ -141,14 +165,14 @@ export default function MemberPage() {
 
                           {/* Kode Member */}
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold font-mono text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded select-all">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
                                 {member.member_code}
                               </span>
                               <button
-                                onClick={() => handleCopyCode(member.id, member.member_code)}
-                                className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-                                title="Salin Kode Member"
+                                onClick={() => handleCopyCode(member.member_code, member.id)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
+                                title="Salin Kode"
                               >
                                 {copiedId === member.id ? (
                                   <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -160,22 +184,16 @@ export default function MemberPage() {
                           </td>
 
                           {/* Nama Lengkap */}
-                          <td className="px-6 py-4 text-xs font-black text-slate-800">
-                            {member.name}
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-xs text-slate-900">{member.name}</div>
                           </td>
 
                           {/* Nomor Telepon */}
                           <td className="px-6 py-4">
-                            <a
-                              href={`https://wa.me/${member.phone.replace(/^0/, "62")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-bold"
-                              title="Hubungi WhatsApp"
-                            >
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-bold">
                               <Phone className="h-3.5 w-3.5 text-slate-400" />
-                              <span>{member.phone}</span>
-                            </a>
+                              <span>{member.phone || "-"}</span>
+                            </div>
                           </td>
 
                           {/* Tanggal Bergabung */}
@@ -223,6 +241,13 @@ export default function MemberPage() {
         onClose={() => setModalOpen(false)}
         onSuccess={handleModalSuccess}
         member={selectedMember}
+      />
+
+      {/* Member Import CSV Modal */}
+      <MemberImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );

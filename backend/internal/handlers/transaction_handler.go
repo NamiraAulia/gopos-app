@@ -126,7 +126,11 @@ func Checkout(c *gin.Context) {
 		unitPrice := normalPrice
 		qtyToDeduct := item.Qty
 
-		if item.UnitChoice == "big" && product.Conversion > 0 {
+		if item.CustomPrice != nil && *item.CustomPrice >= 0 {
+			unitPrice = *item.CustomPrice
+		} else if item.UnitPrice > 0 && item.UnitPrice != normalPrice {
+			unitPrice = item.UnitPrice
+		} else if item.UnitChoice == "big" && product.Conversion > 0 {
 			qtyToDeduct = item.Qty * float64(product.Conversion)
 			if product.IsPromo && product.DiscountAmount > 0 {
 				discounted := product.PriceBig - product.DiscountAmount

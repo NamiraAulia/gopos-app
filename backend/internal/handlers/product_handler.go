@@ -507,6 +507,21 @@ func AddProducts(c *gin.Context) {
 		return
 	}
 
+	if input.Stock < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Stok produk tidak boleh bernilai negatif"})
+		return
+	}
+
+	barcodeClean := strings.TrimSpace(input.Barcode)
+	if barcodeClean != "" {
+		var count int64
+		database.DB.Model(&models.Product{}).Where("barcode = ? AND is_active = true", barcodeClean).Count(&count)
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Barcode '%s' sudah digunakan oleh produk lain", barcodeClean)})
+			return
+		}
+	}
+
 	finalStock := input.Stock
 	if input.UnitChoice == "big" && input.Conversion > 0 {
 		finalStock = input.Stock * float64(input.Conversion)
@@ -514,7 +529,7 @@ func AddProducts(c *gin.Context) {
 
 	product := models.Product{
 		Name:           input.Name,
-		Barcode:        input.Barcode,
+		Barcode:        barcodeClean,
 		BestPrice:      input.BestPrice,
 		Price:          input.Price,
 		PriceBig:       input.PriceBig,
@@ -562,6 +577,11 @@ func EditProducts(c *gin.Context) {
 		return
 	}
 
+	if input.Stock < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Stok produk tidak boleh bernilai negatif"})
+		return
+	}
+
 	userID, ok := utils.GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Sesi tidak valid"})
@@ -573,6 +593,16 @@ func EditProducts(c *gin.Context) {
 		response := utils.Error("Barang tidak ditemukan!", err.Error())
 		c.JSON(http.StatusNotFound, response)
 		return
+	}
+
+	editBarcodeClean := strings.TrimSpace(input.Barcode)
+	if editBarcodeClean != "" {
+		var count int64
+		database.DB.Model(&models.Product{}).Where("barcode = ? AND is_active = true AND id != ?", editBarcodeClean, product.ID).Count(&count)
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("Barcode '%s' sudah digunakan oleh produk lain", editBarcodeClean)})
+			return
+		}
 	}
 
 	oldPrice := product.Price

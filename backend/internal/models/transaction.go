@@ -3,10 +3,11 @@ package models
 import "time"
 
 type CheckoutInput struct {
-	ProductID  uint    `json:"product_id" binding:"required"`
-	Qty        float64 `json:"qty"        binding:"required,gt=0"`
-	UnitPrice  int64   `json:"unit_price"`
-	UnitChoice string  `json:"unit_choice" binding:"required,oneof=small big"`
+	ProductID   uint    `json:"product_id" binding:"required"`
+	Qty         float64 `json:"qty"        binding:"required,gt=0"`
+	UnitPrice   int64   `json:"unit_price"`
+	UnitChoice  string  `json:"unit_choice" binding:"required,oneof=small big"`
+	CustomPrice *int64  `json:"custom_price"`
 }
 
 type CheckoutRequest struct {
