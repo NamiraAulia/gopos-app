@@ -257,14 +257,12 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8
 
   // 4. Footer
   builder.alignCenter().bold(true);
-  if (data.footerText) {
-    const wrappedFooter = wrapText(data.footerText, width);
-    for (const line of wrappedFooter) {
-      builder.textLine(line);
-    }
+  const footerStr = data.footerText || "Terima Kasih";
+  const wrappedFooter = wrapText(footerStr, width);
+  for (const line of wrappedFooter) {
+    builder.textLine(line);
   }
-  builder.textLine("Terima Kasih");
-  builder.bold(false).textLine("Powered by GoPOS");
+  builder.bold(false);
 
   // Feed 4 lines and cut
   builder.lineFeed(4);
@@ -306,7 +304,11 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   }
 
   // 2. Items List (Ritgrow Table Column Format)
-  if (width >= 45) {
+  if (width >= 48) {
+    const colHeader = "Barang".padEnd(23, " ") + " " + "Qty".padStart(5, " ") + " " + "Harga".padStart(8, " ") + " " + "Total".padStart(9, " ");
+    receipt += colHeader + "\r\n";
+    receipt += "-".repeat(width) + "\r\n";
+  } else if (width >= 45) {
     receipt += "Barang                    Qty   Harga   Total\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else {
@@ -319,13 +321,22 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     const price = item.price.toLocaleString("id-ID");
     const total = item.subtotal.toLocaleString("id-ID");
 
-    if (width >= 45) {
+    if (width >= 48) {
+      const nameLines = wrapText(item.name, 23);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(23, " ") + " " + qty.padStart(5, " ") + " " + price.padStart(8, " ") + " " + total.padStart(9, " ");
+        receipt += firstLine + "\r\n";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(width, " ") + "\r\n";
+        }
+      }
+    } else if (width >= 45) {
       const nameLines = wrapText(item.name, 20);
       if (nameLines.length > 0) {
         const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
         receipt += firstLine + "\r\n";
         for (let i = 1; i < nameLines.length; i++) {
-          receipt += nameLines[i].padEnd(20, " ") + "\r\n";
+          receipt += nameLines[i].padEnd(width, " ") + "\r\n";
         }
       }
     } else {
@@ -334,7 +345,7 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
         const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
         receipt += firstLine + "\r\n";
         for (let i = 1; i < nameLines.length; i++) {
-          receipt += nameLines[i].padEnd(12, " ") + "\r\n";
+          receipt += nameLines[i].padEnd(width, " ") + "\r\n";
         }
       }
     }
@@ -361,10 +372,8 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
 
   receipt += "-".repeat(width) + "\r\n";
 
-  if (data.footerText) {
-    receipt += centerPcl(data.footerText) + "\r\n";
-  }
-  receipt += centerPcl("Powered by GoPOS") + "\r\n";
+  const footerStr = data.footerText || "Terima Kasih";
+  receipt += centerPcl(footerStr) + "\r\n";
   receipt += "\r\n\r\n\r\n\r\n\r\n";
 
   const encoder = new TextEncoder();
@@ -433,7 +442,11 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
   }
 
   // 2. Items List (Ritgrow Table Column Format)
-  if (width >= 45) {
+  if (width >= 48) {
+    const colHeader = "Barang".padEnd(23, " ") + " " + "Qty".padStart(5, " ") + " " + "Harga".padStart(8, " ") + " " + "Total".padStart(9, " ");
+    receipt += colHeader + "%0A";
+    receipt += "-".repeat(width) + "%0A";
+  } else if (width >= 45) {
     receipt += "Barang                    Qty   Harga   Total%0A";
     receipt += "-".repeat(width) + "%0A";
   } else {
@@ -446,13 +459,22 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     const price = item.price.toLocaleString("id-ID");
     const total = item.subtotal.toLocaleString("id-ID");
 
-    if (width >= 45) {
+    if (width >= 48) {
+      const nameLines = wrapText(item.name, 23);
+      if (nameLines.length > 0) {
+        const firstLine = nameLines[0].padEnd(23, " ") + " " + qty.padStart(5, " ") + " " + price.padStart(8, " ") + " " + total.padStart(9, " ");
+        receipt += firstLine + "%0A";
+        for (let i = 1; i < nameLines.length; i++) {
+          receipt += nameLines[i].padEnd(width, " ") + "%0A";
+        }
+      }
+    } else if (width >= 45) {
       const nameLines = wrapText(item.name, 20);
       if (nameLines.length > 0) {
         const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
         receipt += firstLine + "%0A";
         for (let i = 1; i < nameLines.length; i++) {
-          receipt += nameLines[i].padEnd(20, " ") + "%0A";
+          receipt += nameLines[i].padEnd(width, " ") + "%0A";
         }
       }
     } else {
@@ -461,7 +483,7 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
         const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
         receipt += firstLine + "%0A";
         for (let i = 1; i < nameLines.length; i++) {
-          receipt += nameLines[i].padEnd(12, " ") + "%0A";
+          receipt += nameLines[i].padEnd(width, " ") + "%0A";
         }
       }
     }
@@ -488,10 +510,8 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
 
   receipt += "-".repeat(width) + "%0A";
 
-  if (data.footerText) {
-    receipt += centerAlignWrapped(data.footerText, width) + "%0A";
-  }
-  receipt += centerAlignWrapped("Powered by GoPOS", width) + "%0A";
+  const footerStr = data.footerText || "Terima Kasih";
+  receipt += centerAlignWrapped(footerStr, width) + "%0A";
   receipt += "%0A%0A%0A%0A%0A";
 
   return receipt;
@@ -622,10 +642,10 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   const paperSize = params.paperSize || localPaperSize || "80mm";
   const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
 
-  const storeName = params.shopSettings?.name || params.shopName || localShopName || "GoPOS STORE";
-  const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "";
+  const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
+  const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
   const storePhone = params.shopSettings?.phone || params.shopPhone || localShopPhone || "";
-  const footerText = params.shopSettings?.footer || localShopFooter || "Terima Kasih - Barang yang sudah dibeli tidak dapat ditukar/dikembalikan";
+  const footerText = params.shopSettings?.footer || localShopFooter || "Terima Kasih";
   const logoSrc = params.shopSettings?.logo || localLogo || "";
 
   // Process logo asynchronously if present
