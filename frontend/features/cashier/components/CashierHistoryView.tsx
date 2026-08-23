@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "./Navbar";
 import { RefundModal } from "./RefundModal";
+import { PrintableReceipt } from "./PrintableReceipt";
 import type { Transaction } from "../api";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -378,45 +379,30 @@ export function CashierHistoryView({
       )}
 
       {selected && (
-        <div className="hidden print:block text-black font-mono text-sm p-4">
-          <h1 className="text-center font-bold text-lg mb-2">GoPOS</h1>
-          <p className="text-center mb-1">{selected.transaction_code}</p>
-          <p className="text-center mb-4 text-xs">
-            {new Date(selected.created_at).toLocaleString("id-ID", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </p>
-          <div className="border-b border-dashed border-black mb-2" />
-          {selected.items?.map((item, idx) => (
-            <div key={`${item.id || 'pr'}-${idx}`} className="flex justify-between mb-1">
-              <span>
-                {item.qty}x {item.product_name}
-              </span>
-              <span>{item.subtotal.toLocaleString("id-ID")}</span>
-            </div>
-          ))}
-          <div className="border-b border-dashed border-black my-2" />
-          <div className="flex justify-between font-bold">
-            <span>TOTAL</span>
-            <span>Rp {selected.total_amount.toLocaleString("id-ID")}</span>
-          </div>
-          <div className="flex justify-between text-xs mt-1">
-            <span>Dibayar</span>
-            <span>Rp {selected.amount_paid.toLocaleString("id-ID")}</span>
-          </div>
-          {selected.change_amount > 0 && (
-            <div className="flex justify-between text-xs">
-              <span>Kembalian</span>
-              <span>Rp {selected.change_amount.toLocaleString("id-ID")}</span>
-            </div>
-          )}
-          {selected.status === "voided" && (
-            <p className="text-center font-bold mt-3 border-2 border-black p-1">
-              *** DIBATALKAN ***
-            </p>
-          )}
-        </div>
+        <PrintableReceipt
+          transaction={{
+            transaction_code: selected.transaction_code,
+            created_at: selected.created_at,
+            payment_method: selected.payment_method,
+            amount_paid: selected.amount_paid,
+            total_amount: selected.total_amount,
+            change_amount: selected.change_amount,
+            discount_amount: selected.discount_amount,
+            items: selected.items?.map((item) => ({
+              id: item.id,
+              product_name: item.product_name,
+              qty: item.qty,
+              price: item.unit_price,
+              subtotal: item.subtotal,
+            })),
+            member: (selected as any).member
+              ? {
+                  name: (selected as any).member.name,
+                  member_code: (selected as any).member.phone || (selected as any).member.member_code || `#${(selected as any).member.id}`,
+                }
+              : null,
+          }}
+        />
       )}
 
       {voidTarget && (

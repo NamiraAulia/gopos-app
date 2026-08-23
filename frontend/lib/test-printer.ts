@@ -63,7 +63,7 @@ function runTests() {
 
   for (const scenario of testScenarios) {
     console.log(`\nScenario: ${scenario.name}`);
-    const receipt = generatePlainTextReceipt(scenario.data);
+    const receipt = generatePlainTextReceipt(scenario.data, 48);
     
     // Split lines by %0A
     const lines = receipt.split("%0A");

@@ -128,14 +128,16 @@
 @media print {
   @page {
     margin: 0 !important;
-    size: auto;
+    size: 80mm auto !important;
   }
 
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
-    width: 100% !important;
+    width: 70mm !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 8.5pt !important;
   }
 
   body * {
@@ -151,12 +153,18 @@
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 2mm 3mm !important;
+    width: 70mm !important;
+    max-width: 70mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
     background: white !important;
     box-shadow: none !important;
     box-sizing: border-box !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 8.5pt !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
 }
