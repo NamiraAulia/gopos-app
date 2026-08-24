@@ -110,3 +110,17 @@ CREATE POLICY "Logs Insert All" ON public.activity_logs FOR INSERT TO authentica
 
 -- TABEL: stock_adjustments
 CREATE POLICY "Stock Adjustments Admin Only" ON public.stock_adjustments FOR ALL TO authenticated USING (public.is_admin());
+
+-- TABEL: suppliers & supplier_sales
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.supplier_sales TO authenticated;
+
+ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.supplier_sales ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Suppliers Read All" ON public.suppliers FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Suppliers Modify Admin" ON public.suppliers FOR ALL TO authenticated USING (public.is_admin());
+
+CREATE POLICY "Supplier Sales Read All" ON public.supplier_sales FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Supplier Sales Modify Admin" ON public.supplier_sales FOR ALL TO authenticated USING (public.is_admin());
+
