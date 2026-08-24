@@ -1,1 +1,0 @@
-export type { Product, ApiMeta, ApiResponse } from "@/types/api";
