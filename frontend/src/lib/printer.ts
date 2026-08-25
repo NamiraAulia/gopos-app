@@ -622,7 +622,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   let localShopAddress = "";
   let localShopPhone = "";
   let localShopFooter = "";
-  let localPaperSize = "80mm";
+  let localPaperSize = "58mm";
   let localLogo = "";
 
   if (typeof window !== "undefined") {
@@ -631,7 +631,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       localShopAddress = localStorage.getItem("gopos_shop_address") || "";
       localShopPhone = localStorage.getItem("gopos_shop_phone") || "";
       localShopFooter = localStorage.getItem("gopos_shop_footer") || "";
-      localPaperSize = localStorage.getItem("gopos_paper_size") || "80mm";
+      localPaperSize = localStorage.getItem("gopos_paper_size") || "58mm";
       localLogo = localStorage.getItem("gopos_shop_logo") || "";
     } catch (e) {
       console.error("Gagal membaca settings dari localStorage:", e);
@@ -639,7 +639,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   }
 
   // Resolve final values
-  const paperSize = params.paperSize || localPaperSize || "80mm";
+  const paperSize = params.paperSize || localPaperSize || "58mm";
   const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";

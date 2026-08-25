@@ -7,7 +7,7 @@ export function loadShopSettingsFromStorage(): ShopSettingsDAO {
       shopAddress: "",
       shopPhone: "",
       footerText: "",
-      paperSize: "80mm",
+      paperSize: "58mm",
       logoBase64: "",
     };
   }
@@ -17,7 +17,7 @@ export function loadShopSettingsFromStorage(): ShopSettingsDAO {
     shopAddress: localStorage.getItem("gopos_shop_address") || "",
     shopPhone: localStorage.getItem("gopos_shop_phone") || "",
     footerText: localStorage.getItem("gopos_shop_footer") || "",
-    paperSize: (localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm") || "80mm",
+    paperSize: (localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm") || "58mm",
     logoBase64: localStorage.getItem("gopos_shop_logo") || "",
   };
 }

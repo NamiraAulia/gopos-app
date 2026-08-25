@@ -39,7 +39,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   shopAddress: "",
   shopPhone: "",
   footerText: "",
-  paperSize: "80mm",
+  paperSize: "58mm",
   logoBase64: "",
   setShopName: (val) => set({ shopName: val }),
   setShopAddress: (val) => set({ shopAddress: val }),
