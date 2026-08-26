@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Lock, Mail, Loader2, Store } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, user, isHydrated } = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (isHydrated && user) {
+      router.replace("/cashier");
+    }
+  }, [isHydrated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
