@@ -48,6 +48,9 @@ export default function CashierContainer() {
       isShiftActive={cashierData.isShiftActive}
       checkShift={cashierData.checkShift}
       members={cashierData.members}
+      loadingMore={cashierData.loadingMore}
+      hasMore={cashierData.hasMore}
+      loadMoreProducts={cashierData.loadMoreProducts}
       showPaymentModal={cashierData.showPaymentModal}
       setShowPaymentModal={cashierData.setShowPaymentModal}
       showReceipt={cashierData.showReceipt}

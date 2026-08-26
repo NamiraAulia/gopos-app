@@ -75,3 +75,16 @@ export interface ExpenseDTO {
     email: string;
   };
 }
+
+export interface PaginatedProductsResponse {
+  products: import("@/interface/api").Product[];
+  data: import("@/interface/api").Product[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedTransactionsResponse {
+  data: TransactionDTO[];
+  totalCount: number;
+  totalPages: number;
+}

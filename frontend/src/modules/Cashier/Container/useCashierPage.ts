@@ -7,6 +7,8 @@ import type { Product } from "@/interface/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/authStore";
 
+const PRODUCTS_PER_PAGE = 50;
+
 export function useCashierPage() {
   const { user: currentUser, isHydrated } = useAuthStore();
   const {
@@ -30,6 +32,8 @@ export function useCashierPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [members, setMembers] = useState<any[]>([]);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -43,6 +47,7 @@ export function useCashierPage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<any>(null);
+  const pageRef = useRef(1);
 
   const checkShift = useCallback(async () => {
     setIsShiftChecking(true);
@@ -62,10 +67,12 @@ export function useCashierPage() {
 
   const fetchProducts = useCallback(async (q?: string) => {
     setLoading(true);
+    pageRef.current = 1;
     try {
-      const res = await cashierDAO.getProducts(q);
+      const res = await cashierDAO.getProducts(q, 1, PRODUCTS_PER_PAGE);
       if (res.success && res.data) {
         setProducts(res.data.products || []);
+        setHasMore(res.data.hasMore !== false);
       }
     } catch (err) {
       console.error("Gagal memuat produk kasir:", err);
@@ -73,6 +80,28 @@ export function useCashierPage() {
       setLoading(false);
     }
   }, []);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = pageRef.current + 1;
+    try {
+      const res = await cashierDAO.getProducts(
+        searchQuery || undefined,
+        nextPage,
+        PRODUCTS_PER_PAGE
+      );
+      if (res.success && res.data) {
+        setProducts((prev) => [...prev, ...(res.data.products || [])]);
+        setHasMore(res.data.hasMore !== false);
+        pageRef.current = nextPage;
+      }
+    } catch (err) {
+      console.error("Gagal memuat lebih banyak produk:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, searchQuery]);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -126,6 +155,9 @@ export function useCashierPage() {
     setCustomPrice,
     products,
     loading,
+    loadingMore,
+    hasMore,
+    loadMoreProducts,
     searchQuery,
     setSearchQuery,
     triggerSearch,

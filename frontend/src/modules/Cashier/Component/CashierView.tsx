@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -15,6 +15,7 @@ import {
   Edit,
   Pause,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { PaymentModal } from "./PaymentModal";
 import { ReceiptModal } from "./ReceiptModal";
@@ -98,6 +99,9 @@ interface CashierViewProps {
   isShiftActive: boolean;
   checkShift: () => void;
   members: any[];
+  loadingMore: boolean;
+  hasMore: boolean;
+  loadMoreProducts: () => void;
   showPaymentModal: boolean;
   setShowPaymentModal: (val: boolean) => void;
   showReceipt: boolean;
@@ -151,6 +155,9 @@ export function CashierView({
   isShiftActive,
   checkShift,
   members,
+  loadingMore,
+  hasMore,
+  loadMoreProducts,
   showPaymentModal,
   setShowPaymentModal,
   showReceipt,
@@ -181,6 +188,24 @@ export function CashierView({
   showHeldCartsModal,
   setShowHeldCartsModal,
 }: CashierViewProps) {
+  // IntersectionObserver for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sentinelRef.current || !scrollContainerRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMoreProducts();
+        }
+      },
+      { root: scrollContainerRef.current, threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, loadMoreProducts]);
+
   if (!isHydrated || !currentUser) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
@@ -236,7 +261,7 @@ export function CashierView({
             </div>
           </div>
 
-          <div className="overflow-y-auto p-6 grid grid-cols-3 gap-4">
+          <div ref={scrollContainerRef} className="overflow-y-auto p-6 grid grid-cols-3 gap-4">
             {!isShiftActive ? (
               <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center gap-3">
                 <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -366,6 +391,23 @@ export function CashierView({
                   </div>
                 );
               })
+            )}
+
+            {/* Infinite scroll sentinel */}
+            {isShiftActive && !loading && (
+              <div ref={sentinelRef} className="col-span-3 flex flex-col items-center justify-center py-6 gap-2">
+                {loadingMore && (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="text-xs font-bold">Memuat produk lainnya...</span>
+                  </div>
+                )}
+                {!hasMore && products.length > 0 && (
+                  <p className="text-xs font-medium text-slate-400">
+                    Semua produk telah dimuat ({products.length} produk)
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </section>

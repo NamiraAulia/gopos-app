@@ -35,6 +35,7 @@ interface CashierHistoryViewProps {
   page: number;
   setPage: (p: any) => void;
   totalPages: number;
+  totalCount: number;
   searchCode: string;
   setSearchCode: (s: string) => void;
   selected: any;
@@ -60,6 +61,7 @@ export function CashierHistoryView({
   page,
   setPage,
   totalPages,
+  totalCount,
   searchCode,
   setSearchCode,
   selected,
@@ -199,18 +201,21 @@ export function CashierHistoryView({
           {!loading && filteredTransactions.length > 0 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-xs font-bold text-slate-400">
-                Halaman {page} dari {totalPages}
+                Menampilkan {(page - 1) * 20 + 1}–{Math.min(page * 20, totalCount)} dari {totalCount} transaksi
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setPage((p: any) => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
                   className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
+                <span className="text-xs font-black text-slate-600 px-2">
+                  {page} / {totalPages}
+                </span>
                 <button
-                  onClick={() => setPage((p: any) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
                   className="h-9 w-9 flex items-center justify-center rounded-lg border-2 border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
                 >

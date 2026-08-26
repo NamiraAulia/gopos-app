@@ -32,21 +32,31 @@ export async function fetchMembersService() {
   return { success: true, data: data || [] };
 }
 
-export async function fetchProductsService(search?: string) {
-  let query = supabase.from("products").select("*").eq("is_active", true);
+export async function fetchProductsService(search?: string, page: number = 1, limit: number = 50) {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("products")
+    .select("*")
+    .eq("is_active", true);
 
   if (search) {
     query = query.or(`name.ilike.%${search}%,barcode.ilike.%${search}%`);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.range(from, to);
   if (error) throw error;
+
+  const products = data || [];
 
   return {
     success: true,
     data: {
-      products: data || [],
-      data: data || [],
+      products,
+      data: products,
+      totalCount: products.length,
+      hasMore: products.length === limit,
     },
   };
 }
@@ -134,18 +144,52 @@ export async function closeShiftService(totalCashActual: number) {
   return { success: true, message: "Shift kasir berhasil ditutup", data: data as ShiftDataDTO };
 }
 
-export async function fetchTransactionsService(limit: number = 100) {
-  const { data, error } = await supabase
+export async function fetchTransactionsService(limit: number = 100, page?: number, search?: string) {
+  // Legacy mode: no page param = old behavior (simple limit)
+  if (page === undefined) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(`
+        *,
+        member:members(id, name, phone, member_code)
+      `)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return { success: true, data: (data as TransactionDTO[]) || [] };
+  }
+
+  // Paginated mode: server-side pagination + search
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
     .from("transactions")
     .select(`
       *,
       member:members(id, name, phone, member_code)
-    `)
+    `, { count: "exact" });
+
+  if (search && search.trim()) {
+    query = query.or(`transaction_code.ilike.%${search.trim()}%,payment_method.ilike.%${search.trim()}%`);
+  }
+
+  const { data, error, count } = await query
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(from, to);
 
   if (error) throw error;
-  return { success: true, data: (data as TransactionDTO[]) || [] };
+
+  const totalCount = count || 0;
+  const totalPages = Math.ceil(totalCount / limit) || 1;
+
+  return {
+    success: true,
+    data: (data as TransactionDTO[]) || [],
+    totalCount,
+    totalPages,
+  };
 }
 
 export async function fetchExpensesService() {
