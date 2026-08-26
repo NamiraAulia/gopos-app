@@ -55,6 +55,9 @@ export const useAuthStore = create<AuthState>()(
           };
 
           localStorage.setItem('token', token);
+          if (typeof window !== 'undefined') {
+            document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+          }
           set({ user, token });
 
           await get().refreshActiveShift();
