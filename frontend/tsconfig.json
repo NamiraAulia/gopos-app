@@ -19,7 +19,16 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/modules/*": ["./src/modules/*"],
+      "@/helper/*": ["./src/helper/*"],
+      "@/interface/*": ["./src/interface/*"],
+      "@/store/*": ["./src/store/*"],
+      "@/service/*": ["./src/service/*"],
+      "@/utils/*": ["./src/helper/*"],
+      "@/types/*": ["./src/interface/*"],
+      "@/features/*": ["./src/modules/*"]
     }
   },
   "include": [

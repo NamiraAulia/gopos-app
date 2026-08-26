@@ -128,7 +128,23 @@ class PrinterPlugin : Plugin() {
     fun checkPrinterStatus(call: PluginCall) {
         val ret = JSObject()
         Thread {
-            // 1. Cek USB Host Manager untuk printer USB generic (USB_CLASS_PRINTER = 7)
+            // 1. Cek Hardware Telpo Internal terlebih dahulu (Telpo SDK / Reflection)
+            try {
+                val telpoWrapper = TelpoPrinterWrapper(context)
+                if (telpoWrapper.isAvailable()) {
+                    Log.d(TAG, "checkPrinterStatus: Telpo Internal Printer siap digunakan")
+                    ret.put("connected", true)
+                    ret.put("hasPermission", true)
+                    ret.put("printerType", "telpo_internal")
+                    ret.put("message", "Printer Internal Telpo Siap Gunakan")
+                    call.resolve(ret)
+                    return@Thread
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "checkPrinterStatus: Telpo Printer (Reflect/SDK) tidak tersedia (${e.message})")
+            }
+
+            // 2. Cek USB Host Manager untuk printer USB generic (USB_CLASS_PRINTER = 7)
             try {
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
                 val candidatePrinters = getCandidatePrinters(usbManager)
@@ -156,26 +172,10 @@ class PrinterPlugin : Plugin() {
                 Log.e(TAG, "checkPrinterStatus Error USB: ${e.message}", e)
             }
 
-            // 2. Fallback: Coba inisialisasi Hardware Telpo Internal (Menggunakan konsep Ritgrow)
-            try {
-                val telpoWrapper = TelpoPrinterWrapper(context)
-                if (telpoWrapper.isAvailable()) {
-                    Log.d(TAG, "checkPrinterStatus: Telpo Printer (Reflect) siap")
-                    ret.put("connected", true)
-                    ret.put("hasPermission", true)
-                    ret.put("printerType", "telpo_internal")
-                    ret.put("message", "Printer Internal Telpo Siap Gunakan (Reflect SDK)")
-                    call.resolve(ret)
-                    return@Thread
-                }
-            } catch (e: Throwable) {
-                Log.w(TAG, "checkPrinterStatus: Telpo Printer (Reflect) gagal (${e.message})")
-            }
-
             // 3. Status jika bukan USB & Telpo
             ret.put("connected", false)
             ret.put("hasPermission", false)
-            ret.put("message", "Printer USB / Telpo tidak terdeteksi.")
+            ret.put("message", "Printer Telpo / USB tidak terdeteksi.")
             call.resolve(ret)
         }.start()
     }
@@ -276,7 +276,6 @@ class PrinterPlugin : Plugin() {
     fun printReceipt(call: PluginCall) {
         val textParam = call.getString("text")
         val receiptData = call.getString("receiptData")
-        val printerTypeParam = call.getString("printerType")
 
         if (textParam.isNullOrEmpty() && receiptData.isNullOrEmpty()) {
             call.reject("Data cetak tidak boleh kosong")
@@ -284,41 +283,38 @@ class PrinterPlugin : Plugin() {
         }
 
         Thread {
-            val isTelpo = "pcl" == printerTypeParam || "telpo_internal" == printerTypeParam
-            
-            if (isTelpo) {
-                Log.d(TAG, "printReceipt: Menggunakan Telpo Wrapper untuk cetak (Konsep Ritgrow)...")
-                try {
-                    val telpoWrapper = TelpoPrinterWrapper(context)
-                    if (telpoWrapper.isAvailable()) {
-                        var textToPrint = textParam
-                        if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
-                            textToPrint = try {
-                                val bytes = Base64.decode(receiptData, Base64.DEFAULT)
-                                val cleanedBytes = bytes.filter { it in 32..126 || it == 10.toByte() || it == 13.toByte() || it == 9.toByte() }.toByteArray()
-                                val decoded = String(cleanedBytes, Charsets.UTF_8)
-                                if (decoded.trim().isNotEmpty()) decoded else receiptData
-                            } catch (e: Exception) {
-                                receiptData
-                            }
+            // -------------------------------------------------------------
+            // STRATEGI 1: Telpo Internal Thermal Printer (SDK & Reflection)
+            // -------------------------------------------------------------
+            try {
+                val telpoWrapper = TelpoPrinterWrapper(context)
+                if (telpoWrapper.isAvailable()) {
+                    Log.d(TAG, "printReceipt: Menemukan Telpo Internal Printer! Memulai cetak...")
+                    var textToPrint = textParam
+                    if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
+                        textToPrint = try {
+                            val bytes = Base64.decode(receiptData, Base64.DEFAULT)
+                            val cleanedBytes = bytes.filter { it in 32..126 || it == 10.toByte() || it == 13.toByte() || it == 9.toByte() }.toByteArray()
+                            val decoded = String(cleanedBytes, Charsets.UTF_8)
+                            if (decoded.trim().isNotEmpty()) decoded else receiptData
+                        } catch (e: Exception) {
+                            receiptData
                         }
-                        
-                        telpoWrapper.printText(textToPrint ?: "")
-                        val ret = JSObject()
-                        ret.put("success", true)
-                        ret.put("message", "Berhasil mencetak via Telpo SDK (Reflect)!")
-                        call.resolve(ret)
-                        return@Thread
-                    } else {
-                        Log.w(TAG, "Telpo Printer Wrapper tidak tersedia, fallback ke USB...")
                     }
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Gagal print via Telpo Wrapper: ${e.message}", e)
+
+                    telpoWrapper.printText(textToPrint ?: "")
+                    val ret = JSObject()
+                    ret.put("success", true)
+                    ret.put("message", "Berhasil mencetak via Telpo Internal Printer!")
+                    call.resolve(ret)
+                    return@Thread
                 }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Gagal mencetak via Telpo Internal Printer: ${e.message}. Mencoba USB Host Generic...")
             }
 
             // -------------------------------------------------------------
-            // STRATEGI 1: Direct Generic USB Host Bulk Transfer (Device Class USB_CLASS_PRINTER = 7)
+            // STRATEGI 2: Direct Generic USB Host Bulk Transfer (Device Class USB_CLASS_PRINTER = 7)
             // -------------------------------------------------------------
             try {
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
@@ -411,52 +407,13 @@ class PrinterPlugin : Plugin() {
                         return@Thread
                     }
                 } else {
-                    Log.w(TAG, "Device printer USB TIDAK ditemukan di USB deviceList (Strategi 1)")
+                    Log.w(TAG, "Device printer USB TIDAK ditemukan di USB deviceList (Strategi 2)")
                 }
             } catch (e: Throwable) {
                 Log.e(TAG, "Exception pada USB Strategi: ${e.message}", e)
             }
 
-            // -------------------------------------------------------------
-            // STRATEGI 2: Telpo SDK ThermalPrinter (Backup untuk Telpo)
-            // -------------------------------------------------------------
-            Log.d(TAG, "Mencoba Strategi 2: Telpo SDK ThermalPrinter...")
-            var textToPrint = textParam
-            if (textToPrint.isNullOrEmpty() && !receiptData.isNullOrEmpty()) {
-                textToPrint = try {
-                    val bytes = Base64.decode(receiptData, Base64.DEFAULT)
-                    val cleanedBytes = bytes.filter { it in 32..126 || it == 10.toByte() || it == 13.toByte() || it == 9.toByte() }.toByteArray()
-                    val decoded = String(cleanedBytes, Charsets.UTF_8)
-                    if (decoded.trim().isNotEmpty()) decoded else receiptData
-                } catch (e: Exception) {
-                    receiptData
-                }
-            }
-
-            try {
-                ThermalPrinter.start()
-                ThermalPrinter.clearString()
-                ThermalPrinter.setAlgin(ThermalPrinter.ALGIN_LEFT)
-                ThermalPrinter.setFontSize(24)
-                ThermalPrinter.addString((textToPrint ?: "") + "\n\n")
-                ThermalPrinter.printString()
-                ThermalPrinter.walkPaper(30)
-
-                val ret = JSObject()
-                ret.put("success", true)
-                ret.put("message", "Berhasil mencetak struk via Telpo SDK!")
-                call.resolve(ret)
-                return@Thread
-            } catch (e: Throwable) {
-                Log.e(TAG, "Gagal Telpo SDK: ${e.message}", e)
-                call.reject("Gagal mencetak secara native USB & Telpo SDK: ${e.message ?: "Printer tidak merespon"}")
-            } finally {
-                try {
-                    ThermalPrinter.stop()
-                } catch (e: Throwable) {
-                    // Ignore
-                }
-            }
+            call.reject("Printer Telpo / USB tidak merespon atau tidak ditemukan")
         }.start()
     }
 
