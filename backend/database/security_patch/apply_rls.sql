@@ -115,6 +115,10 @@ CREATE POLICY "Stock Adjustments Admin Only" ON public.stock_adjustments FOR ALL
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.supplier_sales TO authenticated;
 
+-- GRANT HAK AKSES SEQUENCE UNTUK AUTO-INCREMENT ID
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.supplier_sales ENABLE ROW LEVEL SECURITY;
 
