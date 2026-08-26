@@ -49,14 +49,23 @@ export function useCashierPage() {
   const debounceTimer = useRef<any>(null);
   const pageRef = useRef(1);
 
+  const [staleShiftInfo, setStaleShiftInfo] = useState<{ isStale: boolean; shift: ShiftData | null; hoursOpen: number } | null>(null);
+  const [showStaleShiftModal, setShowStaleShiftModal] = useState(false);
+
   const checkShift = useCallback(async () => {
     setIsShiftChecking(true);
     try {
       const res = await cashierDAO.getActiveShift();
       if (res.success && res.data) {
         setActiveShift(res.data);
+        const staleRes = await cashierDAO.checkStaleShift();
+        if (staleRes && staleRes.isStale) {
+          setStaleShiftInfo(staleRes);
+          setShowStaleShiftModal(true);
+        }
       } else {
         setActiveShift(null);
+        setStaleShiftInfo(null);
       }
     } catch (err) {
       setActiveShift(null);
@@ -92,8 +101,13 @@ export function useCashierPage() {
         PRODUCTS_PER_PAGE
       );
       if (res.success && res.data) {
-        setProducts((prev) => [...prev, ...(res.data.products || [])]);
-        setHasMore(res.data.hasMore !== false);
+        const newProducts = res.data.products || [];
+        setProducts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const filteredNew = newProducts.filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...filteredNew];
+        });
+        setHasMore(newProducts.length >= PRODUCTS_PER_PAGE && res.data.hasMore !== false);
         pageRef.current = nextPage;
       }
     } catch (err) {
@@ -190,5 +204,8 @@ export function useCashierPage() {
     holdCurrentCart,
     loadHeldCarts,
     handleSearchKeyDown,
+    staleShiftInfo,
+    showStaleShiftModal,
+    setShowStaleShiftModal,
   };
 }

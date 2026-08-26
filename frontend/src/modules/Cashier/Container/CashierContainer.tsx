@@ -80,6 +80,9 @@ export default function CashierContainer() {
       setShowHoldModal={setShowHoldModal}
       showHeldCartsModal={showHeldCartsModal}
       setShowHeldCartsModal={setShowHeldCartsModal}
+      staleShiftInfo={cashierData.staleShiftInfo}
+      showStaleShiftModal={cashierData.showStaleShiftModal}
+      setShowStaleShiftModal={cashierData.setShowStaleShiftModal}
     />
   );
 }

@@ -23,6 +23,7 @@ import { PrintableReceipt } from "./PrintableReceipt";
 import { OpenShiftModal } from "./OpenShiftModal";
 import { HoldCartModal } from "./HoldCartModal";
 import { HeldCartsModal } from "./HeldCartsModal";
+import { StaleShiftModal } from "./StaleShiftModal";
 import { ProductModal } from "@/modules/Products/Component/ProductModal";
 import Navbar from "./Navbar";
 
@@ -131,6 +132,9 @@ interface CashierViewProps {
   setShowHoldModal: (val: boolean) => void;
   showHeldCartsModal: boolean;
   setShowHeldCartsModal: (val: boolean) => void;
+  staleShiftInfo?: { isStale: boolean; shift: any; hoursOpen: number } | null;
+  showStaleShiftModal?: boolean;
+  setShowStaleShiftModal?: (val: boolean) => void;
 }
 
 export function CashierView({
@@ -187,24 +191,47 @@ export function CashierView({
   setShowHoldModal,
   showHeldCartsModal,
   setShowHeldCartsModal,
+  staleShiftInfo,
+  showStaleShiftModal,
+  setShowStaleShiftModal,
 }: CashierViewProps) {
   // IntersectionObserver for infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!sentinelRef.current || !scrollContainerRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          loadMoreProducts();
-        }
-      },
-      { root: scrollContainerRef.current, threshold: 0.1 }
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, loadMoreProducts]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (!hasMore || loadingMore || loading) return;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        loadMoreProducts();
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+
+    const sentinel = sentinelRef.current;
+    let observer: IntersectionObserver | null = null;
+    if (sentinel) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+            loadMoreProducts();
+          }
+        },
+        { root: container, rootMargin: "150px", threshold: 0.1 }
+      );
+      observer.observe(sentinel);
+    }
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      if (observer) observer.disconnect();
+    };
+  }, [hasMore, loadingMore, loading, isShiftActive, products.length, loadMoreProducts]);
 
   if (!isHydrated || !currentUser) {
     return (
@@ -261,7 +288,7 @@ export function CashierView({
             </div>
           </div>
 
-          <div ref={scrollContainerRef} className="overflow-y-auto p-6 grid grid-cols-3 gap-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-4">
             {!isShiftActive ? (
               <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center gap-3">
                 <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -728,6 +755,16 @@ export function CashierView({
       <HeldCartsModal
         isOpen={showHeldCartsModal}
         onClose={() => setShowHeldCartsModal(false)}
+      />
+
+      <StaleShiftModal
+        isOpen={!!showStaleShiftModal}
+        onClose={() => setShowStaleShiftModal?.(false)}
+        staleShiftInfo={staleShiftInfo || null}
+        onCloseShiftClick={() => {
+          setShowStaleShiftModal?.(false);
+          router.push("/cashier/cashSummary");
+        }}
       />
 
       {/* Hidden printable receipt for thermal printer */}

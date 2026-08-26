@@ -28,6 +28,8 @@ export const CloseShiftModal = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
+  const [discrepancyNote, setDiscrepancyNote] = useState<string>("");
+
   if (!isOpen) return null;
 
   const actualCashNum = parseInt(actualCash.replace(/\D/g, "")) || 0;
@@ -50,7 +52,7 @@ export const CloseShiftModal = ({
     try {
       setLoading(true);
       setError("");
-      const res = await cashierDAO.closeShift(actualCashNum);
+      const res = await cashierDAO.closeShift(actualCashNum, discrepancyNote);
 
       if (res && res.success) {
         onSuccess();
@@ -138,36 +140,51 @@ export const CloseShiftModal = ({
           </div>
 
           {hasDifference && (
-            <div
-              className={`rounded-xl p-4 flex items-start gap-3 border-2 ${
-                difference > 0
-                  ? "bg-emerald-50 border-emerald-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              {difference > 0 ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-              )}
+            <div className="space-y-3">
+              <div
+                className={`rounded-xl p-4 flex items-start gap-3 border-2 ${
+                  difference > 0
+                    ? "bg-emerald-50 border-emerald-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                {difference > 0 ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  <p
+                    className={`text-xs font-black ${
+                      difference > 0 ? "text-emerald-700" : "text-red-700"
+                    }`}
+                  >
+                    {difference > 0 ? "Kas Lebih" : "Kas Kurang"} Rp{" "}
+                    {Math.abs(difference).toLocaleString("id-ID")}
+                  </p>
+                  <p
+                    className={`text-[11px] font-medium mt-0.5 ${
+                      difference > 0 ? "text-emerald-600" : "text-red-600"
+                    }`}
+                  >
+                    {difference > 0
+                      ? "Uang di laci lebih banyak dari catatan sistem."
+                      : "Uang di laci lebih sedikit dari catatan sistem."}
+                  </p>
+                </div>
+              </div>
+
               <div>
-                <p
-                  className={`text-xs font-black ${
-                    difference > 0 ? "text-emerald-700" : "text-red-700"
-                  }`}
-                >
-                  {difference > 0 ? "Kas Lebih" : "Kas Kurang"} Rp{" "}
-                  {Math.abs(difference).toLocaleString("id-ID")}
-                </p>
-                <p
-                  className={`text-[11px] font-medium mt-0.5 ${
-                    difference > 0 ? "text-emerald-600" : "text-red-600"
-                  }`}
-                >
-                  {difference > 0
-                    ? "Uang di laci lebih banyak dari catatan sistem."
-                    : "Uang di laci lebih sedikit dari catatan sistem."}
-                </p>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  Catatan Alasan Selisih Kas (Opsional/Anjuran)
+                </label>
+                <textarea
+                  rows={2}
+                  value={discrepancyNote}
+                  onChange={(e) => setDiscrepancyNote(e.target.value)}
+                  placeholder="Misal: Salah memberikan kembalian Rp 2.000 pada nota TX-1234"
+                  className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-800 outline-none focus:border-blue-600 transition-all bg-slate-50"
+                />
               </div>
             </div>
           )}

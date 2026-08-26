@@ -45,7 +45,7 @@ export async function fetchProductsService(search?: string, page: number = 1, li
     query = query.or(`name.ilike.%${search}%,barcode.ilike.%${search}%`);
   }
 
-  const { data, error } = await query.range(from, to);
+  const { data, error } = await query.order("id", { ascending: true }).range(from, to);
   if (error) throw error;
 
   const products = data || [];
@@ -114,7 +114,33 @@ export async function openShiftService(startCash: number) {
   return { success: true, data: data as ShiftDataDTO };
 }
 
-export async function closeShiftService(totalCashActual: number) {
+export async function checkStaleShiftService(): Promise<{ isStale: boolean; shift: ShiftDataDTO | null; hoursOpen: number }> {
+  try {
+    const userId = await getCurrentProfileId();
+    const { data: shift, error } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "open")
+      .maybeSingle();
+
+    if (error || !shift) return { isStale: false, shift: null, hoursOpen: 0 };
+
+    const startTime = new Date(shift.start_time).getTime();
+    const now = Date.now();
+    const hoursOpen = Math.floor((now - startTime) / (1000 * 60 * 60));
+
+    return {
+      isStale: hoursOpen >= 16,
+      shift: shift as ShiftDataDTO,
+      hoursOpen,
+    };
+  } catch (err) {
+    return { isStale: false, shift: null, hoursOpen: 0 };
+  }
+}
+
+export async function closeShiftService(totalCashActual: number, discrepancyNote?: string) {
   const userId = await getCurrentProfileId();
 
   const { data: activeShift, error: findError } = await supabase
@@ -128,19 +154,39 @@ export async function closeShiftService(totalCashActual: number) {
 
   const difference = totalCashActual - activeShift.total_cash_expected;
 
+  const updatePayload: any = {
+    total_cash_actual: totalCashActual,
+    cash_difference: difference,
+    status: "closed",
+    end_time: new Date().toISOString(),
+  };
+
+  if (discrepancyNote) {
+    updatePayload.notes = discrepancyNote;
+  }
+
   const { data, error } = await supabase
     .from("shifts")
-    .update({
-      total_cash_actual: totalCashActual,
-      cash_difference: difference,
-      status: "closed",
-      end_time: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", activeShift.id)
     .select()
     .single();
 
   if (error) throw error;
+
+  if (difference !== 0 || discrepancyNote) {
+    try {
+      await supabase.from("audit_logs").insert({
+        user_id: userId,
+        action: "CLOSE_SHIFT_DISCREPANCY",
+        details: `Penutupan shift #${activeShift.id} selisih Rp ${difference.toLocaleString("id-ID")}. Catatan: ${discrepancyNote || "Tanpa catatan"}`,
+        created_at: new Date().toISOString(),
+      });
+    } catch (auditErr) {
+      console.warn("Gagal membuat audit log shift:", auditErr);
+    }
+  }
+
   return { success: true, message: "Shift kasir berhasil ditutup", data: data as ShiftDataDTO };
 }
 
@@ -581,6 +627,7 @@ export const cashierDAO = {
   getProducts: fetchProductsService,
   getProductByBarcode: getProductByBarcodeService,
   getActiveShift: getActiveShiftService,
+  checkStaleShift: checkStaleShiftService,
   openShift: openShiftService,
   closeShift: closeShiftService,
   getTransactions: fetchTransactionsService,
