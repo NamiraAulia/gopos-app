@@ -321,7 +321,8 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else {
-    receipt += "BARANG             QTY  HARGA  TOTAL\r\n";
+    const colHeader = "BARANG".padEnd(12, " ") + " " + "QTY".padStart(3, " ") + " " + "HARGA".padStart(7, " ") + " " + "TOTAL".padStart(7, " ");
+    receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   }
 
@@ -355,7 +356,7 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     } else {
       const nameLines = wrapText(item.name, 12);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
+        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(7, " ") + " " + total.padStart(7, " ");
         receipt += firstLine + "\r\n";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "\r\n";
@@ -487,7 +488,8 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   } else {
-    receipt += "BARANG             QTY  HARGA  TOTAL%0A";
+    const colHeader = "BARANG".padEnd(12, " ") + " " + "QTY".padStart(3, " ") + " " + "HARGA".padStart(7, " ") + " " + "TOTAL".padStart(7, " ");
+    receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   }
 
@@ -521,7 +523,7 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     } else {
       const nameLines = wrapText(item.name, 12);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(6, " ") + " " + total.padStart(7, " ");
+        const firstLine = nameLines[0].padEnd(12, " ") + " " + qty.padStart(3, " ") + " " + price.padStart(7, " ") + " " + total.padStart(7, " ");
         receipt += firstLine + "%0A";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "%0A";
@@ -681,7 +683,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   // Resolve final values
   const paperSize = params.paperSize || localPaperSize || "58mm";
-  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 38 : 48;
+  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
   const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
