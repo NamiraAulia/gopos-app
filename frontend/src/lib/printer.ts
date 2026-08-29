@@ -666,7 +666,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   // Resolve final values
   const paperSize = params.paperSize || localPaperSize || "58mm";
-  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 30 : 40;
+  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 38 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
   const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
