@@ -683,7 +683,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   // Resolve final values
   const paperSize = params.paperSize || localPaperSize || "58mm";
-  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
+  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 38 : 48;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
   const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
@@ -743,9 +743,6 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   if (Capacitor.isNativePlatform()) {
     const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
-    if (typeof window !== "undefined") {
-      alert(`[GoPOS DEBUG] cols=${cols}, paperSize=${paperSize}`);
-    }
     try {
       const printerType = typeof window !== "undefined"
         ? localStorage.getItem("gopos-printer-type") || "pcl"
