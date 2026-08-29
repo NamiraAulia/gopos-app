@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, Sparkles, CheckCircle2, User, CreditCard } from "lucide-react";
+import { ShoppingBag, Sparkles, CheckCircle2, User, CreditCard, Banknote } from "lucide-react";
 import type { CustomerDisplayCartItemDAO } from "../DAO/customerDisplay.dao";
 
 interface CustomerDisplayViewProps {
@@ -10,6 +10,7 @@ interface CustomerDisplayViewProps {
   grandTotal: number;
   selectedMember: any;
   lastTransaction: any;
+  isPaying?: boolean;
 }
 
 export function CustomerDisplayView({
@@ -19,171 +20,169 @@ export function CustomerDisplayView({
   grandTotal,
   selectedMember,
   lastTransaction,
+  isPaying = false,
 }: CustomerDisplayViewProps) {
+  const totalItemCount = cart.reduce((sum, item) => sum + item.qty, 0);
+
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col font-sans select-none overflow-hidden relative">
-      {/* Ported Custom Minimalist Scrollbar */}
-      <style dangerouslySetInnerHTML={{ __html: `
+    <div className="min-h-screen max-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none overflow-hidden relative">
+      {/* Light Theme Scrollbar */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
+          background: #f1f5f9;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #475569;
+          background: #cbd5e1;
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #64748b;
+          background: #94a3b8;
         }
       `}} />
 
-      {/* Header */}
-      <header className="bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-md px-8 py-5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-            <ShoppingBag className="h-5 w-5 text-white" />
+      {/* Compact Header */}
+      <header className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-xs">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+            <ShoppingBag className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-white">GoPOS</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Layar Pelanggan</p>
+            <h1 className="text-sm font-black tracking-tight text-slate-900 leading-none">GoPOS</h1>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Layar Pelanggan</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/50">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-bold text-slate-300">Tersambung Ke Kasir</span>
+          <span>Kasir Aktif</span>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 flex overflow-hidden">
-        {cart.length === 0 ? (
-          /* Welcome Screen when Cart is Empty */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 relative">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.06),transparent_60%)] pointer-events-none" />
-            <div className="h-24 w-24 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mb-6 animate-bounce duration-1000">
-              <Sparkles className="h-12 w-12 text-blue-500" />
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        {/* State 1: Cashier Clicked "Bayar Sekarang" -> Display Total Only */}
+        {isPaying && !lastTransaction ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-slate-50">
+            <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl p-6 shadow-lg flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+              <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-3 text-blue-600">
+                <Banknote className="h-7 w-7 animate-pulse" />
+              </div>
+
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Pembayaran</p>
+
+              <div className="text-3xl sm:text-4xl font-black text-emerald-600 tracking-tight my-2">
+                Rp {grandTotal.toLocaleString("id-ID")}
+              </div>
+
+              {selectedMember && (
+                <div className="mb-3 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
+                  <User className="h-3.5 w-3.5" />
+                  <span>Member: {selectedMember.name}</span>
+                </div>
+              )}
+
+              <div className="w-full pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5 text-xs text-slate-600 font-bold">
+                <CreditCard className="h-4 w-4 text-blue-600" />
+                <span>Silakan Lakukan Pembayaran Kepada Kasir</span>
+              </div>
             </div>
-            <h2 className="text-3xl font-black text-white tracking-tight">Selamat Datang di Toko Kami</h2>
-            <p className="text-slate-400 text-sm max-w-md mt-3 leading-relaxed">
-              Daftar belanjaan Anda akan muncul di layar ini secara real-time saat kasir mulai memindai produk. Terima kasih telah berbelanja dengan kami!
+          </div>
+        ) : cart.length === 0 ? (
+          /* State 2: Welcome Screen when Cart is Empty */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50">
+            <div className="h-16 w-16 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-4 text-blue-600 animate-bounce">
+              <Sparkles className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Selamat Datang</h2>
+            <p className="text-slate-500 text-xs max-w-xs mt-2 leading-relaxed">
+              Daftar belanjaan Anda akan muncul di layar ini secara real-time saat kasir mulai memindai produk.
             </p>
           </div>
         ) : (
-          /* Cart Screen */
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left Panel: Items List (Scrollable) */}
-            <div className="flex-1 flex flex-col overflow-hidden p-6 border-r border-slate-800 bg-slate-900/50">
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <h3 className="font-black text-slate-300 uppercase tracking-wider text-xs">Daftar Barang Belanja</h3>
-                <span className="px-3 py-1 rounded bg-slate-800 text-[10px] font-extrabold text-blue-400 uppercase">
-                  {cart.reduce((sum, item) => sum + item.qty, 0)} Item
+          /* State 3: Compact Single-Column Layout for Small 3-inch Screens */
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Top Bar: Item count & optional member badge */}
+            <div className="px-4 py-2 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between shrink-0 text-xs">
+              <span className="font-extrabold text-slate-600">Daftar Belanja ({totalItemCount} item)</span>
+              {selectedMember ? (
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold text-[10px] truncate max-w-[140px]">
+                  Member: {selectedMember.name}
                 </span>
-              </div>
-
-              {/* Scrollable container */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3.5">
-                {cart.map((item) => {
-                  const isBig = item.unit_choice === "big" && item.price_big > 0;
-                  const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
-                  const hargaSatuan = item.custom_price != null && item.custom_price > 0
-                    ? item.custom_price
-                    : (isBig 
-                      ? item.price_big 
-                      : (isMemberPrice ? item.price_member : item.price));
-                  const itemSubtotal = hargaSatuan * item.qty;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-between gap-4 transition-all hover:border-slate-700/80"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-extrabold text-base text-white truncate">{item.name}</h4>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[9px] font-bold text-slate-400 uppercase">
-                            {isBig ? `Grosir (${item.unit_big})` : `Eceran (${item.unit})`}
-                          </span>
-                          {isMemberPrice && !item.custom_price && (
-                            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                              Harga Member
-                            </span>
-                          )}
-                          {item.custom_price ? (
-                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
-                              Harga Khusus
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-6 shrink-0 text-right">
-                        <div className="text-slate-400 text-xs">
-                          <div>Rp {hargaSatuan.toLocaleString("id-ID")}</div>
-                          <div className="font-extrabold text-slate-300 mt-0.5">x {item.qty}</div>
-                        </div>
-                        <div className="text-lg font-black text-blue-400 min-w-[100px]">
-                          Rp {itemSubtotal.toLocaleString("id-ID")}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-medium">Pelanggan Umum</span>
+              )}
             </div>
 
-            {/* Right Panel: Shopping Summary (Fixed/Sticky Sidebar) */}
-            <div className="w-full lg:w-96 p-6 flex flex-col justify-between shrink-0 bg-slate-950/30 border-t lg:border-t-0 border-slate-800">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-black text-slate-400 uppercase tracking-wider text-[10px] mb-3">Informasi Pelanggan</h3>
-                  {selectedMember ? (
-                    <div className="p-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center gap-3.5">
-                      <div className="h-10 w-10 rounded-xl bg-blue-500/25 flex items-center justify-center shrink-0">
-                        <User className="h-5 w-5 text-blue-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-black text-white truncate">{selectedMember.name}</p>
-                        <p className="text-[10px] font-bold text-blue-400/80 uppercase tracking-wider mt-0.5">Kode: {selectedMember.member_code}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-center gap-3.5 text-slate-500">
-                      <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold">Pelanggan Umum</p>
-                        <p className="text-[10px] uppercase tracking-wider mt-0.5">Bukan member</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {/* Scrollable Item List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+              {cart.map((item) => {
+                const isBig = item.unit_choice === "big" && item.price_big > 0;
+                const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
+                const hargaSatuan = item.custom_price != null && item.custom_price > 0
+                  ? item.custom_price
+                  : (isBig
+                    ? item.price_big
+                    : (isMemberPrice ? item.price_member : item.price));
+                const itemSubtotal = hargaSatuan * item.qty;
 
-                <div className="border-t border-slate-800/80 pt-5 space-y-3.5 text-sm font-semibold">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Subtotal</span>
-                    <span>Rp {totalNormal.toLocaleString("id-ID")}</span>
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-extrabold text-sm text-slate-900 truncate">{item.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-600 uppercase">
+                          {isBig ? `Grosir (${item.unit_big})` : `Eceran (${item.unit})`}
+                        </span>
+                        {isMemberPrice && !item.custom_price && (
+                          <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                            Member
+                          </span>
+                        )}
+                        {item.custom_price ? (
+                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+                            Khusus
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Rp {hargaSatuan.toLocaleString("id-ID")} <span className="font-bold text-slate-700">x{item.qty}</span>
+                      </div>
+                      <div className="text-base font-black text-blue-600">
+                        Rp {itemSubtotal.toLocaleString("id-ID")}
+                      </div>
+                    </div>
                   </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-rose-500 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/15">
-                      <span>Diskon Member</span>
-                      <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                );
+              })}
+            </div>
 
-              {/* Total Display Section */}
-              <div className="mt-8 border-t border-slate-800/80 pt-6">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Belanja</p>
-                <div className="text-4xl font-black text-emerald-400 tracking-tight mt-2 drop-shadow-sm">
-                  Rp {grandTotal.toLocaleString("id-ID")}
+            {/* Bottom Total Footer Bar (Maximized for Small Screen) */}
+            <div className="p-4 bg-white border-t border-slate-200 shadow-lg shrink-0">
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-xs font-semibold text-rose-600 mb-1">
+                  <span>Diskon Member</span>
+                  <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
                 </div>
-                <div className="mt-4 p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  <CreditCard className="h-4 w-4 text-slate-400" />
-                  <span>Silakan Lakukan Pembayaran</span>
+              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Belanja</p>
+                  <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight leading-tight">
+                    Rp {grandTotal.toLocaleString("id-ID")}
+                  </p>
+                </div>
+                <div className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Siap Bayar</span>
                 </div>
               </div>
             </div>
@@ -193,47 +192,50 @@ export function CustomerDisplayView({
 
       {/* Full-Screen Checkout Success Overlay */}
       {lastTransaction && (
-        <div className="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_60%)] pointer-events-none" />
-          
-          <div className="h-20 w-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
-            <CheckCircle2 className="h-10 w-10 text-emerald-400 animate-pulse" />
-          </div>
-
-          <h2 className="text-4xl font-black text-white tracking-tight">Transaksi Berhasil!</h2>
-          <p className="text-slate-400 text-sm mt-2 max-w-sm">
-            Terima kasih telah melakukan pembayaran. Detail transaksi Anda dapat dilihat di bawah ini.
-          </p>
-
-          <div className="my-8 w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-3.5 text-left text-sm font-semibold">
-            <div className="flex justify-between border-b border-slate-800/60 pb-3">
-              <span className="text-slate-400">Nomor Struk</span>
-              <span className="text-white font-bold">{lastTransaction.transaction_code}</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-slate-400">Metode Bayar</span>
-              <span className="text-white uppercase font-bold">{lastTransaction.payment_method}</span>
+        <div className="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-xs bg-white border border-slate-200 rounded-2xl p-5 shadow-2xl flex flex-col items-center">
+            <div className="h-14 w-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3 text-emerald-600">
+              <CheckCircle2 className="h-8 w-8 animate-pulse" />
             </div>
 
-            <div className="flex justify-between pt-1 text-slate-300">
-              <span>Total Belanja</span>
-              <span className="text-emerald-400 font-black">Rp {lastTransaction.total_amount.toLocaleString("id-ID")}</span>
-            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Transaksi Berhasil!</h2>
+            <p className="text-slate-500 text-[11px] mt-0.5">
+              Terima kasih telah berbelanja.
+            </p>
 
-            {lastTransaction.change_amount > 0 && (
-              <div className="flex justify-between border-t border-slate-800/80 pt-3 mt-3">
-                <span className="text-slate-400 font-bold">Kembalian</span>
-                <span className="text-xl font-black text-emerald-400">Rp {lastTransaction.change_amount.toLocaleString("id-ID")}</span>
+            <div className="my-4 w-full rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 text-left text-xs font-semibold">
+              <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                <span className="text-slate-500">Struk</span>
+                <span className="text-slate-900 font-bold">{lastTransaction.transaction_code}</span>
               </div>
-            )}
-          </div>
 
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">
-            Menunggu transaksi berikutnya...
-          </p>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Metode</span>
+                <span className="text-slate-900 uppercase font-bold">{lastTransaction.payment_method}</span>
+              </div>
+
+              <div className="flex justify-between pt-1 text-slate-700">
+                <span>Total</span>
+                <span className="text-emerald-600 font-black">Rp {lastTransaction.total_amount.toLocaleString("id-ID")}</span>
+              </div>
+
+              {lastTransaction.change_amount > 0 && (
+                <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                  <span className="text-slate-700 font-bold">Kembalian</span>
+                  <span className="text-base font-black text-emerald-600">Rp {lastTransaction.change_amount.toLocaleString("id-ID")}</span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">
+              Menunggu transaksi berikutnya...
+            </p>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+
+

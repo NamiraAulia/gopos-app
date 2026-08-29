@@ -288,7 +288,7 @@ export function CashierView({
             </div>
           </div>
 
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-3 content-start items-start">
             {!isShiftActive ? (
               <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center gap-3">
                 <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -341,17 +341,11 @@ export function CashierView({
                   <div
                     key={product.id}
                     onClick={() => addToCart(product, "small")}
-                    className={`p-4 bg-white border rounded-2xl flex flex-col justify-between transition-all relative ${
-                      inCartQty > 0
-                        ? "border-blue-600 ring-2 ring-blue-600/20 shadow-md bg-blue-50/10"
-                        : "border-slate-200 hover:border-blue-500 shadow-sm"
-                    }`}
+                    className={`p-4 bg-white border rounded-2xl flex flex-col justify-between transition-all relative ${inCartQty > 0
+                      ? "border-blue-600 ring-2 ring-blue-600/20 shadow-md bg-blue-50/10"
+                      : "border-slate-200 hover:border-blue-500 shadow-sm cursor-pointer"
+                      }`}
                   >
-                    {inCartQty > 0 && (
-                      <span className="absolute -top-2.5 -right-2.5 bg-blue-600 text-white text-xs font-black h-7 w-7 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-pulse z-10">
-                        {inCartQty}
-                      </span>
-                    )}
                     <div>
                       <h3 className="font-black text-sm text-slate-900 line-clamp-2">
                         {product.name}
@@ -369,11 +363,10 @@ export function CashierView({
 
                     <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          product.stock <= (product.min_stock ?? 5)
-                            ? "bg-red-50 text-red-600"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${product.stock <= (product.min_stock ?? 5)
+                          ? "bg-red-50 text-red-600"
+                          : "bg-slate-100 text-slate-600"
+                          }`}
                       >
                         Stok: {product.stock}
                       </span>
@@ -486,12 +479,12 @@ export function CashierView({
               const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
               const hargaTampil = item.custom_price != null && item.custom_price > 0
                 ? item.custom_price
-                : (isBig 
-                  ? item.price_big 
+                : (isBig
+                  ? item.price_big
                   : (isMemberPrice ? item.price_member : item.price));
-              
+
               const isOutOfStock = false;
-              
+
               return (
                 <div
                   key={item.id}
@@ -508,16 +501,15 @@ export function CashierView({
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex border-slate-200 items-center justify-between mt-2">
                     {item.unit_big ? (
                       <button
                         type="button"
                         onClick={() => toggleUnitChoice(item.id)}
-                        className={`text-[10px] font-black px-2 py-1 rounded-lg border transition-all cursor-pointer ${
-                          isBig
-                            ? "bg-amber-500 border-amber-600 text-white"
-                            : "bg-slate-100 border-slate-200 text-slate-600"
-                        }`}
+                        className={`text-[10px] font-black px-2 py-1 rounded-lg border transition-all cursor-pointer ${isBig
+                          ? "bg-amber-500 border-amber-600 text-white"
+                          : "bg-slate-100 border-slate-200 text-slate-600"
+                          }`}
                       >
                         {isBig
                           ? `GROSIR (${item.unit_big})`
@@ -649,10 +641,10 @@ export function CashierView({
                             setEditingPriceId(item.id);
                             setTempPrice(hargaTampil.toString());
                           }}
-                          className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer ml-1"
                           title="Edit Harga Satuan"
                         >
-                          <Edit className="h-3 w-3" />
+                          <Edit className="h-5 w-5" />
                         </button>
                       </div>
                     )}

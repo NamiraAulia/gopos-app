@@ -8,17 +8,21 @@ import type {
 } from "@/modules/Cashier/DTO/cashier.dto";
 
 const getCurrentProfileId = async () => {
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) throw new Error("User tidak terautentikasi.");
+  try {
+    const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !authUser) throw new Error("User tidak terautentikasi.");
 
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", authUser.email)
-    .single();
+    const { data: profile, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", authUser.email)
+      .single();
 
-  if (error || !profile) throw new Error("Profil pengguna tidak ditemukan.");
-  return profile.id;
+    if (error || !profile) throw new Error("Profil pengguna tidak ditemukan.");
+    return profile.id;
+  } catch (err: any) {
+    throw new Error(err?.message || "Gagal menghubungkan ke server.");
+  }
 };
 
 export async function fetchMembersService() {
