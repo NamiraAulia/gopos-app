@@ -510,6 +510,14 @@ class UsbThermalPrinterReflect(private val context: Context) {
             Log.e(TAG, "Gagal setTextSize: ${e.message}")
         }
     }
+
+    fun setGray(level: Int) {
+        try {
+            printerClass?.getMethod("setGray", Int::class.javaPrimitiveType)?.invoke(printerInstance, level)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setGray: ${e.message}")
+        }
+    }
     
     fun reset() {
         try {
@@ -594,6 +602,14 @@ class ThermalPrinterServiceReflect(private val context: Context) {
             Log.e(TAG, "Gagal setTextSize: ${e.message}")
         }
     }
+
+    fun setGray(level: Int) {
+        try {
+            serviceClass?.getMethod("setGray", Int::class.javaPrimitiveType)?.invoke(serviceInstance, level)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setGray: ${e.message}")
+        }
+    }
     
     fun reset() {
         try {
@@ -634,6 +650,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             Log.d(TAG, "Printing via UsbThermalPrinter...")
             usbPrinter?.reset()
             usbPrinter?.setAlgin(1) // Center
+            usbPrinter?.setGray(7)  // Set max contrast to match Ritgrow!
             usbPrinter?.setTextSize(24)
             usbPrinter?.addString(text)
             usbPrinter?.printString()
@@ -643,6 +660,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             Log.d(TAG, "Printing via ThermalPrinterService...")
             servicePrinter?.reset()
             servicePrinter?.setAlgin(1) // Center
+            servicePrinter?.setGray(7)  // Set max contrast to match Ritgrow!
             servicePrinter?.setTextSize(24)
             servicePrinter?.addString(text)
             servicePrinter?.printString()
