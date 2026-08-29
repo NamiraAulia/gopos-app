@@ -701,8 +701,8 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
     const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
     try {
       const printerType = typeof window !== "undefined"
-        ? localStorage.getItem("gopos-printer-type") || "escpos"
-        : "escpos";
+        ? localStorage.getItem("gopos-printer-type") || "pcl"
+        : "pcl";
 
       let bytes: Uint8Array;
       if (printerType === "pcl") {

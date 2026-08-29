@@ -33,7 +33,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   clearLogs: () => set({ logs: [] }),
   customerDisplayEnabled: false,
   setCustomerDisplayEnabled: (val) => set({ customerDisplayEnabled: val }),
-  printerType: "escpos",
+  printerType: "pcl",
   setPrinterType: (type) => set({ printerType: type }),
   shopName: "",
   shopAddress: "",

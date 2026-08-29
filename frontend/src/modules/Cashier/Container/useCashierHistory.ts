@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cashierDAO } from "../DAO/cashier.dao";
 import type { TransactionDTO as Transaction } from "../DTO/cashier.dto";
+import { handleReceiptPrint } from "@/lib/printer";
+import { useSettingsStore } from "@/modules/Settings/Store/useSettingsStore";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -72,8 +74,36 @@ export function useCashierHistory() {
     setSelected(trx);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!selected) return;
+    try {
+      const mappedTransaction = {
+        ...selected,
+        items: selected.items?.map((item: any) => ({
+          ...item,
+          price: item.unit_price || item.price,
+        })),
+        member: selected.member
+          ? {
+              ...selected.member,
+              member_code: selected.member.phone || selected.member.member_code || `#${selected.member.id}`,
+            }
+          : null,
+      };
+      const res = await handleReceiptPrint({ transaction: mappedTransaction });
+      if (res && res.success === false) {
+        throw new Error(res.message || "Gagal mencetak struk.");
+      }
+    } catch (err: any) {
+      console.error("Gagal mencetak struk dari history:", err);
+      const errMsg = err.message || String(err);
+      try {
+        useSettingsStore.getState().addLog("Gagal cetak riwayat: " + errMsg);
+      } catch (logErr) {
+        console.warn("Gagal menulis log ke store:", logErr);
+      }
+      alert("Gagal mencetak struk: " + errMsg);
+    }
   };
 
   const confirmVoid = async () => {

@@ -177,7 +177,7 @@ export default function SettingsContainer() {
       setLogoBase64(stored.logoBase64);
 
       setCustomerDisplayEnabled(localStorage.getItem("gopos-customer-display-enabled") === "true");
-      setPrinterType((localStorage.getItem("gopos-printer-type") as "escpos" | "pcl") || "escpos");
+      setPrinterType((localStorage.getItem("gopos-printer-type") as "escpos" | "pcl") || "pcl");
       setPreferredVidPid(localStorage.getItem("preferred_printer_vid_pid") || "");
     }
   }, []);
@@ -360,8 +360,8 @@ export default function SettingsContainer() {
 
     try {
       const printerMode = typeof window !== "undefined"
-        ? localStorage.getItem("gopos-printer-type") || "escpos"
-        : "escpos";
+        ? localStorage.getItem("gopos-printer-type") || "pcl"
+        : "pcl";
 
       let bytes: Uint8Array;
       if (printerMode === "pcl") {
