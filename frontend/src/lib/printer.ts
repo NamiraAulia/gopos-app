@@ -743,6 +743,9 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   if (Capacitor.isNativePlatform()) {
     const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
+    if (typeof window !== "undefined") {
+      alert(`[GoPOS DEBUG] cols=${cols}, paperSize=${paperSize}`);
+    }
     try {
       const printerType = typeof window !== "undefined"
         ? localStorage.getItem("gopos-printer-type") || "pcl"
