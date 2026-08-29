@@ -340,6 +340,7 @@ export function CashierView({
                 return (
                   <div
                     key={product.id}
+                    onClick={() => addToCart(product, "small")}
                     className={`p-4 bg-white border rounded-2xl flex flex-col justify-between transition-all relative ${
                       inCartQty > 0
                         ? "border-blue-600 ring-2 ring-blue-600/20 shadow-md bg-blue-50/10"

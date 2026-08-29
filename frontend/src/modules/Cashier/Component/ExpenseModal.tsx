@@ -97,6 +97,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
           .from("expenses")
           .insert({
             user_id: userId,
+            created_at: new Date().toISOString(),
             ...payload
           });
 

@@ -350,7 +350,9 @@ export function FinanceView({
                             <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
                               <span className="flex items-center gap-1">
                                 <CalendarDays className="h-3 w-3 text-slate-400" />
-                                {new Date(exp.created_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                                {exp.created_at
+                                  ? new Date(exp.created_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+                                  : "Hari ini (Tanpa Tanggal)"}
                               </span>
                             </td>
                             <td className="py-3.5 px-4 text-right font-black text-red-600 text-sm">
