@@ -214,7 +214,8 @@ export async function fetchTransactionsService(limit: number = 100, page?: numbe
     .from("transactions")
     .select(`
       *,
-      member:members(id, name, phone, member_code)
+      member:members(id, name, phone, member_code),
+      items:transaction_items(*)
     `, { count: "exact" });
 
   if (search && search.trim()) {
@@ -340,6 +341,7 @@ export async function checkoutService(payload: CheckoutPayload) {
         id: item.product_id,
         product_name: product.name,
         qty: item.qty,
+        price: item.unit_price,
         subtotal: subtotal,
       });
 

@@ -11,7 +11,7 @@ export async function fetchCashSummaryData() {
 
   let trxQuery = supabase
     .from("transactions")
-    .select("*")
+    .select("*, items:transaction_items(*)")
     .order("created_at", { ascending: false });
 
   let expQuery = supabase

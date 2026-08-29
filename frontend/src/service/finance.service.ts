@@ -3,8 +3,10 @@ import type { FinancialSummaryDAO, DetailedExpenseDAO } from "@/modules/Finance/
 import type { TransactionDTO as Transaction, ExpenseDTO as Expense } from "@/modules/Cashier/DTO/cashier.dto";
 
 export async function fetchFinancialOverview(): Promise<FinancialSummaryDAO> {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const monthStr = new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const todayLocalStr = now.toLocaleDateString("en-CA");
 
   const [resTrx, resExp] = await Promise.all([
     supabase
@@ -24,17 +26,35 @@ export async function fetchFinancialOverview(): Promise<FinancialSummaryDAO> {
   const transactions = (resTrx.data as Transaction[]) || [];
   const expenses = (resExp.data as Expense[]) || [];
 
-  const totalIncome = transactions.reduce((sum, t) => sum + t.total_amount, 0);
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Helper untuk membersihkan angka dari string bertitik/berkoma (misal "50.000" atau "Rp 50.000")
+  const parseAmount = (val: any): number => {
+    if (typeof val === "number") return isNaN(val) ? 0 : val;
+    if (!val) return 0;
+    const cleaned = String(val).replace(/\D/g, "");
+    return parseInt(cleaned, 10) || 0;
+  };
+
+  const totalIncome = transactions.reduce((sum, t) => sum + parseAmount(t.total_amount), 0);
+  const totalExpense = expenses.reduce((sum, e) => sum + parseAmount(e.amount), 0);
   const netProfit = totalIncome - totalExpense;
 
   const todayExpense = expenses
-    .filter((e) => e.created_at && e.created_at.slice(0, 10) === todayStr)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => {
+      if (!e.created_at) return true;
+      const d = new Date(e.created_at);
+      if (isNaN(d.getTime())) return true;
+      return d.toLocaleDateString("en-CA") === todayLocalStr;
+    })
+    .reduce((sum, e) => sum + parseAmount(e.amount), 0);
 
   const monthExpense = expenses
-    .filter((e) => e.created_at && e.created_at.slice(0, 7) === monthStr)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => {
+      if (!e.created_at) return true;
+      const d = new Date(e.created_at);
+      if (isNaN(d.getTime())) return true;
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    })
+    .reduce((sum, e) => sum + parseAmount(e.amount), 0);
 
   return {
     totalIncome,
