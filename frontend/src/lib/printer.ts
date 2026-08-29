@@ -307,14 +307,18 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   if (data.member) {
     receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "\r\n";
   }
+  
+  // Add a blank line/space after payment/metadata
+  receipt += "\r\n";
 
   // 2. Items List (Ritgrow Table Column Format)
   if (width >= 48) {
     const colHeader = "BARANG".padEnd(23, " ") + " " + "QTY".padStart(5, " ") + " " + "HARGA".padStart(8, " ") + " " + "TOTAL".padStart(9, " ");
     receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
-  } else if (width >= 45) {
-    receipt += "BARANG                    QTY   HARGA   TOTAL\r\n";
+  } else if (width >= 38) {
+    const colHeader = "BARANG".padEnd(16, " ") + "QTY".padStart(4, " ") + "HARGA".padStart(9, " ") + "TOTAL".padStart(9, " ");
+    receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else {
     receipt += "BARANG             QTY  HARGA  TOTAL\r\n";
@@ -335,10 +339,10 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
           receipt += nameLines[i].padEnd(width, " ") + "\r\n";
         }
       }
-    } else if (width >= 45) {
-      const nameLines = wrapText(item.name, 20);
+    } else if (width >= 38) {
+      const nameLines = wrapText(item.name, 16);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
+        const firstLine = nameLines[0].padEnd(16, " ") + qty.padStart(4, " ") + price.padStart(9, " ") + total.padStart(9, " ");
         receipt += firstLine + "\r\n";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "\r\n";
@@ -459,13 +463,17 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     receipt += formatTwoColumns("Pelanggan:", `${data.member.name} (${data.member.memberCode})`, width) + "%0A";
   }
 
+  // Add a blank line/space after payment/metadata
+  receipt += "%0A";
+
   // 2. Items List (Ritgrow Table Column Format)
   if (width >= 48) {
     const colHeader = "BARANG".padEnd(23, " ") + " " + "QTY".padStart(5, " ") + " " + "HARGA".padStart(8, " ") + " " + "TOTAL".padStart(9, " ");
     receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
-  } else if (width >= 45) {
-    receipt += "BARANG                    QTY   HARGA   TOTAL%0A";
+  } else if (width >= 38) {
+    const colHeader = "BARANG".padEnd(16, " ") + "QTY".padStart(4, " ") + "HARGA".padStart(9, " ") + "TOTAL".padStart(9, " ");
+    receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   } else {
     receipt += "BARANG             QTY  HARGA  TOTAL%0A";
@@ -486,10 +494,10 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
           receipt += nameLines[i].padEnd(width, " ") + "%0A";
         }
       }
-    } else if (width >= 45) {
-      const nameLines = wrapText(item.name, 20);
+    } else if (width >= 38) {
+      const nameLines = wrapText(item.name, 16);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(20, " ") + " " + qty.padStart(6, " ") + " " + price.padStart(8, " ") + " " + total.padStart(8, " ");
+        const firstLine = nameLines[0].padEnd(16, " ") + qty.padStart(4, " ") + price.padStart(9, " ") + total.padStart(9, " ");
         receipt += firstLine + "%0A";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "%0A";
