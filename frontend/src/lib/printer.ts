@@ -283,10 +283,6 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     return lines.map(line => centerAlign(line, width)).join("\r\n");
   };
 
-  if (data.isCopy) {
-    receipt += centerPcl("** COPY **") + "\r\n\r\n";
-  }
-
   receipt += centerPcl(data.storeName) + "\r\n";
   if (data.storeAddress) {
     receipt += centerPcl(data.storeAddress) + "\r\n";
@@ -396,8 +392,8 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   const encoder = new TextEncoder();
   const textBytes = encoder.encode(receipt);
 
-  // We add ESC (s0P to select Monospace/Fixed spacing (5 bytes)
-  const bytes = new Uint8Array(2 + 5 + textBytes.length + 1 + 2);
+  // We add ESC (s0P (5 bytes) and ESC (s3B (5 bytes) to select Monospace and Bold (10 bytes total)
+  const bytes = new Uint8Array(2 + 10 + textBytes.length + 1 + 2);
   
   // ESC E (Init)
   bytes[0] = 0x1B;
@@ -409,11 +405,18 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   bytes[4] = 0x73;
   bytes[5] = 0x30;
   bytes[6] = 0x50;
+
+  // ESC (s3B (Bold selection)
+  bytes[7] = 0x1B;
+  bytes[8] = 0x28;
+  bytes[9] = 0x73;
+  bytes[10] = 0x33;
+  bytes[11] = 0x42;
   
   // Text Data
-  bytes.set(textBytes, 7);
+  bytes.set(textBytes, 12);
   
-  const offset = 7 + textBytes.length;
+  const offset = 12 + textBytes.length;
   // Form Feed (0x0C) to trigger printing of buffer
   bytes[offset] = 0x0C;
   
@@ -445,10 +448,6 @@ function centerAlignWrapped(text: string, width = 20): string {
 
 export function generatePlainTextReceipt(data: ReceiptData, width = 20): string {
   let receipt = "";
-
-  if (data.isCopy) {
-    receipt += centerAlignWrapped("** COPY **", width) + "%0A%0A";
-  }
 
   receipt += centerAlignWrapped(data.storeName, width) + "%0A";
   if (data.storeAddress) {
