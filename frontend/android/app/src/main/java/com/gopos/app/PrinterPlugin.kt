@@ -668,6 +668,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             usbPrinter?.setAlgin(0) // Left align (0) to eliminate left/right spacing issues
             usbPrinter?.setGray(7)  // Set max contrast to match Ritgrow!
             usbPrinter?.setMonoSpace(true) // Enable monospace font for perfect column alignment
+            usbPrinter?.setBold(true) // Bold / Thicker font to match Ritgrow!
             usbPrinter?.setTextSize(24)
             usbPrinter?.addString(text)
             usbPrinter?.printString()
@@ -679,6 +680,7 @@ class TelpoPrinterWrapper(private val context: Context) {
             servicePrinter?.setAlgin(0) // Left align (0) to eliminate left/right spacing issues
             servicePrinter?.setGray(7)  // Set max contrast to match Ritgrow!
             servicePrinter?.setMonoSpace(true) // Enable monospace font for perfect column alignment
+            servicePrinter?.setBold(true) // Bold / Thicker font to match Ritgrow!
             servicePrinter?.setTextSize(24)
             servicePrinter?.addString(text)
             servicePrinter?.printString()

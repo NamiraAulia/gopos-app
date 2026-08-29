@@ -317,7 +317,11 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else if (width >= 38) {
-    const colHeader = "BARANG".padEnd(16, " ") + "QTY".padStart(4, " ") + "HARGA".padStart(9, " ") + "TOTAL".padStart(9, " ");
+    const qtyWidth = 4;
+    const priceWidth = 9;
+    const totalWidth = 9;
+    const nameWidth = width - (qtyWidth + priceWidth + totalWidth);
+    const colHeader = "BARANG".padEnd(nameWidth, " ") + "QTY".padStart(qtyWidth, " ") + "HARGA".padStart(priceWidth, " ") + "TOTAL".padStart(totalWidth, " ");
     receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else {
@@ -340,9 +344,13 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
         }
       }
     } else if (width >= 38) {
-      const nameLines = wrapText(item.name, 16);
+      const qtyWidth = 4;
+      const priceWidth = 9;
+      const totalWidth = 9;
+      const nameWidth = width - (qtyWidth + priceWidth + totalWidth);
+      const nameLines = wrapText(item.name, nameWidth);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(16, " ") + qty.padStart(4, " ") + price.padStart(9, " ") + total.padStart(9, " ");
+        const firstLine = nameLines[0].padEnd(nameWidth, " ") + qty.padStart(qtyWidth, " ") + price.padStart(priceWidth, " ") + total.padStart(totalWidth, " ");
         receipt += firstLine + "\r\n";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "\r\n";
@@ -472,7 +480,11 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
     receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   } else if (width >= 38) {
-    const colHeader = "BARANG".padEnd(16, " ") + "QTY".padStart(4, " ") + "HARGA".padStart(9, " ") + "TOTAL".padStart(9, " ");
+    const qtyWidth = 4;
+    const priceWidth = 9;
+    const totalWidth = 9;
+    const nameWidth = width - (qtyWidth + priceWidth + totalWidth);
+    const colHeader = "BARANG".padEnd(nameWidth, " ") + "QTY".padStart(qtyWidth, " ") + "HARGA".padStart(priceWidth, " ") + "TOTAL".padStart(totalWidth, " ");
     receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   } else {
@@ -495,9 +507,13 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
         }
       }
     } else if (width >= 38) {
-      const nameLines = wrapText(item.name, 16);
+      const qtyWidth = 4;
+      const priceWidth = 9;
+      const totalWidth = 9;
+      const nameWidth = width - (qtyWidth + priceWidth + totalWidth);
+      const nameLines = wrapText(item.name, nameWidth);
       if (nameLines.length > 0) {
-        const firstLine = nameLines[0].padEnd(16, " ") + qty.padStart(4, " ") + price.padStart(9, " ") + total.padStart(9, " ");
+        const firstLine = nameLines[0].padEnd(nameWidth, " ") + qty.padStart(qtyWidth, " ") + price.padStart(priceWidth, " ") + total.padStart(totalWidth, " ");
         receipt += firstLine + "%0A";
         for (let i = 1; i < nameLines.length; i++) {
           receipt += nameLines[i].padEnd(width, " ") + "%0A";
