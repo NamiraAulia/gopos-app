@@ -19,4 +19,6 @@ export interface CustomerDisplayPayloadDAO {
   grandTotal: number;
   selectedMember: any;
   lastTransaction: any;
+  isPaying?: boolean;
 }
+

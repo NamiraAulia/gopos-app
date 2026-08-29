@@ -6,6 +6,7 @@ import type { ShiftDataDTO as ShiftData } from "../DTO/cashier.dto";
 import type { Product } from "@/interface/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/authStore";
+import { broadcastCustomerDisplayState, listenForCustomerDisplayRequests } from "@/service/customerDisplay.service";
 
 const PRODUCTS_PER_PAGE = 50;
 
@@ -136,12 +137,56 @@ export function useCashierPage() {
 
   const activeCart = cart || [];
 
-  const totalNormal = activeCart.reduce(
-    (sum: number, item: any) => sum + (item.custom_price || item.price || 0) * item.qty,
-    0
-  );
+  const totalNormal = activeCart.reduce((sum: number, item: any) => {
+    const isBig = item.unit_choice === "big" && item.price_big > 0;
+    const isMemberPrice = !isBig && selectedMember && item.price_member > 0;
+    const hargaSatuan =
+      item.custom_price != null && item.custom_price > 0
+        ? item.custom_price
+        : isBig
+        ? item.price_big
+        : isMemberPrice
+        ? item.price_member
+        : item.price;
+    return sum + hargaSatuan * item.qty;
+  }, 0);
   const discountAmount = 0;
   const grandTotal = Math.max(0, totalNormal - discountAmount);
+
+  const getCurrentDisplayPayload = useCallback(() => {
+    return {
+      cart: activeCart.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        price_big: item.price_big || 0,
+        price_member: item.price_member || 0,
+        qty: item.qty,
+        unit: item.unit || "pcs",
+        unit_big: item.unit_big || "",
+        unit_choice: item.unit_choice || "small",
+        custom_price: item.custom_price,
+      })),
+      totalNormal,
+      discountAmount,
+      grandTotal,
+      selectedMember,
+      lastTransaction,
+      isPaying: showPaymentModal,
+    };
+  }, [activeCart, totalNormal, discountAmount, grandTotal, selectedMember, lastTransaction, showPaymentModal]);
+
+  useEffect(() => {
+    broadcastCustomerDisplayState(getCurrentDisplayPayload());
+  }, [getCurrentDisplayPayload]);
+
+  useEffect(() => {
+    const channel = listenForCustomerDisplayRequests(getCurrentDisplayPayload);
+    return () => {
+      if (channel) channel.close();
+    };
+  }, [getCurrentDisplayPayload]);
+
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {

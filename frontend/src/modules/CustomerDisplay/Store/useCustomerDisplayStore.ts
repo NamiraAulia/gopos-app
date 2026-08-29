@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CustomerDisplayCartItemDAO } from "../DAO/customerDisplay.dao";
+import type { CustomerDisplayCartItemDAO, CustomerDisplayPayloadDAO } from "../DAO/customerDisplay.dao";
 
 interface CustomerDisplayState {
   cart: CustomerDisplayCartItemDAO[];
@@ -8,14 +8,8 @@ interface CustomerDisplayState {
   grandTotal: number;
   selectedMember: any;
   lastTransaction: any;
-  setCartData: (data: {
-    cart: CustomerDisplayCartItemDAO[];
-    totalNormal: number;
-    discountAmount: number;
-    grandTotal: number;
-    selectedMember: any;
-    lastTransaction: any;
-  }) => void;
+  isPaying: boolean;
+  setCartData: (data: CustomerDisplayPayloadDAO) => void;
   clearLastTransaction: () => void;
 }
 
@@ -26,14 +20,17 @@ export const useCustomerDisplayStore = create<CustomerDisplayState>((set) => ({
   grandTotal: 0,
   selectedMember: null,
   lastTransaction: null,
+  isPaying: false,
   setCartData: (data) =>
     set({
-      cart: data.cart,
-      totalNormal: data.totalNormal,
-      discountAmount: data.discountAmount,
-      grandTotal: data.grandTotal,
-      selectedMember: data.selectedMember,
-      lastTransaction: data.lastTransaction,
+      cart: data.cart || [],
+      totalNormal: data.totalNormal || 0,
+      discountAmount: data.discountAmount || 0,
+      grandTotal: data.grandTotal || 0,
+      selectedMember: data.selectedMember || null,
+      lastTransaction: data.lastTransaction || null,
+      isPaying: !!data.isPaying,
     }),
   clearLastTransaction: () => set({ lastTransaction: null }),
 }));
+

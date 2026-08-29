@@ -13,6 +13,7 @@ export default function CustomerDisplayContainer() {
     grandTotal,
     selectedMember,
     lastTransaction,
+    isPaying,
     setCartData,
     clearLastTransaction,
   } = useCustomerDisplayStore();
@@ -41,6 +42,8 @@ export default function CustomerDisplayContainer() {
       grandTotal={grandTotal}
       selectedMember={selectedMember}
       lastTransaction={lastTransaction}
+      isPaying={isPaying}
     />
   );
 }
+
