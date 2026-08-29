@@ -43,6 +43,7 @@ export interface HandlePrintParams {
   cashierName?: string;
   paperSize?: '37mm' | '58mm' | '80mm';
   shopSettings?: ShopSettings;
+  isCopy?: boolean;
 }
 
 // -------------------------------------------------------------
@@ -282,6 +283,10 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     return lines.map(line => centerAlign(line, width)).join("\r\n");
   };
 
+  if (data.isCopy) {
+    receipt += centerPcl("** COPY **") + "\r\n\r\n";
+  }
+
   receipt += centerPcl(data.storeName) + "\r\n";
   if (data.storeAddress) {
     receipt += centerPcl(data.storeAddress) + "\r\n";
@@ -305,14 +310,14 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
 
   // 2. Items List (Ritgrow Table Column Format)
   if (width >= 48) {
-    const colHeader = "Barang".padEnd(23, " ") + " " + "Qty".padStart(5, " ") + " " + "Harga".padStart(8, " ") + " " + "Total".padStart(9, " ");
+    const colHeader = "BARANG".padEnd(23, " ") + " " + "QTY".padStart(5, " ") + " " + "HARGA".padStart(8, " ") + " " + "TOTAL".padStart(9, " ");
     receipt += colHeader + "\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else if (width >= 45) {
-    receipt += "Barang                    Qty   Harga   Total\r\n";
+    receipt += "BARANG                    QTY   HARGA   TOTAL\r\n";
     receipt += "-".repeat(width) + "\r\n";
   } else {
-    receipt += "Barang             Qty  Harga  Total\r\n";
+    receipt += "BARANG             QTY  HARGA  TOTAL\r\n";
     receipt += "-".repeat(width) + "\r\n";
   }
 
@@ -379,21 +384,30 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   const encoder = new TextEncoder();
   const textBytes = encoder.encode(receipt);
 
-  const bytes = new Uint8Array(2 + textBytes.length + 1 + 2);
+  // We add ESC (s0P to select Monospace/Fixed spacing (5 bytes)
+  const bytes = new Uint8Array(2 + 5 + textBytes.length + 1 + 2);
   
   // ESC E (Init)
   bytes[0] = 0x1B;
   bytes[1] = 0x45;
+
+  // ESC (s0P (Monospace selection)
+  bytes[2] = 0x1B;
+  bytes[3] = 0x28;
+  bytes[4] = 0x73;
+  bytes[5] = 0x30;
+  bytes[6] = 0x50;
   
   // Text Data
-  bytes.set(textBytes, 2);
+  bytes.set(textBytes, 7);
   
+  const offset = 7 + textBytes.length;
   // Form Feed (0x0C) to trigger printing of buffer
-  bytes[2 + textBytes.length] = 0x0C;
+  bytes[offset] = 0x0C;
   
   // ESC E (End)
-  bytes[2 + textBytes.length + 1] = 0x1B;
-  bytes[2 + textBytes.length + 2] = 0x45;
+  bytes[offset + 1] = 0x1B;
+  bytes[offset + 2] = 0x45;
 
   return bytes;
 }
@@ -420,6 +434,10 @@ function centerAlignWrapped(text: string, width = 20): string {
 export function generatePlainTextReceipt(data: ReceiptData, width = 20): string {
   let receipt = "";
 
+  if (data.isCopy) {
+    receipt += centerAlignWrapped("** COPY **", width) + "%0A%0A";
+  }
+
   receipt += centerAlignWrapped(data.storeName, width) + "%0A";
   if (data.storeAddress) {
     receipt += centerAlignWrapped(data.storeAddress, width) + "%0A";
@@ -443,14 +461,14 @@ export function generatePlainTextReceipt(data: ReceiptData, width = 20): string 
 
   // 2. Items List (Ritgrow Table Column Format)
   if (width >= 48) {
-    const colHeader = "Barang".padEnd(23, " ") + " " + "Qty".padStart(5, " ") + " " + "Harga".padStart(8, " ") + " " + "Total".padStart(9, " ");
+    const colHeader = "BARANG".padEnd(23, " ") + " " + "QTY".padStart(5, " ") + " " + "HARGA".padStart(8, " ") + " " + "TOTAL".padStart(9, " ");
     receipt += colHeader + "%0A";
     receipt += "-".repeat(width) + "%0A";
   } else if (width >= 45) {
-    receipt += "Barang                    Qty   Harga   Total%0A";
+    receipt += "BARANG                    QTY   HARGA   TOTAL%0A";
     receipt += "-".repeat(width) + "%0A";
   } else {
-    receipt += "Barang             Qty  Harga  Total%0A";
+    receipt += "BARANG             QTY  HARGA  TOTAL%0A";
     receipt += "-".repeat(width) + "%0A";
   }
 
@@ -640,7 +658,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
 
   // Resolve final values
   const paperSize = params.paperSize || localPaperSize || "58mm";
-  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 32 : 48;
+  const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 30 : 40;
 
   const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
   const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
@@ -695,6 +713,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
         }
       : null,
     logoBytes,
+    isCopy: params.isCopy || false,
   };
 
   if (Capacitor.isNativePlatform()) {

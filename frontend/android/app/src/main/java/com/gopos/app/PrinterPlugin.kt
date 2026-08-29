@@ -518,6 +518,14 @@ class UsbThermalPrinterReflect(private val context: Context) {
             Log.e(TAG, "Gagal setGray: ${e.message}")
         }
     }
+
+    fun setMonoSpace(mono: Boolean) {
+        try {
+            printerClass?.getMethod("setMonoSpace", Boolean::class.javaPrimitiveType)?.invoke(printerInstance, mono)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setMonoSpace: ${e.message}")
+        }
+    }
     
     fun reset() {
         try {
@@ -610,6 +618,14 @@ class ThermalPrinterServiceReflect(private val context: Context) {
             Log.e(TAG, "Gagal setGray: ${e.message}")
         }
     }
+
+    fun setMonoSpace(mono: Boolean) {
+        try {
+            serviceClass?.getMethod("setMonoSpace", Boolean::class.javaPrimitiveType)?.invoke(serviceInstance, mono)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Gagal setMonoSpace: ${e.message}")
+        }
+    }
     
     fun reset() {
         try {
@@ -649,8 +665,9 @@ class TelpoPrinterWrapper(private val context: Context) {
         if (usbPrinter?.isAvailable() == true) {
             Log.d(TAG, "Printing via UsbThermalPrinter...")
             usbPrinter?.reset()
-            usbPrinter?.setAlgin(1) // Center
+            usbPrinter?.setAlgin(0) // Left align (0) to eliminate left/right spacing issues
             usbPrinter?.setGray(7)  // Set max contrast to match Ritgrow!
+            usbPrinter?.setMonoSpace(true) // Enable monospace font for perfect column alignment
             usbPrinter?.setTextSize(24)
             usbPrinter?.addString(text)
             usbPrinter?.printString()
@@ -659,8 +676,9 @@ class TelpoPrinterWrapper(private val context: Context) {
         } else if (servicePrinter?.isAvailable() == true) {
             Log.d(TAG, "Printing via ThermalPrinterService...")
             servicePrinter?.reset()
-            servicePrinter?.setAlgin(1) // Center
+            servicePrinter?.setAlgin(0) // Left align (0) to eliminate left/right spacing issues
             servicePrinter?.setGray(7)  // Set max contrast to match Ritgrow!
+            servicePrinter?.setMonoSpace(true) // Enable monospace font for perfect column alignment
             servicePrinter?.setTextSize(24)
             servicePrinter?.addString(text)
             servicePrinter?.printString()

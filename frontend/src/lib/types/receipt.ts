@@ -23,4 +23,5 @@ export interface ReceiptData {
   changeAmount?: number;
   member?: { name: string; memberCode: string } | null;
   logoBytes?: Uint8Array;
+  isCopy?: boolean;
 }

@@ -90,7 +90,10 @@ export function useCashierHistory() {
             }
           : null,
       };
-      const res = await handleReceiptPrint({ transaction: mappedTransaction });
+      const res = await handleReceiptPrint({ 
+        transaction: mappedTransaction,
+        isCopy: true 
+      });
       if (res && res.success === false) {
         throw new Error(res.message || "Gagal mencetak struk.");
       }
