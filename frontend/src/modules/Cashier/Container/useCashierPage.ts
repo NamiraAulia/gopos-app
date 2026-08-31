@@ -190,7 +190,25 @@ export function useCashierPage() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      fetchProducts(searchQuery);
+      const query = searchInputRef.current?.value?.trim() || searchQuery;
+      if (!query) return;
+
+      // Try barcode exact match first, then fallback to regular search
+      cashierDAO
+        .getProductByBarcode(query)
+        .then((res) => {
+          if (res.success && res.data) {
+            addToCart(res.data, "small");
+            if (searchInputRef.current) searchInputRef.current.value = "";
+            setSearchQuery("");
+            fetchProducts();
+          } else {
+            fetchProducts(query);
+          }
+        })
+        .catch(() => {
+          fetchProducts(query);
+        });
     }
   };
 

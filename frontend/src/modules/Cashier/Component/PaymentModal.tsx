@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { cashierDAO } from "../DAO/cashier.dao";
+import { handleReceiptPrint } from "@/lib/printer";
 import { Banknote, CreditCard, Landmark, BookOpen, AlertCircle } from "lucide-react";
 
 type PaymentModalProps = {
@@ -116,6 +117,12 @@ export const PaymentModal = ({
 
     if (result.success && result.data) {
       clearCart();
+
+      // Auto-print struk pertama (fire-and-forget, jangan block jika gagal)
+      handleReceiptPrint({ transaction: result.data }).catch((err) => {
+        console.error("Auto-print gagal:", err);
+      });
+
       onSuccess(result.data);
     } else {
       alert(result.message || "Transaksi gagal.");

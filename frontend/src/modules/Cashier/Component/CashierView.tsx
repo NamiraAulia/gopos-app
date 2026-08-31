@@ -735,7 +735,10 @@ export function CashierView({
 
       <ReceiptModal
         isOpen={showReceipt}
-        onClose={() => setShowReceipt(false)}
+        onClose={() => {
+          setShowReceipt(false);
+          setLastTransaction(null);
+        }}
         transaction={lastTransaction}
       />
 
