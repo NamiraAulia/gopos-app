@@ -29,10 +29,10 @@ export default function CustomerDisplayContainer() {
   }, [setCartData]);
 
   useEffect(() => {
-    if (cart.length > 0 && lastTransaction) {
+    if (cart.length > 0 && lastTransaction && !isPaying) {
       clearLastTransaction();
     }
-  }, [cart, lastTransaction, clearLastTransaction]);
+  }, [cart, lastTransaction, isPaying, clearLastTransaction]);
 
   return (
     <CustomerDisplayView
