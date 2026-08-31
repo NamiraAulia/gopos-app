@@ -585,44 +585,7 @@ export function CashierView({
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                     <span className="text-[11px] text-slate-400 font-semibold">Subtotal</span>
-                    {editingPriceId === item.id ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-slate-400 text-[10px] font-bold">Rp</span>
-                        <input
-                          type="text"
-                          value={tempPrice}
-                          onChange={(e) => setTempPrice(e.target.value.replace(/\D/g, ""))}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const newPrice = parseInt(tempPrice) || 0;
-                              setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
-                              setEditingPriceId(null);
-                            } else if (e.key === "Escape") {
-                              setEditingPriceId(null);
-                            }
-                          }}
-                          className="w-16 h-7 px-1 text-[10px] font-bold border border-blue-400 rounded outline-none bg-white text-slate-800"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => {
-                            const newPrice = parseInt(tempPrice) || 0;
-                            setCustomPrice(item.id, newPrice > 0 ? newPrice : undefined);
-                            setEditingPriceId(null);
-                          }}
-                          className="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
-                        >
-                          <Check className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => setEditingPriceId(null)}
-                          className="p-1 bg-slate-100 text-slate-500 rounded hover:bg-slate-200 transition-colors cursor-pointer"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                         <span className="font-black text-xs text-blue-600">
                           {isMemberPrice && !item.custom_price && (
                             <span className="text-[10px] line-through text-slate-400 font-bold mr-1">
@@ -647,7 +610,6 @@ export function CashierView({
                           <Edit className="h-5 w-5" />
                         </button>
                       </div>
-                    )}
                   </div>
                 </div>
               );
@@ -796,6 +758,101 @@ export function CashierView({
           </div>
         </div>
       )}
+
+      {/* Price Edit Popup Modal */}
+      {editingPriceId !== null && (() => {
+        const editItem = cart.find((item: any) => item.id === editingPriceId);
+        if (!editItem) return null;
+        const isBig = editItem.unit_choice === "big" && editItem.price_big > 0;
+        const originalPrice = isBig ? editItem.price_big : editItem.price;
+        const tempPriceNum = parseInt(tempPrice) || 0;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden">
+              <div className="p-5 pb-4 border-b border-slate-100 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Edit Harga Satuan</p>
+                    <h3 className="font-black text-slate-900 text-base mt-0.5 truncate max-w-[250px]">{editItem.name}</h3>
+                  </div>
+                  <button
+                    onClick={() => setEditingPriceId(null)}
+                    className="h-8 w-8 rounded-lg bg-slate-200 hover:bg-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="h-4 w-4 text-slate-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Input Section */}
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Harga Satuan Baru
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">Rp</span>
+                    <input
+                      type="text"
+                      value={tempPriceNum === 0 ? "" : tempPriceNum.toLocaleString("id-ID")}
+                      onChange={(e) => setTempPrice(e.target.value.replace(/\D/g, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const newPrice = parseInt(tempPrice) || 0;
+                          setCustomPrice(editItem.id, newPrice > 0 ? newPrice : undefined);
+                          setEditingPriceId(null);
+                        } else if (e.key === "Escape") {
+                          setEditingPriceId(null);
+                        }
+                      }}
+                      className="w-full h-14 rounded-xl border-2 border-slate-200 pl-12 pr-4 text-xl font-black text-slate-900 focus:border-blue-600 outline-none transition-all"
+                      autoFocus
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div> 
+
+              {/* Footer Buttons */}
+              <div className="px-5 pb-5 space-y-2">
+                <div className="flex gap-2">
+                  {editItem.custom_price ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomPrice(editItem.id, undefined);
+                        setEditingPriceId(null);
+                      }}
+                      className="flex-1 h-12 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 text-xs font-black uppercase tracking-wider hover:bg-red-100 transition-colors cursor-pointer"
+                    >
+                      Reset Harga
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newPrice = parseInt(tempPrice) || 0;
+                      setCustomPrice(editItem.id, newPrice > 0 ? newPrice : undefined);
+                      setEditingPriceId(null);
+                    }}
+                    className={`${editItem.custom_price ? "flex-1" : "w-full"} h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-wider transition-colors shadow-md shadow-blue-600/20 cursor-pointer`}
+                  >
+                    Simpan Harga
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingPriceId(null)}
+                  className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
