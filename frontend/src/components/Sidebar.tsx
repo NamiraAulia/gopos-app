@@ -16,6 +16,9 @@ import {
   Shield,
   Receipt,
   Printer,
+  CreditCard,
+  Truck,
+  Warehouse,
 } from "lucide-react";
 import { useState } from "react";
 import { useIsAdmin } from "@/store/authStore";
@@ -35,12 +38,16 @@ export default function Sidebar() {
     { name: "Data Member", href: "/member", icon: Users },
     { name: "Lembar Belanja Stok", href: "/restock", icon: AlertTriangle },
     { name: "Pengaturan", href: "/settings", icon: Printer },
+    { name: "Kasbon", href: "/kasbon", icon: CreditCard },
+    { name: "Distributor", href: "/suppliers", icon: Truck },
+    { name: "Gudang", href: "/products", icon: Warehouse },
     ...(isAdmin ? [
       { name: "Kelola Kasir", href: "/admin/users", icon: Users },
       { name: "Keuangan & Pengeluaran", href: "/finance", icon: Wallet },
       { name: "Riwayat Nota Transaksi", href: "/admin/transactions", icon: Receipt },
       { name: "Catatan Aktivitas Kasir", href: "/admin/audit-logs", icon: Shield }
     ] : []),
+    
   ];
 
   return (
@@ -78,8 +85,6 @@ export default function Sidebar() {
               >
                 <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "group-hover:text-blue-600"}`} />
                 {!isCollapsed && <span className="truncate">{item.name}</span>}
-                
-                {/* Tooltip saat collapsed */}
                 {isCollapsed && (
                   <div className="absolute left-full ml-4 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
                     {item.name}
