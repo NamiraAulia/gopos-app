@@ -20,7 +20,7 @@ import {
   Truck,
   Warehouse,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useIsAdmin } from "@/store/authStore";
 import LogoutModal from "@/components/LogoutModal";
 
@@ -30,6 +30,23 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const isAdmin = useIsAdmin();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token =
+        localStorage.getItem("token") ||
+        (() => {
+          try {
+            return JSON.parse(localStorage.getItem("gopos-auth") || "{}")?.state?.token;
+          } catch {
+            return null;
+          }
+        })();
+      if (token && !document.cookie.includes("auth_token=")) {
+        document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      }
+    }
+  }, []);
 
   const activeMenuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

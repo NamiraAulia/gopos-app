@@ -3,7 +3,10 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // 1. Ambil token dari cookies
-  const token = request.cookies.get('auth_token')?.value;
+  const token =
+    request.cookies.get('auth_token')?.value ||
+    request.cookies.get('sb-access-token')?.value ||
+    request.cookies.getAll().find(c => c.name.toLowerCase().includes('token') && c.value)?.value;
   
   // 2. Cek apakah user sedang mencoba membuka halaman /login
   const isLoginPage = request.nextUrl.pathname.startsWith('/login');

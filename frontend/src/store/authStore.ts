@@ -111,7 +111,12 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.isHydrated = true;
+        if (state) {
+          state.isHydrated = true;
+          if (typeof window !== 'undefined' && state.token) {
+            document.cookie = `auth_token=${state.token}; path=/; max-age=86400; SameSite=Lax`;
+          }
+        }
       },
     }
   )
