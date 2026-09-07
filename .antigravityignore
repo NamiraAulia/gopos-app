@@ -1,0 +1,20 @@
+# Dependencies & Build Files
+node_modules/
+vendor/
+.next/
+dist/
+build/
+out/
+
+# Database / Storage / Logs
+*.sqlite
+*.log
+storage/*.key
+.env*
+
+# Git & IDE Configuration
+.git/
+.vscode/
+.idea/
+
+

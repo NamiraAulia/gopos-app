@@ -40,7 +40,7 @@ export default function ProductContainer() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["productsList", page, searchQuery],
-    queryFn: () => fetchProductsList({ page, limit: 20, search: searchQuery }),
+    queryFn: () => fetchProductsList({ page, limit: 0, search: searchQuery }),
   });
 
   const products = data?.products || [];
@@ -49,7 +49,7 @@ export default function ProductContainer() {
         page: data.page,
         limit: data.limit,
         total: data.total,
-        total_pages: Math.ceil(data.total / (data.limit || 20)) || 1,
+        total_pages: Math.ceil(data.total / (data.limit || 0)) || 1,
       }
     : null;
 
