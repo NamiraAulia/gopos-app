@@ -21,8 +21,8 @@ import {
 import Sidebar from "@/components/Sidebar";
 import { MemberModal } from "@/modules/Member/Component/MemberModal";
 import { MemberImportModal } from "@/modules/Member/Component/MemberImportModal";
-import { KasbonHistoryModal } from "@/modules/Member/Component/KasbonHistoryModal";
-import { RepaymentModal } from "@/modules/Member/Component/RepaymentModal";
+import { KasbonHistoryModal } from "@/modules/Kasbon/Component/KasbonHistoryModal";
+import { RepaymentModal } from "@/modules/Kasbon/Component/RepaymentModal";
 import { memberDAO } from "@/modules/Member/DAO/member.dao";
 import type { MemberDTO } from "../DTO/member.dto";
 import type { MemberModalState } from "../Store/memberModal.atom";
@@ -78,20 +78,24 @@ export function MemberView({
           <div className="flex items-center gap-2 text-slate-500">
             <Users className="h-4 w-4" />
             <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Data Member Toko</span>
+            <span className="text-sm font-bold text-slate-900">
+              Data Member Toko
+            </span>
           </div>
         </header>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
           <div className="max-w-6xl mx-auto space-y-6">
-
             {/* Header Title & Button */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Daftar Member & Pedagang</h2>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Daftar Member & Pedagang
+                </h2>
                 <p className="text-slate-500 text-sm mt-1">
-                  Kelola profil pelanggan tetap Anda untuk memberikan penawaran harga khusus pedagang.
+                  Kelola profil pelanggan tetap Anda untuk memberikan penawaran
+                  harga khusus pedagang.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -153,9 +157,13 @@ export function MemberView({
               ) : filteredMembers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
                   <Users className="h-10 w-10 text-slate-300" />
-                  <p className="text-sm font-bold text-slate-600">Tidak ada member ditemukan</p>
+                  <p className="text-sm font-bold text-slate-600">
+                    Tidak ada member ditemukan
+                  </p>
                   <p className="text-xs text-slate-400">
-                    {searchQuery ? "Coba gunakan kata kunci pencarian lain." : "Mulai daftarkan member pelanggan pertama Anda."}
+                    {searchQuery
+                      ? "Coba gunakan kata kunci pencarian lain."
+                      : "Mulai daftarkan member pelanggan pertama Anda."}
                   </p>
                 </div>
               ) : (
@@ -173,7 +181,10 @@ export function MemberView({
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
                       {filteredMembers.map((member) => (
-                        <tr key={member.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr
+                          key={member.id}
+                          className="hover:bg-slate-50/80 transition-colors"
+                        >
                           {/* Kode Member */}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
@@ -181,7 +192,9 @@ export function MemberView({
                                 {member.member_code}
                               </span>
                               <button
-                                onClick={() => handleCopyCode(member.member_code, member.id)}
+                                onClick={() =>
+                                  handleCopyCode(member.member_code, member.id)
+                                }
                                 className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
                                 title="Salin Kode Member"
                               >
@@ -196,7 +209,9 @@ export function MemberView({
 
                           {/* Nama */}
                           <td className="px-6 py-4">
-                            <span className="font-bold text-slate-900">{member.name}</span>
+                            <span className="font-bold text-slate-900">
+                              {member.name}
+                            </span>
                           </td>
 
                           {/* No HP */}
@@ -212,7 +227,10 @@ export function MemberView({
                             {(member.total_debt || 0) > 0 ? (
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-100">
-                                  Rp {(member.total_debt || 0).toLocaleString("id-ID")}
+                                  Rp{" "}
+                                  {(member.total_debt || 0).toLocaleString(
+                                    "id-ID",
+                                  )}
                                 </span>
                                 <button
                                   onClick={() => handleRepaymentClick(member)}
@@ -230,7 +248,9 @@ export function MemberView({
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-[11px] font-bold text-slate-400">Lunas / Rp 0</span>
+                              <span className="text-[11px] font-bold text-slate-400">
+                                Lunas / Rp 0
+                              </span>
                             )}
                           </td>
 
@@ -268,7 +288,6 @@ export function MemberView({
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </main>

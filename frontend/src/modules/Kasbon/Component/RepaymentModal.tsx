@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { PaymentMethod } from "@/enum";
-import { memberDAO } from "../DAO/member.dao";
-import { validateRepaymentInput } from "../Validation/member.validation";
-import type { MemberDTO as Member } from "../DTO/member.dto";
+import { memberDAO } from "../../Member/DAO/member.dao";
+import { validateRepaymentInput } from "../../Member/Validation/member.validation";
+import type { MemberDTO as Member } from "../../Member/DTO/member.dto";
 
 interface RepaymentModalProps {
   isOpen: boolean;
@@ -14,7 +14,12 @@ interface RepaymentModalProps {
   onSuccess: () => void;
 }
 
-export function RepaymentModal({ isOpen, onClose, member, onSuccess }: RepaymentModalProps) {
+export function RepaymentModal({
+  isOpen,
+  onClose,
+  member,
+  onSuccess,
+}: RepaymentModalProps) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -55,7 +60,10 @@ export function RepaymentModal({ isOpen, onClose, member, onSuccess }: Repayment
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <h3 className="font-bold text-slate-900 text-lg">Pelunasan Kasbon</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+          <button
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -68,7 +76,9 @@ export function RepaymentModal({ isOpen, onClose, member, onSuccess }: Repayment
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div className="p-3 bg-blue-50 rounded-xl">
-            <p className="text-xs font-semibold text-blue-700">Member: {member.name}</p>
+            <p className="text-xs font-semibold text-blue-700">
+              Member: {member.name}
+            </p>
             <p className="text-sm font-bold text-blue-900 mt-0.5">
               Sisa Utang: Rp {currentDebt.toLocaleString("id-ID")}
             </p>
@@ -95,7 +105,11 @@ export function RepaymentModal({ isOpen, onClose, member, onSuccess }: Repayment
             disabled={loading}
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Proses Bayar</span>}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <span>Proses Bayar</span>
+            )}
           </button>
         </form>
       </div>

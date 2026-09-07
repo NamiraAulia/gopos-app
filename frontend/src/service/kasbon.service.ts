@@ -1,9 +1,9 @@
 import { supabase } from "@/helper/supabaseClient";
+import { PaymentMethod } from "@/enum";
 import type { MemberDTO } from "@/modules/Member/DTO/member.dto";
-import type { KasbonSummaryDAO } from "@/modules/Kasbon/DAO/kasbon.dao";
-import type { RepayKasbonDTO } from "@/modules/Kasbon/DTO/kasbon.dto";
+import type { KasbonSummaryDTO, RepayKasbonDTO } from "@/modules/Kasbon/DTO/kasbon.dto";
 
-export async function fetchKasbonMembers(): Promise<{ members: MemberDTO[]; summary: KasbonSummaryDAO }> {
+export async function fetchKasbonMembers(): Promise<{ members: MemberDTO[]; summary: KasbonSummaryDTO }> {
   const { data, error } = await supabase
     .from("members")
     .select("*")
@@ -65,7 +65,7 @@ export async function recordRepayment(payload: RepayKasbonDTO): Promise<{ succes
   if (updateErr) throw updateErr;
 
   // If payment method is cash, update active cashier shift total_cash_expected
-  if (paymentMethod === "cash") {
+  if (paymentMethod === PaymentMethod.CASH || paymentMethod === "cash") {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

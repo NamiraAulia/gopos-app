@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { X, History, Loader2 } from "lucide-react";
 import { KasbonLogType } from "@/enum";
-import { memberDAO } from "../DAO/member.dao";
-import type { MemberDTO as Member, DebtLogDTO } from "../DTO/member.dto";
+import { memberDAO } from "../../Member/DAO/member.dao";
+import type {
+  MemberDTO as Member,
+  DebtLogDTO,
+} from "../../Member/DTO/member.dto";
 
 interface KasbonHistoryModalProps {
   isOpen: boolean;
@@ -13,7 +16,12 @@ interface KasbonHistoryModalProps {
   onOpenRepay?: () => void;
 }
 
-export function KasbonHistoryModal({ isOpen, onClose, member, onOpenRepay }: KasbonHistoryModalProps) {
+export function KasbonHistoryModal({
+  isOpen,
+  onClose,
+  member,
+  onOpenRepay,
+}: KasbonHistoryModalProps) {
   const [logs, setLogs] = useState<DebtLogDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,11 +52,18 @@ export function KasbonHistoryModal({ isOpen, onClose, member, onOpenRepay }: Kas
               <History className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-lg">Riwayat Kasbon</h3>
-              <p className="text-xs text-slate-500 font-medium">{member.name}</p>
+              <h3 className="font-bold text-slate-900 text-lg">
+                Riwayat Kasbon
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {member.name}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+          <button
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -60,23 +75,35 @@ export function KasbonHistoryModal({ isOpen, onClose, member, onOpenRepay }: Kas
               <p className="text-xs font-medium">Memuat riwayat...</p>
             </div>
           ) : logs.length === 0 ? (
-            <p className="text-center text-xs text-slate-400 py-8">Belum ada catatan mutasi utang.</p>
+            <p className="text-center text-xs text-slate-400 py-8">
+              Belum ada catatan mutasi utang.
+            </p>
           ) : (
             logs.map((log) => {
               const isKasbon =
                 log.type === KasbonLogType.KASBON || log.type === "kasbon";
               return (
-                <div key={log.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1">
+                <div
+                  key={log.id}
+                  className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1"
+                >
                   <div className="flex justify-between font-bold">
-                    <span className={isKasbon ? "text-red-600" : "text-emerald-600"}>
+                    <span
+                      className={isKasbon ? "text-red-600" : "text-emerald-600"}
+                    >
                       {isKasbon ? "+ Kasbon" : "- Pelunasan"}
                     </span>
                     <span>Rp {(log.amount || 0).toLocaleString("id-ID")}</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    {new Date(log.created_at).toLocaleString("id-ID")} · Sisa: Rp {(log.remaining_debt || 0).toLocaleString("id-ID")}
+                    {new Date(log.created_at).toLocaleString("id-ID")} · Sisa:
+                    Rp {(log.remaining_debt || 0).toLocaleString("id-ID")}
                   </p>
-                  {log.notes && <p className="text-[11px] text-slate-600 italic">{log.notes}</p>}
+                  {log.notes && (
+                    <p className="text-[11px] text-slate-600 italic">
+                      {log.notes}
+                    </p>
+                  )}
                 </div>
               );
             })
