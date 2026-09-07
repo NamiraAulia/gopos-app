@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Wallet, Loader2, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cashierDAO } from "../DAO/cashier.dao";
+import { validateCloseShift } from "../Validation/cashier.validation";
 
 type ShiftSummary = {
   start_cash: number;

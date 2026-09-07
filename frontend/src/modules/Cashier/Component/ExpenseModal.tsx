@@ -1,28 +1,47 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { X, Trash2 } from "lucide-react";
-import { supabase } from "@/helper/supabaseClient";
+import { X, Trash2, Loader2 } from "lucide-react";
+import { ExpenseCategory } from "@/enum";
+import { cashierDAO } from "../DAO/cashier.dao";
+import { validateExpense } from "../Validation/cashier.validation";
+import type { ExpenseDTO } from "../DTO/cashier.dto";
 
 export interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  expenseData?: any;
+  expenseData?: ExpenseDTO | any;
 }
 
 export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: ExpenseModalProps) => {
-  const [newExpense, setNewExpense] = useState({ name: "", amount: "", category: "Operasional" });
+  const [newExpense, setNewExpense] = useState<{
+    name: string;
+    amount: string;
+    category: ExpenseCategory;
+  }>({
+    name: "",
+    amount: "",
+    category: ExpenseCategory.OPERATIONAL,
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (isOpen) {
+      setErrorMessage("");
       if (expenseData && typeof expenseData === "object") {
         setNewExpense({
           name: expenseData.name || "",
           amount: expenseData.amount ? expenseData.amount.toString() : "",
-          category: expenseData.category || "Operasional"
+          category: (expenseData.category as ExpenseCategory) || ExpenseCategory.OPERATIONAL,
         });
       } else {
-        setNewExpense({ name: "", amount: "", category: "Operasional" });
+        setNewExpense({
+          name: "",
+          amount: "",
+          category: ExpenseCategory.OPERATIONAL,
+        });
       }
     }
   }, [expenseData, isOpen]);
@@ -34,100 +53,35 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
 
     const amountNum = parseInt(newExpense.amount.replace(/\D/g, "") || "0", 10);
+
     const payload = {
-      name: newExpense.name,
+      name: newExpense.name.trim(),
       amount: amountNum,
-      category: newExpense.category
+      category: newExpense.category,
     };
 
+    const validation = validateExpense(payload);
+    if (!validation.valid) {
+      setErrorMessage(validation.error || "Data pengeluaran tidak valid.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("User tidak terautentikasi.");
-      
-      const { data: profile, error: profErr } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", authUser.email)
-        .single();
-
-      if (profErr || !profile) throw new Error("Profil pengguna tidak ditemukan.");
-      const userId = profile.id;
-
       if (isEditMode) {
-        // Fetch old expense to adjust shift expected cash
-        const { data: oldExpense } = await supabase
-          .from("expenses")
-          .select("amount, category")
-          .eq("id", expenseData.id)
-          .single();
-
-        const oldAmount = oldExpense?.amount || 0;
-
-        const { error } = await supabase
-          .from("expenses")
-          .update(payload)
-          .eq("id", expenseData.id);
-
-        if (error) throw error;
-
-        // Adjust expected shift cash if category is Operasional/Lainnya
-        if (payload.category.toLowerCase() === "operasional" || payload.category.toLowerCase() === "lainnya") {
-          const { data: activeShift } = await supabase
-            .from("shifts")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("status", "open")
-            .maybeSingle();
-
-          if (activeShift) {
-            const difference = payload.amount - oldAmount;
-            await supabase
-              .from("shifts")
-              .update({
-                total_cash_expected: activeShift.total_cash_expected - difference,
-              })
-              .eq("id", activeShift.id);
-          }
-        }
+        await cashierDAO.updateExpense(expenseData.id, payload);
       } else {
-        // Insert new expense
-        const { error } = await supabase
-          .from("expenses")
-          .insert({
-            user_id: userId,
-            created_at: new Date().toISOString(),
-            ...payload
-          });
-
-        if (error) throw error;
-
-        // Adjust expected shift cash if category is Operasional/Lainnya
-        if (payload.category.toLowerCase() === "operasional" || payload.category.toLowerCase() === "lainnya") {
-          const { data: activeShift } = await supabase
-            .from("shifts")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("status", "open")
-            .maybeSingle();
-
-          if (activeShift) {
-            await supabase
-              .from("shifts")
-              .update({
-                total_cash_expected: activeShift.total_cash_expected - payload.amount,
-              })
-              .eq("id", activeShift.id);
-          }
-        }
+        await cashierDAO.createExpense(payload);
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Terjadi kesalahan sistem.");
+      console.error("Expense operation error:", error);
+      setErrorMessage(error.message || "Terjadi kesalahan sistem saat menyimpan pengeluaran.");
     } finally {
       setIsLoading(false);
     }
@@ -141,58 +95,14 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
     }
 
     setIsLoading(true);
+    setErrorMessage("");
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("User tidak terautentikasi.");
-      
-      const { data: profile, error: profErr } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", authUser.email)
-        .single();
-
-      if (profErr || !profile) throw new Error("Profil pengguna tidak ditemukan.");
-      const userId = profile.id;
-
-      // Fetch old expense for shift adjustment
-      const { data: oldExpense } = await supabase
-        .from("expenses")
-        .select("amount, category")
-        .eq("id", expenseData.id)
-        .single();
-
-      const { error } = await supabase
-        .from("expenses")
-        .delete()
-        .eq("id", expenseData.id);
-
-      if (error) throw error;
-
-      if (oldExpense) {
-        if (oldExpense.category.toLowerCase() === "operasional" || oldExpense.category.toLowerCase() === "lainnya") {
-          const { data: activeShift } = await supabase
-            .from("shifts")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("status", "open")
-            .maybeSingle();
-
-          if (activeShift) {
-            await supabase
-              .from("shifts")
-              .update({
-                total_cash_expected: activeShift.total_cash_expected + oldExpense.amount,
-              })
-              .eq("id", activeShift.id);
-          }
-        }
-      }
-
+      await cashierDAO.deleteExpense(expenseData.id);
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Terjadi kesalahan sistem saat menghapus.");
+      console.error("Expense delete error:", error);
+      setErrorMessage(error.message || "Terjadi kesalahan sistem saat menghapus pengeluaran.");
     } finally {
       setIsLoading(false);
     }
@@ -210,6 +120,14 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
           </button>
         </div>
 
+        {errorMessage && (
+          <div className="px-6 pt-4">
+            <p className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-600">
+              {errorMessage}
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
@@ -217,12 +135,20 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
             </label>
             <select
               value={newExpense.category}
-              onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+              onChange={(e) =>
+                setNewExpense({ ...newExpense, category: e.target.value as ExpenseCategory })
+              }
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-colors font-bold text-slate-700 bg-white"
             >
-              <option value="Operasional">Operasional (Mengurangi Kas Laci)</option>
-              <option value="Inventaris">Inventaris (Bukan dari Kas Kasir)</option>
-              <option value="Lainnya">Lainnya (Mengurangi Kas Laci)</option>
+              <option value={ExpenseCategory.OPERATIONAL}>
+                Operasional (Mengurangi Kas Laci)
+              </option>
+              <option value={ExpenseCategory.INVENTORY}>
+                Inventaris (Bukan dari Kas Kasir)
+              </option>
+              <option value={ExpenseCategory.OTHER}>
+                Lainnya (Mengurangi Kas Laci)
+              </option>
             </select>
           </div>
 
@@ -272,9 +198,16 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-colors disabled:opacity-50 flex-grow"
+              className="flex-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 flex-grow"
             >
-              {isLoading ? "MENYIMPAN..." : "SIMPAN"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>MENYIMPAN...</span>
+                </>
+              ) : (
+                "SIMPAN"
+              )}
             </button>
           </div>
         </form>

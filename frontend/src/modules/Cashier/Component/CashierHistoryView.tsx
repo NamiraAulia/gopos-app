@@ -17,16 +17,18 @@ import Navbar from "@/modules/Cashier/Component/Navbar";
 import { RefundModal } from "@/modules/Cashier/Component/RefundModal";
 import { PrintableReceipt } from "@/modules/Cashier/Component/PrintableReceipt";
 
+import { TransactionStatus } from "@/enum";
+
 const STATUS_STYLE: Record<string, string> = {
-  completed: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  voided: "bg-red-50 text-red-500 border-red-200",
-  partially_refunded: "bg-amber-50 text-amber-600 border-amber-200",
+  [TransactionStatus.COMPLETED]: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  [TransactionStatus.VOIDED]: "bg-red-50 text-red-500 border-red-200",
+  [TransactionStatus.PARTIALLY_REFUNDED]: "bg-amber-50 text-amber-600 border-amber-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  completed: "Selesai",
-  voided: "Dibatalkan",
-  partially_refunded: "Diretur Sebagian",
+  [TransactionStatus.COMPLETED]: "Selesai",
+  [TransactionStatus.VOIDED]: "Dibatalkan",
+  [TransactionStatus.PARTIALLY_REFUNDED]: "Diretur Sebagian",
 };
 
 interface CashierHistoryViewProps {
