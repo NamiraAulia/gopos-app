@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { memberDAO } from "../DAO/member.dao";
-import { validateMemberCsvImport } from "../Validation/member.validation";
 
 interface MemberImportModalProps {
   isOpen: boolean;
@@ -69,9 +68,8 @@ export const MemberImportModal = ({
   };
 
   const handleImport = async () => {
-    const validation = validateMemberCsvImport(parsedData);
-    if (!validation.valid) {
-      setErrorMsg(validation.error || "Pilih file CSV yang berisi data member.");
+    if (parsedData.length === 0) {
+      setErrorMsg("Pilih file CSV yang berisi data member.");
       return;
     }
 
@@ -81,13 +79,17 @@ export const MemberImportModal = ({
 
     try {
       const res = await memberDAO.importMembersCsv(parsedData);
-      setSuccessMsg(`Berhasil mengimpor ${res.count} data member.`);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1200);
+      if (res.success) {
+        setSuccessMsg(res.message);
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1200);
+      } else {
+        setErrorMsg(res.message || "Gagal mengimpor data member.");
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan saat mengimpor data member.");
+      setErrorMsg(err.message || "Terjadi kesalahan saat mengimpor.");
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,6 @@ export const MemberImportModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-        
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
@@ -115,7 +116,8 @@ export const MemberImportModal = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
+        {/* Content */}
         <div className="p-6 space-y-4">
           {errorMsg && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-700 text-xs font-semibold">

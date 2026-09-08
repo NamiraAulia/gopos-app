@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Wallet, Loader2, ArrowRight } from "lucide-react";
 import { cashierDAO } from "../DAO/cashier.dao";
-import { validateOpenShift } from "../Validation/cashier.validation";
 
 type OpenShiftModalProps = {
   isOpen: boolean;
@@ -21,9 +20,8 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: OpenShiftModalPro
   const handleOpenShiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numericCash = parseInt(startingCash.replace(/\D/g, "")) || 0;
-    const validation = validateOpenShift(numericCash);
-    if (!validation.valid) {
-      setShiftError(validation.error || "Modal laci kasir tidak valid");
+    if (numericCash <= 0) {
+      setShiftError("Modal laci kasir harus lebih besar dari Rp 0");
       return;
     }
 

@@ -1,36 +1,30 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAtomValue, useSetAtom } from "jotai";
 import { fetchMembers, deleteMember } from "@/service/member.service";
-import {
-  memberModalAtom,
-  openMemberModalAtom,
-  closeMemberModalAtom,
-} from "../Store/memberModal.atom";
+import { useMemberStore } from "../Store/useMemberStore";
 import { MemberView } from "../Component/MemberView";
 import type { MemberDTO } from "../DTO/member.dto";
 
 export default function MemberContainer() {
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-
-  const modal = useAtomValue(memberModalAtom);
-  const openModal = useSetAtom(openMemberModalAtom);
-  const closeModal = useSetAtom(closeMemberModalAtom);
 
   const {
-    data: members = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+    searchQuery,
+    setSearchQuery,
+    copiedId,
+    setCopiedId,
+    modalOpen,
+    setModalOpen,
+    importModalOpen,
+    setImportModalOpen,
+    selectedMember,
+    setSelectedMember,
+  } = useMemberStore();
+
+  const { data: members = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["members"],
     queryFn: fetchMembers,
-    staleTime: 60 * 1000,
   });
 
   const deleteMutation = useMutation({
@@ -60,23 +54,13 @@ export default function MemberContainer() {
   };
 
   const handleCreateClick = () => {
-    openModal({ type: "MEMBER_FORM", data: null });
+    setSelectedMember(null);
+    setModalOpen(true);
   };
 
   const handleEditClick = (member: MemberDTO) => {
-    openModal({ type: "MEMBER_FORM", data: member });
-  };
-
-  const handleImportClick = () => {
-    openModal({ type: "IMPORT_CSV" });
-  };
-
-  const handleHistoryClick = (member: MemberDTO) => {
-    openModal({ type: "HISTORY", data: member });
-  };
-
-  const handleRepaymentClick = (member: MemberDTO) => {
-    openModal({ type: "REPAYMENT", data: member });
+    setSelectedMember(member);
+    setModalOpen(true);
   };
 
   const handleDeleteClick = (member: MemberDTO) => {
@@ -106,16 +90,15 @@ export default function MemberContainer() {
       searchQuery={searchQuery}
       setSearchQuery={setSearchQuery}
       copiedId={copiedId}
-      modal={modal}
-      openModal={openModal}
-      closeModal={closeModal}
+      modalOpen={modalOpen}
+      setModalOpen={setModalOpen}
+      importModalOpen={importModalOpen}
+      setImportModalOpen={setImportModalOpen}
+      selectedMember={selectedMember}
       filteredMembers={filteredMembers}
       handleCopyCode={handleCopyCode}
       handleEditClick={handleEditClick}
       handleCreateClick={handleCreateClick}
-      handleImportClick={handleImportClick}
-      handleHistoryClick={handleHistoryClick}
-      handleRepaymentClick={handleRepaymentClick}
       handleDeleteClick={handleDeleteClick}
       handleModalSuccess={handleModalSuccess}
       formatDate={formatDate}

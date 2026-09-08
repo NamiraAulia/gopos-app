@@ -1,15 +1,16 @@
-import { fetchKasbonMembers, recordRepayment } from "@/service/kasbon.service";
-import type {
-  KasbonSummaryDTO,
-  DebtLogDTO,
-  RepayKasbonDTO,
-} from "../DTO/kasbon.dto";
+export interface KasbonSummaryDAO {
+  total_receivables: number;
+  total_debtors: number;
+  overdue_debtors: number;
+}
 
-export type KasbonSummaryDAO = KasbonSummaryDTO;
-export type DebtLogDAO = DebtLogDTO;
-export type RepayKasbonDAO = RepayKasbonDTO;
-
-export const kasbonDAO = {
-  getKasbonMembers: fetchKasbonMembers,
-  recordRepayment: recordRepayment,
-};
+export interface DebtLogDAO {
+  id: number;
+  member_id: number;
+  type: "debt" | "repayment";
+  amount: number;
+  remaining_debt: number;
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+}

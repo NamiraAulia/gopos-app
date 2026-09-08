@@ -273,8 +273,7 @@ export async function createExpenseService(payload: { name: string; amount: numb
 
   if (expError) throw expError;
 
-  const cat = payload.category.toLowerCase();
-  if (cat === "operasional" || cat === "lainnya") {
+  if (payload.category.toLowerCase() === "operasional" || payload.category.toLowerCase() === "lainnya") {
     const { data: activeShift } = await supabase
       .from("shifts")
       .select("*")
@@ -293,91 +292,6 @@ export async function createExpenseService(payload: { name: string; amount: numb
   }
 
   return { success: true, data: expense as ExpenseDTO };
-}
-
-export async function updateExpenseService(id: number, payload: { name: string; amount: number; category: string }) {
-  const userId = await getCurrentProfileId();
-
-  // Fetch old expense to adjust shift expected cash
-  const { data: oldExpense } = await supabase
-    .from("expenses")
-    .select("amount, category")
-    .eq("id", id)
-    .single();
-
-  const oldAmount = oldExpense?.amount || 0;
-
-  const { data: updated, error } = await supabase
-    .from("expenses")
-    .update(payload)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  const cat = payload.category.toLowerCase();
-  if (cat === "operasional" || cat === "lainnya") {
-    const { data: activeShift } = await supabase
-      .from("shifts")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "open")
-      .maybeSingle();
-
-    if (activeShift) {
-      const difference = payload.amount - oldAmount;
-      await supabase
-        .from("shifts")
-        .update({
-          total_cash_expected: activeShift.total_cash_expected - difference,
-        })
-        .eq("id", activeShift.id);
-    }
-  }
-
-  return { success: true, data: updated as ExpenseDTO };
-}
-
-export async function deleteExpenseService(id: number) {
-  const userId = await getCurrentProfileId();
-
-  // Fetch old expense for shift adjustment
-  const { data: oldExpense } = await supabase
-    .from("expenses")
-    .select("amount, category")
-    .eq("id", id)
-    .single();
-
-  const { error } = await supabase
-    .from("expenses")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-
-  if (oldExpense) {
-    const cat = (oldExpense.category || "").toLowerCase();
-    if (cat === "operasional" || cat === "lainnya") {
-      const { data: activeShift } = await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "open")
-        .maybeSingle();
-
-      if (activeShift) {
-        await supabase
-          .from("shifts")
-          .update({
-            total_cash_expected: activeShift.total_cash_expected + oldExpense.amount,
-          })
-          .eq("id", activeShift.id);
-      }
-    }
-  }
-
-  return { success: true, message: "Pengeluaran berhasil dihapus" };
 }
 
 export async function checkoutService(payload: CheckoutPayload) {
@@ -725,8 +639,6 @@ export const cashierDAO = {
   getTransactions: fetchTransactionsService,
   getExpenses: fetchExpensesService,
   createExpense: createExpenseService,
-  updateExpense: updateExpenseService,
-  deleteExpense: deleteExpenseService,
   checkout: checkoutService,
   voidTransaction: voidTransactionService,
   refundTransaction: refundTransactionService,

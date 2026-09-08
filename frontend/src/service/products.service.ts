@@ -6,29 +6,31 @@ export async function fetchProductsList(params?: {
   page?: number;
   limit?: number;
   search?: string;
-}) {
+}): Promise<{ products: ProductDTO[]; total: number; page: number; limit: number }> {
+  const page = params?.page || 1;
+  const limit = params?.limit || 20;
   const search = params?.search || "";
+
   let query = supabase.from("products").select("*", { count: "exact" }).eq("is_active", true);
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
   }
 
-  if (params?.limit && params.limit > 0) {
-    const page = params.page || 1;
-    const from = (page - 1) * params.limit;
-    const to = from + params.limit - 1;
-    query = query.range(from, to);
-  }
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-  const { data, error, count } = await query.order("id", { ascending: true });
+  const { data, error, count } = await query
+    .order("id", { ascending: true })
+    .range(from, to);
+
   if (error) throw error;
 
   return {
     products: (data as ProductDTO[]) || [],
     total: count || 0,
-    page: params?.page || 1,
-    limit: params?.limit || 0,
+    page,
+    limit,
   };
 }
 

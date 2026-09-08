@@ -1,17 +1,15 @@
-import { PaymentMethod, UnitChoice, ShiftStatus, TransactionStatus, ExpenseCategory } from "@/enum";
-
 export interface CheckoutItemPayload {
   product_id: number;
   qty: number;
   unit_price: number;
-  unit_choice: UnitChoice | "small" | "big";
+  unit_choice: "small" | "big";
 }
 
 export type CartItemDTO = CheckoutItemPayload;
 
 export interface CheckoutPayload {
   items: CheckoutItemPayload[];
-  payment_method: PaymentMethod | "cash" | "qris" | "transfer" | "kasbon";
+  payment_method: "cash" | "qris" | "transfer" | "kasbon";
   amount_paid: number;
   member_id?: number;
   discount_amount?: number;
@@ -20,7 +18,7 @@ export interface CheckoutPayload {
 
 export interface TransactionResultDTO {
   transaction_code: string;
-  payment_method: PaymentMethod | string;
+  payment_method: string;
   total_amount: number;
   amount_paid: number;
   change_amount?: number;
@@ -40,7 +38,7 @@ export interface ShiftDataDTO {
   total_refunded_cash: number;
   start_time: string;
   end_time: string | null;
-  status: ShiftStatus | "open" | "closed";
+  status: "open" | "closed";
   total_cash_actual?: number;
   cash_difference?: number;
 }
@@ -48,11 +46,11 @@ export interface ShiftDataDTO {
 export interface TransactionDTO {
   id: number;
   transaction_code: string;
-  payment_method: PaymentMethod | string;
+  payment_method: string;
   total_amount: number;
   amount_paid: number;
   change_amount: number;
-  status: TransactionStatus | string;
+  status: string;
   created_at: string;
   items?: any[];
   discount_amount?: number;
@@ -68,7 +66,7 @@ export interface ExpenseDTO {
   id: number;
   name: string;
   amount: number;
-  category: ExpenseCategory | string;
+  category: string;
   created_at: string;
   user_id?: number;
   user?: {

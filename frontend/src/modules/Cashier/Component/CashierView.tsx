@@ -21,12 +21,6 @@ import { HoldCartModal } from "./HoldCartModal";
 import { HeldCartsModal } from "./HeldCartsModal";
 import { StaleShiftModal } from "./StaleShiftModal";
 import { ProductModal } from "@/modules/Products/Component/ProductModal";
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  cashierModalAtom,
-  openCashierModalAtom,
-  closeCashierModalAtom,
-} from "../Store/cashierModal.atom";
 import Navbar from "./Navbar";
 
 interface QuantityInputProps {
@@ -110,8 +104,18 @@ interface CashierViewProps {
   loadingMore: boolean;
   hasMore: boolean;
   loadMoreProducts: () => void;
+  showPaymentModal: boolean;
+  setShowPaymentModal: (val: boolean) => void;
+  showReceipt: boolean;
+  setShowReceipt: (val: boolean) => void;
   lastTransaction: any;
   setLastTransaction: (tx: any) => void;
+  showOpenShiftModal: boolean;
+  setShowOpenShiftModal: (val: boolean) => void;
+  showProductModal: boolean;
+  setShowProductModal: (val: boolean) => void;
+  showClearConfirm: boolean;
+  setShowClearConfirm: (val: boolean) => void;
   editingPriceId: number | null;
   setEditingPriceId: (id: number | null) => void;
   tempPrice: string;
@@ -125,7 +129,13 @@ interface CashierViewProps {
   holdCurrentCart: (note: string) => void;
   loadHeldCarts: () => void;
   handleSearchKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  showHoldModal: boolean;
+  setShowHoldModal: (val: boolean) => void;
+  showHeldCartsModal: boolean;
+  setShowHeldCartsModal: (val: boolean) => void;
   staleShiftInfo?: { isStale: boolean; shift: any; hoursOpen: number } | null;
+  showStaleShiftModal?: boolean;
+  setShowStaleShiftModal?: (val: boolean) => void;
 }
 
 export function CashierView({
@@ -153,8 +163,18 @@ export function CashierView({
   loadingMore,
   hasMore,
   loadMoreProducts,
+  showPaymentModal,
+  setShowPaymentModal,
+  showReceipt,
+  setShowReceipt,
   lastTransaction,
   setLastTransaction,
+  showOpenShiftModal,
+  setShowOpenShiftModal,
+  showProductModal,
+  setShowProductModal,
+  showClearConfirm,
+  setShowClearConfirm,
   editingPriceId,
   setEditingPriceId,
   tempPrice,
@@ -168,12 +188,14 @@ export function CashierView({
   holdCurrentCart,
   loadHeldCarts,
   handleSearchKeyDown,
+  showHoldModal,
+  setShowHoldModal,
+  showHeldCartsModal,
+  setShowHeldCartsModal,
   staleShiftInfo,
+  showStaleShiftModal,
+  setShowStaleShiftModal,
 }: CashierViewProps) {
-  const modal = useAtomValue(cashierModalAtom);
-  const openModal = useSetAtom(openCashierModalAtom);
-  const closeModal = useSetAtom(closeCashierModalAtom);
-
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const cartContainerRef = useRef<HTMLDivElement>(null);
@@ -251,9 +273,9 @@ export function CashierView({
     <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-100/60 font-sans text-slate-900 select-none">
       <Navbar
         isShiftActive={isShiftActive}
-        onOpenShiftClick={() => openModal({ type: "OPEN_SHIFT" })}
+        onOpenShiftClick={() => setShowOpenShiftModal(true)}
         onCloseShiftClick={() => router.push("/cashier/cashSummary")}
-        onRecallClick={() => openModal({ type: "HELD_CARTS_LIST" })}
+        onRecallClick={() => setShowHeldCartsModal(true)}
       />
 
       <main className="flex flex-1 overflow-hidden flex-col lg:flex-row">
@@ -285,7 +307,7 @@ export function CashierView({
 
               <button
                 type="button"
-                onClick={() => openModal({ type: "QUICK_ADD_PRODUCT" })}
+                onClick={() => setShowProductModal(true)}
                 title="Tambah produk baru"
                 className="h-11 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm shadow-blue-600/20 active:scale-95"
               >
@@ -309,7 +331,7 @@ export function CashierView({
                   Buka shift kasir terlebih dahulu untuk melihat dan menjual produk
                 </p>
                 <button
-                  onClick={() => openModal({ type: "OPEN_SHIFT" })}
+                  onClick={() => setShowOpenShiftModal(true)}
                   className="mt-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-colors cursor-pointer shadow-sm"
                 >
                   Buka Shift Sekarang
@@ -335,7 +357,7 @@ export function CashierView({
                     : "Tambahkan produk pertama ke sistem kasir kamu"}
                 </p>
                 <button
-                  onClick={() => openModal({ type: "QUICK_ADD_PRODUCT" })}
+                  onClick={() => setShowProductModal(true)}
                   className="mt-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <PackagePlus className="h-3.5 w-3.5" /> Tambah Produk Baru
@@ -500,7 +522,7 @@ export function CashierView({
             {cart.length > 0 && (
               <button
                 type="button"
-                onClick={() => openModal({ type: "CLEAR_CART_CONFIRM" })}
+                onClick={() => setShowClearConfirm(true)}
                 className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Hapus Semua
@@ -698,7 +720,7 @@ export function CashierView({
             <div className="flex gap-2.5">
               <button
                 type="button"
-                onClick={() => openModal({ type: "HOLD_CART" })}
+                onClick={() => setShowHoldModal(true)}
                 disabled={cart.length === 0}
                 className="flex-1 h-11 sm:h-12 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
                 title="Tahan/Simpan keranjang saat ini (F4)"
@@ -709,7 +731,7 @@ export function CashierView({
 
               <button
                 type="button"
-                onClick={() => openModal({ type: "PAYMENT" })}
+                onClick={() => setShowPaymentModal(true)}
                 disabled={cart.length === 0 || !isShiftActive}
                 className="flex-1 h-11 sm:h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
                 title="Bayar Sekarang (F8)"
@@ -723,81 +745,79 @@ export function CashierView({
       </main>
 
       <OpenShiftModal
-        isOpen={modal.type === "OPEN_SHIFT"}
-        onClose={closeModal}
+        isOpen={showOpenShiftModal}
+        onClose={() => setShowOpenShiftModal(false)}
         onSuccess={() => {
-          closeModal();
+          setShowOpenShiftModal(false);
           checkShift();
           refetch();
         }}
       />
 
       <ProductModal
-        isOpen={modal.type === "QUICK_ADD_PRODUCT"}
-        onClose={closeModal}
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
         onSuccess={() => {
-          closeModal();
+          setShowProductModal(false);
           refetch();
         }}
         existingProduct={null}
       />
 
       <PaymentModal
-        isOpen={modal.type === "PAYMENT"}
-        onClose={closeModal}
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
         grandTotal={grandTotal}
         memberId={selectedMember?.id}
         discountAmount={discountAmount}
         onSuccess={(data) => {
+          setShowPaymentModal(false);
           setLastTransaction(data);
-          openModal({ type: "RECEIPT", data });
+          setShowReceipt(true);
           refetch();
           checkShift();
         }}
         onShiftRequired={() => {
-          openModal({ type: "OPEN_SHIFT" });
+          setShowPaymentModal(false);
+          setShowOpenShiftModal(true);
         }}
       />
 
       <ReceiptModal
-        isOpen={modal.type === "RECEIPT"}
+        isOpen={showReceipt}
         onClose={() => {
-          closeModal();
+          setShowReceipt(false);
           setLastTransaction(null);
         }}
-        transaction={modal.data || lastTransaction}
+        transaction={lastTransaction}
       />
 
       <HoldCartModal
-        isOpen={modal.type === "HOLD_CART"}
-        onClose={closeModal}
-        onConfirm={(note) => {
-          holdCurrentCart(note);
-          closeModal();
-        }}
+        isOpen={showHoldModal}
+        onClose={() => setShowHoldModal(false)}
+        onConfirm={(note) => holdCurrentCart(note)}
       />
 
       <HeldCartsModal
-        isOpen={modal.type === "HELD_CARTS_LIST"}
-        onClose={closeModal}
+        isOpen={showHeldCartsModal}
+        onClose={() => setShowHeldCartsModal(false)}
       />
 
       <StaleShiftModal
-        isOpen={modal.type === "STALE_SHIFT"}
-        onClose={closeModal}
-        staleShiftInfo={modal.data || staleShiftInfo || null}
+        isOpen={!!showStaleShiftModal}
+        onClose={() => setShowStaleShiftModal?.(false)}
+        staleShiftInfo={staleShiftInfo || null}
         onCloseShiftClick={() => {
-          closeModal();
+          setShowStaleShiftModal?.(false);
           router.push("/cashier/cashSummary");
         }}
       />
 
-      {/* Hidden container for window.print() */}
       <div className="hidden print:block">
-        <PrintableReceipt transaction={modal.type === "RECEIPT" ? (modal.data || lastTransaction) : lastTransaction} />
+        <PrintableReceipt transaction={lastTransaction} />
       </div>
 
-      {modal.type === "CLEAR_CART_CONFIRM" && (
+      {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl text-center">
             <h3 className="font-black text-slate-900 text-lg">
@@ -808,7 +828,7 @@ export function CashierView({
             </p>
             <div className="flex gap-2 mt-5">
               <button
-                onClick={closeModal}
+                onClick={() => setShowClearConfirm(false)}
                 className="flex-1 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Tidak
@@ -816,7 +836,7 @@ export function CashierView({
               <button
                 onClick={() => {
                   clearCart();
-                  closeModal();
+                  setShowClearConfirm(false);
                 }}
                 className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >

@@ -2,13 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/helper/supabaseClient';
 import type { User, Shift } from '@/interface/api';
-import { UserRole } from '@/enum';
 
 interface AuthState {
   user: User | null;
   token: string | null;
   activeShift: Shift | null;
-  isHydrated: boolean;
+  isHydrated: boolean; 
   login: (username: string, password: string) => Promise<{ ok: boolean; message: string }>;
   logout: () => void;
   setActiveShift: (shift: Shift | null) => void;
@@ -48,10 +47,10 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const token = authData.session?.access_token || "";
-          const user: User = {
+          const user = {
             id: userProfile.id,
             username: userProfile.name,
-            role: userProfile.role as UserRole,
+            role: userProfile.role as 'admin' | 'kasir',
             is_active: userProfile.is_active,
           };
 
@@ -111,12 +110,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.isHydrated = true;
-          if (typeof window !== 'undefined' && state.token) {
-            document.cookie = `auth_token=${state.token}; path=/; max-age=86400; SameSite=Lax`;
-          }
-        }
+        if (state) state.isHydrated = true;
       },
     }
   )

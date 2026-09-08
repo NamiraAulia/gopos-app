@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
-import { PaymentMethod } from "@/enum";
 import { cashierDAO } from "../DAO/cashier.dao";
-import { validateCheckoutPayload } from "../Validation/cashier.validation";
 import { handleReceiptPrint } from "@/lib/printer";
 import { Banknote, CreditCard, Landmark, BookOpen, AlertCircle } from "lucide-react";
 
@@ -30,8 +28,8 @@ export const PaymentModal = ({
   const { cart, clearCart } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [amountPaid, setAmountPaid] = useState<string>("0");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "QRIS" | "TRANSFER" | "KASBON">("CASH");
+  const [amountPaid, setAmountPaid] = useState<string>("");
   const [bankInfo, setBankInfo] = useState("");
   const [refNumber, setRefNumber] = useState("");
   const [dpAmountStr, setDpAmountStr] = useState<string>("0");
@@ -42,7 +40,6 @@ export const PaymentModal = ({
       setBankInfo("");
       setRefNumber("");
       setDpAmountStr("0");
-      setPaymentMethod(PaymentMethod.CASH);
     }
   }, [isOpen]);
 
@@ -55,10 +52,10 @@ export const PaymentModal = ({
 
   const isPaymentValid =
     cart.length > 0 &&
-    ((paymentMethod === PaymentMethod.CASH && amountPaidNum >= grandTotal) ||
-      paymentMethod === PaymentMethod.QRIS ||
-      paymentMethod === PaymentMethod.TRANSFER ||
-      (paymentMethod === PaymentMethod.KASBON && !!memberId && dpNum <= grandTotal));
+    ((paymentMethod === "CASH" && amountPaidNum >= grandTotal) ||
+      paymentMethod === "QRIS" ||
+      paymentMethod === "TRANSFER" ||
+      (paymentMethod === "KASBON" && !!memberId && dpNum <= grandTotal));
 
   const getQuickAmounts = (total: number): number[] => {
     let steps = [50000, 100000, 200000, 500000];
@@ -72,10 +69,8 @@ export const PaymentModal = ({
       steps = [50000, 100000, 200000, 500000];
     }
     
-    const candidates = steps.map((step) => Math.ceil(total / step) * step);
-    const uniqueCandidates = Array.from(new Set(candidates))
-      .filter((val) => val >= total)
-      .sort((a, b) => a - b);
+    const candidates = steps.map(step => Math.ceil(total / step) * step);
+    const uniqueCandidates = Array.from(new Set(candidates)).filter(val => val >= total).sort((a, b) => a - b);
     return uniqueCandidates.slice(0, 3);
   };
 
@@ -83,10 +78,9 @@ export const PaymentModal = ({
     if (!isPaymentValid || isLoading) return;
 
     // Generate unique idempotency key per checkout submission to prevent double-submit
-    const idempotencyKey =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : "idemp-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
+    const idempotencyKey = typeof crypto !== "undefined" && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : "idemp-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
 
     const payload = {
       items: cart.map((item) => {
@@ -104,23 +98,12 @@ export const PaymentModal = ({
           unit_choice: item.unit_choice || "small",
         };
       }),
-      payment_method: paymentMethod,
-      amount_paid:
-        paymentMethod === PaymentMethod.CASH
-          ? amountPaidNum
-          : paymentMethod === PaymentMethod.KASBON
-          ? dpNum
-          : grandTotal,
+      payment_method: paymentMethod.toLowerCase() as "cash" | "qris" | "transfer" | "kasbon",
+      amount_paid: paymentMethod === "CASH" ? amountPaidNum : (paymentMethod === "KASBON" ? dpNum : grandTotal),
       member_id: memberId || undefined,
       discount_amount: discountAmount || 0,
       idempotency_key: idempotencyKey,
     };
-
-    const validation = validateCheckoutPayload(payload);
-    if (!validation.valid) {
-      alert(validation.error || "Data checkout tidak valid.");
-      return;
-    }
 
     setIsLoading(true);
     let result;
@@ -142,11 +125,7 @@ export const PaymentModal = ({
 
       onSuccess(result.data);
     } else {
-      if (result.message && result.message.toLowerCase().includes("shift")) {
-        onShiftRequired();
-      } else {
-        alert(result.message || "Transaksi gagal.");
-      }
+      alert(result.message || "Transaksi gagal.");
     }
   };
 
@@ -165,51 +144,35 @@ export const PaymentModal = ({
         <div className="grid grid-cols-4 gap-2 mb-6">
           <button
             type="button"
-            onClick={() => setPaymentMethod(PaymentMethod.CASH)}
-            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-              paymentMethod === PaymentMethod.CASH
-                ? "border-blue-600 bg-blue-600 text-white shadow-md"
-                : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-            }`}
+            onClick={() => setPaymentMethod("CASH")}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "CASH" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
             <Banknote className="h-4 w-4 shrink-0" /> TUNAI
           </button>
           <button
             type="button"
-            onClick={() => setPaymentMethod(PaymentMethod.QRIS)}
-            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-              paymentMethod === PaymentMethod.QRIS
-                ? "border-blue-600 bg-blue-600 text-white shadow-md"
-                : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-            }`}
+            onClick={() => setPaymentMethod("QRIS")}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "QRIS" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
             <CreditCard className="h-4 w-4 shrink-0" /> QRIS
           </button>
           <button
             type="button"
-            onClick={() => setPaymentMethod(PaymentMethod.TRANSFER)}
-            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-              paymentMethod === PaymentMethod.TRANSFER
-                ? "border-blue-600 bg-blue-600 text-white shadow-md"
-                : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-            }`}
+            onClick={() => setPaymentMethod("TRANSFER")}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "TRANSFER" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
             <Landmark className="h-4 w-4 shrink-0" /> BANK
           </button>
           <button
             type="button"
-            onClick={() => setPaymentMethod(PaymentMethod.KASBON)}
-            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-              paymentMethod === PaymentMethod.KASBON
-                ? "border-red-600 bg-red-600 text-white shadow-md"
-                : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-            }`}
+            onClick={() => setPaymentMethod("KASBON")}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "KASBON" ? "border-red-600 bg-red-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
             <BookOpen className="h-4 w-4 shrink-0" /> KASBON
           </button>
         </div>
 
-        {paymentMethod === PaymentMethod.CASH && (
+        {paymentMethod === "CASH" && (
           <div className="space-y-4 mb-6">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -219,7 +182,7 @@ export const PaymentModal = ({
                 <button
                   type="button"
                   onClick={() => setAmountPaid(grandTotal.toString())}
-                  className={`py-2 rounded-lg text-xs font-bold transition-all border-2 cursor-pointer ${
+                  className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
                     amountPaidNum === grandTotal
                       ? "border-blue-600 text-blue-600 bg-blue-50"
                       : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
@@ -232,7 +195,7 @@ export const PaymentModal = ({
                     key={amt}
                     type="button"
                     onClick={() => setAmountPaid(amt.toString())}
-                    className={`py-2 rounded-lg text-xs font-bold transition-all border-2 cursor-pointer ${
+                    className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
                       amountPaidNum === amt
                         ? "border-blue-600 text-blue-600 bg-blue-50"
                         : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
@@ -269,23 +232,15 @@ export const PaymentModal = ({
             </div>
 
             <div
-              className={`mt-2 border-2 rounded-xl p-4 text-center ${
-                change >= 0
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-slate-200 bg-slate-50"
-              }`}
+              className={`mt-2 border-2 rounded-xl p-4 text-center ${change >= 0 ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
             >
               <p
-                className={`text-xs font-bold uppercase tracking-wider ${
-                  change >= 0 ? "text-emerald-700" : "text-slate-500"
-                }`}
+                className={`text-xs font-bold uppercase tracking-wider ${change >= 0 ? "text-emerald-700" : "text-slate-500"}`}
               >
                 Kembalian
               </p>
               <p
-                className={`text-2xl font-black mt-1 ${
-                  change >= 0 ? "text-emerald-600" : "text-slate-400"
-                }`}
+                className={`text-2xl font-black mt-1 ${change >= 0 ? "text-emerald-600" : "text-slate-400"}`}
               >
                 {change >= 0 ? `Rp ${change.toLocaleString("id-ID")}` : "Rp 0"}
               </p>
@@ -293,7 +248,7 @@ export const PaymentModal = ({
           </div>
         )}
 
-        {paymentMethod === PaymentMethod.TRANSFER && (
+        {paymentMethod === "TRANSFER" && (
           <div className="space-y-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-200">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -322,7 +277,7 @@ export const PaymentModal = ({
           </div>
         )}
 
-        {paymentMethod === PaymentMethod.KASBON && (
+        {paymentMethod === "KASBON" && (
           <div className="space-y-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-200">
             {!memberId ? (
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-start gap-2.5">
@@ -386,7 +341,7 @@ export const PaymentModal = ({
             type="button"
             onClick={handleConfirmPayment}
             disabled={!isPaymentValid || isLoading}
-            className="w-full h-14 rounded-xl bg-blue-600 text-white text-base font-black uppercase tracking-wide hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
+            className="w-full h-14 rounded-xl bg-blue-600 text-white text-base font-black uppercase tracking-wide hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {isLoading ? "Memproses..." : "Selesaikan Transaksi"}
           </button>
@@ -394,7 +349,7 @@ export const PaymentModal = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+            className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700"
           >
             Batal Pembayaran
           </button>

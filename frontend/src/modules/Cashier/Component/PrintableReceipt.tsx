@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { Printer, handleReceiptPrint } from "@/lib/printer";
 import { Alert } from "@/components/ui/Alert";
-import { PaperSize, StorageKey, PaymentMethod } from "@/enum";
 import { Loader2, Printer as PrinterIcon } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
@@ -36,7 +35,7 @@ interface PrintableReceiptProps {
   shopAddress?: string;
   shopPhone?: string;
   showPrintButton?: boolean;
-  paperSize?: PaperSize | "37mm" | "58mm" | "80mm";
+  paperSize?: "37mm" | "58mm" | "80mm";
 }
 
 export const PrintableReceipt = ({
@@ -51,32 +50,20 @@ export const PrintableReceipt = ({
   const [printError, setPrintError] = useState<string | null>(null);
   const [printSuccess, setPrintSuccess] = useState(false);
 
-  const [paperSize, setPaperSize] = useState<PaperSize>(PaperSize.SIZE_80MM);
+  const [paperSize, setPaperSize] = useState<"37mm" | "58mm" | "80mm">("80mm");
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(StorageKey.PAPER_SIZE) as PaperSize;
+      const saved = localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm";
       if (saved) setPaperSize(saved);
     }
   }, []);
 
-  const activePaperSize = propPaperSize || paperSize || PaperSize.SIZE_80MM;
-  const widthClass =
-    activePaperSize === PaperSize.SIZE_37MM
-      ? "max-w-[35mm]"
-      : activePaperSize === PaperSize.SIZE_58MM
-      ? "max-w-[52mm]"
-      : "max-w-[70mm] w-[70mm]";
-  const printWidthMm =
-    activePaperSize === PaperSize.SIZE_37MM
-      ? "35mm"
-      : activePaperSize === PaperSize.SIZE_58MM
-      ? "52mm"
-      : "70mm";
+  const activePaperSize = propPaperSize || paperSize || "80mm";
+  const widthClass = activePaperSize === "37mm" ? "max-w-[35mm]" : activePaperSize === "58mm" ? "max-w-[52mm]" : "max-w-[70mm] w-[70mm]";
+  const printWidthMm = activePaperSize === "37mm" ? "35mm" : activePaperSize === "58mm" ? "52mm" : "70mm";
 
-  if (!transaction || (!transaction.transaction_code && transaction.total_amount == null)) {
-    return null;
-  }
+  if (!transaction) return null;
 
   // Format date helper
   const formatDate = (dateStr?: string) => {
@@ -91,11 +78,9 @@ export const PrintableReceipt = ({
     }
   };
 
-  const totalAmount = Number(transaction.total_amount) || 0;
-  const cashPaid = transaction.amount_paid != null ? Number(transaction.amount_paid) : totalAmount;
-  const change = transaction.change_amount != null ? Number(transaction.change_amount) : 0;
-  const discount = transaction.discount_amount != null ? Number(transaction.discount_amount) : 0;
-  const paymentMethodStr = (transaction.payment_method || "").toLowerCase();
+  const cashPaid = transaction.amount_paid ?? transaction.total_amount;
+  const change = transaction.change_amount ?? 0;
+  const discount = transaction.discount_amount ?? 0;
 
   const handlePrint = async () => {
     setIsPrinting(true);
@@ -307,7 +292,7 @@ export const PrintableReceipt = ({
             <span className="text-right break-words min-w-0">Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
           </div>
 
-          {transaction.payment_method.toLowerCase() === PaymentMethod.CASH && (
+          {transaction.payment_method.toLowerCase() === "cash" && (
             <>
               <div className="flex justify-between items-start gap-1 pt-0.5 font-bold min-w-0">
                 <span className="shrink-0">TUNAI:</span>

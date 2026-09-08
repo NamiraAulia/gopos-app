@@ -1,4 +1,3 @@
-import { PaymentMethod, TransactionStatus, UnitChoice, ShiftStatus, UserRole } from "@/enum";
 export interface ApiMeta {
   page: number;
   limit: number;
@@ -24,6 +23,8 @@ export interface ApiErrorResponse {
   meta: null;
 }
 
+
+
 export type ErrorCode =
   | 'VALIDATION_ERROR'
   | 'UNAUTHORIZED'
@@ -42,7 +43,7 @@ export type ErrorCode =
 export interface User {
   id: number;
   username: string;
-  role: UserRole;
+  role: 'admin' | 'kasir';
   is_active: boolean;
 }
 
@@ -65,6 +66,9 @@ export interface Product {
   is_promo: boolean;
   price_member: number;
 }
+
+export type UnitChoice = 'small' | 'big';
+
 export interface TransactionItem {
   id: number;
   transaction_id: number;
@@ -77,6 +81,9 @@ export interface TransactionItem {
   discount_amount: number;
   subtotal: number;
 }
+
+export type PaymentMethod = 'cash' | 'qris';
+export type TransactionStatus = 'completed' | 'voided' | 'partially_refunded';
 
 export interface Transaction {
   id: number;
@@ -93,6 +100,8 @@ export interface Transaction {
   items: TransactionItem[];
   created_at: string; 
 }
+
+export type ShiftStatus = 'open' | 'closed';
 
 export interface Shift {
   id: number;

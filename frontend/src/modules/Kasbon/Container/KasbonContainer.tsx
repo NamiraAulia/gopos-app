@@ -1,33 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAtomValue, useSetAtom } from "jotai";
-import { kasbonDAO } from "../DAO/kasbon.dao";
-import {
-  kasbonModalAtom,
-  openKasbonModalAtom,
-  closeKasbonModalAtom,
-} from "../Store/kasbonModal.atom";
+import { fetchKasbonMembers } from "@/service/kasbon.service";
+import { useKasbonStore } from "../Store/useKasbonStore";
 import { KasbonView } from "../Component/KasbonView";
-import type { MemberDTO } from "@/modules/Member/DTO/member.dto";
 
 export default function KasbonContainer() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "has_debt" | "overdue">("has_debt");
-
-  const modal = useAtomValue(kasbonModalAtom);
-  const openModal = useSetAtom(openKasbonModalAtom);
-  const closeModal = useSetAtom(closeKasbonModalAtom);
+  const {
+    searchQuery,
+    setSearchQuery,
+    activeTab,
+    setActiveTab,
+    selectedMemberForRepay,
+    setSelectedMemberForRepay,
+    selectedMemberForHistory,
+    setSelectedMemberForHistory,
+  } = useKasbonStore();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["kasbonMembers"],
-    queryFn: kasbonDAO.getKasbonMembers,
-    staleTime: 30 * 1000,
+    queryFn: fetchKasbonMembers,
   });
 
   const members = data?.members || [];
@@ -51,9 +47,8 @@ export default function KasbonContainer() {
     return true;
   });
 
-  const handleModalSuccess = () => {
+  const loadData = () => {
     queryClient.invalidateQueries({ queryKey: ["kasbonMembers"] });
-    queryClient.invalidateQueries({ queryKey: ["members"] });
     refetch();
   };
 
@@ -68,12 +63,12 @@ export default function KasbonContainer() {
       setSearchQuery={setSearchQuery}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
-      modal={modal}
-      openModal={openModal}
-      closeModal={closeModal}
+      selectedMemberForRepay={selectedMemberForRepay}
+      setSelectedMemberForRepay={setSelectedMemberForRepay}
+      selectedMemberForHistory={selectedMemberForHistory}
+      setSelectedMemberForHistory={setSelectedMemberForHistory}
       thirtyDaysAgo={thirtyDaysAgo}
-      handleModalSuccess={handleModalSuccess}
-      loadData={refetch}
+      loadData={loadData}
     />
   );
 }

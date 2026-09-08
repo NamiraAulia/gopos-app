@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { X, User, Phone, Loader2, AlertCircle, Users } from "lucide-react";
 import { memberDAO } from "../DAO/member.dao";
-import { validateMemberInput } from "../Validation/member.validation";
 import type { MemberDTO as Member } from "../DTO/member.dto";
 
 interface MemberModalProps {
@@ -45,29 +44,33 @@ export const MemberModal = ({
     e.preventDefault();
     setErrorMsg("");
 
-    const payload = {
-      name: name.trim(),
-      phone: phone.trim(),
-    };
-
-    const validation = validateMemberInput(payload);
-    if (!validation.valid) {
-      setErrorMsg(validation.error || "Nama lengkap wajib diisi.");
+    if (!name.trim()) {
+      setErrorMsg("Nama lengkap wajib diisi.");
       return;
     }
 
     setLoading(true);
     try {
+      let res;
       if (isEditMode && member) {
-        await memberDAO.editMember(member.id, payload);
+        res = await memberDAO.editMember(member.id, {
+          name: name.trim(),
+          phone: phone.trim(),
+        });
       } else {
-        await memberDAO.createMember(payload);
+        res = await memberDAO.createMember({
+          name: name.trim(),
+          phone: phone.trim(),
+        });
       }
 
-      onSuccess();
-      onClose();
+      if (res.success) {
+        onSuccess();
+      } else {
+        setErrorMsg(res.message || "Gagal memproses data member.");
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan koneksi atau server.");
+      setErrorMsg(err.response?.data?.message || "Terjadi kesalahan koneksi atau server.");
     } finally {
       setLoading(false);
     }
@@ -77,6 +80,7 @@ export const MemberModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-[2px]">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2 text-blue-600">
             <Users className="h-5 w-5" />
@@ -92,6 +96,7 @@ export const MemberModal = ({
           </button>
         </div>
 
+        {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
           {errorMsg && (
@@ -101,6 +106,7 @@ export const MemberModal = ({
             </div>
           )}
 
+          {/* Member Code Display (If editing) */}
           {isEditMode && member && (
             <div className="space-y-1">
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -112,6 +118,7 @@ export const MemberModal = ({
             </div>
           )}
 
+          {/* Name Input */}
           <div className="space-y-1.5">
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
               Nama Lengkap
@@ -129,6 +136,7 @@ export const MemberModal = ({
             </div>
           </div>
 
+          {/* Phone Input */}
           <div className="space-y-1.5">
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
               Nomor Telepon / WhatsApp
@@ -146,6 +154,7 @@ export const MemberModal = ({
             </div>
           </div>
 
+          {/* Footer Actions */}
           <div className="flex gap-3 justify-end pt-2">
             <button
               type="button"
