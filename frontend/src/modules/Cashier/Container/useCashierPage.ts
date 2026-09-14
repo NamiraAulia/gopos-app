@@ -45,6 +45,7 @@ export function useCashierPage() {
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
   const [tempPrice, setTempPrice] = useState<string>("");
   const [lastTransaction, setLastTransaction] = useState<any | null>(null);
+  const [scanAlert, setScanAlert] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<any>(null);
@@ -193,7 +194,7 @@ export function useCashierPage() {
       const query = searchInputRef.current?.value?.trim() || searchQuery;
       if (!query) return;
 
-      // Try barcode exact match first, then fallback to regular search
+      // Try barcode exact match first
       cashierDAO
         .getProductByBarcode(query)
         .then((res) => {
@@ -203,11 +204,20 @@ export function useCashierPage() {
             setSearchQuery("");
             fetchProducts();
           } else {
-            fetchProducts(query);
+            // Not found alert & auto-clear
+            setScanAlert(`Produk dengan barcode "${query}" tidak ditemukan!`);
+            setTimeout(() => setScanAlert(null), 3500);
+            if (searchInputRef.current) searchInputRef.current.value = "";
+            setSearchQuery("");
+            fetchProducts();
           }
         })
         .catch(() => {
-          fetchProducts(query);
+          setScanAlert(`Produk dengan barcode "${query}" tidak ditemukan!`);
+          setTimeout(() => setScanAlert(null), 3500);
+          if (searchInputRef.current) searchInputRef.current.value = "";
+          setSearchQuery("");
+          fetchProducts();
         });
     }
   };
@@ -267,6 +277,8 @@ export function useCashierPage() {
     holdCurrentCart,
     loadHeldCarts,
     handleSearchKeyDown,
+    scanAlert,
+    setScanAlert,
     staleShiftInfo,
     showStaleShiftModal,
     setShowStaleShiftModal,
