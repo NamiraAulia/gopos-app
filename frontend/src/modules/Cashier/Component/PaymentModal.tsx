@@ -141,51 +141,51 @@ export const PaymentModal = ({
           </h2>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5 mb-6">
+        <div className="grid grid-cols-4 gap-2 mb-6">
           <button
             type="button"
             onClick={() => setPaymentMethod("CASH")}
-            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${paymentMethod === "CASH" ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20" : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"}`}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "CASH" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
-            <Banknote className="h-5 w-5 shrink-0" /> TUNAI
+            <Banknote className="h-4 w-4 shrink-0" /> TUNAI
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("QRIS")}
-            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${paymentMethod === "QRIS" ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20" : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"}`}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "QRIS" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
-            <CreditCard className="h-5 w-5 shrink-0" /> QRIS
+            <CreditCard className="h-4 w-4 shrink-0" /> QRIS
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("TRANSFER")}
-            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${paymentMethod === "TRANSFER" ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20" : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"}`}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "TRANSFER" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
-            <Landmark className="h-5 w-5 shrink-0" /> BANK
+            <Landmark className="h-4 w-4 shrink-0" /> BANK
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("KASBON")}
-            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${paymentMethod === "KASBON" ? "border-red-600 bg-red-600 text-white shadow-md shadow-red-600/20" : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"}`}
+            className={`py-3 rounded-xl border-2 text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === "KASBON" ? "border-red-600 bg-red-600 text-white shadow-md" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
           >
-            <BookOpen className="h-5 w-5 shrink-0" /> KASBON
+            <BookOpen className="h-4 w-4 shrink-0" /> KASBON
           </button>
         </div>
 
         {paymentMethod === "CASH" && (
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                 Uang Cepat
               </label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
                   type="button"
                   onClick={() => setAmountPaid(grandTotal.toString())}
-                  className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 cursor-pointer ${
+                  className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
                     amountPaidNum === grandTotal
-                      ? "border-blue-600 text-blue-600 bg-blue-50 shadow-2xs"
-                      : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                      ? "border-blue-600 text-blue-600 bg-blue-50"
+                      : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
                   }`}
                 >
                   Uang Pas
@@ -195,10 +195,10 @@ export const PaymentModal = ({
                     key={amt}
                     type="button"
                     onClick={() => setAmountPaid(amt.toString())}
-                    className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 cursor-pointer ${
+                    className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
                       amountPaidNum === amt
-                        ? "border-blue-600 text-blue-600 bg-blue-50 shadow-2xs"
-                        : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                        ? "border-blue-600 text-blue-600 bg-blue-50"
+                        : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
                     }`}
                   >
                     Rp {amt.toLocaleString("id-ID")}
@@ -208,11 +208,11 @@ export const PaymentModal = ({
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                 Uang Tunai Diterima
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-500 text-lg">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-500">
                   Rp
                 </span>
                 <input
@@ -225,24 +225,24 @@ export const PaymentModal = ({
                   onChange={(e) =>
                     setAmountPaid(e.target.value.replace(/\D/g, ""))
                   }
-                  className="w-full h-16 rounded-xl border-2 border-slate-300 pl-14 pr-4 text-2xl font-black text-slate-900 focus:border-blue-600 outline-none transition-all"
+                  className="w-full h-14 rounded-xl border-2 border-slate-200 pl-12 pr-4 text-xl font-black text-slate-900 focus:border-blue-600 outline-none transition-all"
                   autoFocus
                 />
               </div>
             </div>
 
             <div
-              className={`mt-2 border-2 rounded-2xl p-4 text-center ${change >= 0 ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
+              className={`mt-2 border-2 rounded-xl p-4 text-center ${change >= 0 ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
             >
               <p
-                className={`text-xs sm:text-sm font-bold uppercase tracking-wider ${change >= 0 ? "text-emerald-700" : "text-slate-500"}`}
+                className={`text-xs font-bold uppercase tracking-wider ${change >= 0 ? "text-emerald-700" : "text-slate-500"}`}
               >
                 Kembalian
               </p>
               <p
-                className={`text-2xl sm:text-3xl font-black mt-1 ${change >= 0 ? "text-emerald-600" : "text-slate-400"}`}
+                className={`text-2xl font-black mt-1 ${change >= 0 ? "text-emerald-600" : "text-slate-400"}`}
               >
-                {change >= 0 ? `Rp ${change.toLocaleString("id-ID")} ` : "Rp 0"}
+                {change >= 0 ? `Rp ${change.toLocaleString("id-ID")}` : "Rp 0"}
               </p>
             </div>
           </div>

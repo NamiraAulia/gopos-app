@@ -12,8 +12,6 @@ import {
   PackagePlus,
   Loader2,
   Inbox,
-  Pencil,
-  AlertCircle,
 } from "lucide-react";
 import { PaymentModal } from "./PaymentModal";
 import { ReceiptModal } from "./ReceiptModal";
@@ -76,7 +74,7 @@ const QuantityInput = ({
       value={tempValue}
       onChange={(e) => handleChange(e.target.value)}
       onBlur={handleBlur}
-      className="font-mono text-sm sm:text-base font-black w-10 sm:w-12 h-9 sm:h-10 text-center bg-white outline-none focus:bg-blue-50 text-slate-900 select-all"
+      className="font-mono text-xs sm:text-sm font-black w-8 sm:w-9 h-7 sm:h-7.5 text-center bg-white outline-none focus:bg-blue-50 text-slate-900 select-all"
     />
   );
 };
@@ -138,7 +136,6 @@ interface CashierViewProps {
   staleShiftInfo?: { isStale: boolean; shift: any; hoursOpen: number } | null;
   showStaleShiftModal?: boolean;
   setShowStaleShiftModal?: (val: boolean) => void;
-  scanAlert?: string | null;
 }
 
 export function CashierView({
@@ -198,7 +195,6 @@ export function CashierView({
   staleShiftInfo,
   showStaleShiftModal,
   setShowStaleShiftModal,
-  scanAlert,
 }: CashierViewProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -274,19 +270,7 @@ export function CashierView({
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-100/60 font-sans text-slate-900 select-none relative">
-      {/* Barcode Not Found Floating Alert Banner */}
-      {scanAlert && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-200 pointer-events-none">
-          <div className="flex items-center gap-3 bg-red-600 text-white px-5 py-3 rounded-2xl shadow-2xl border-2 border-red-400/50">
-            <AlertCircle className="h-6 w-6 shrink-0 text-white animate-bounce" />
-            <span className="font-black text-sm sm:text-base tracking-wide">
-              {scanAlert}
-            </span>
-          </div>
-        </div>
-      )}
-
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-100/60 font-sans text-slate-900 select-none">
       <Navbar
         isShiftActive={isShiftActive}
         onOpenShiftClick={() => setShowOpenShiftModal(true)}
@@ -300,7 +284,7 @@ export function CashierView({
           <div className="bg-white p-3.5 sm:p-4 border-b border-slate-200 z-10 shadow-2xs">
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -316,7 +300,7 @@ export function CashierView({
                     );
                   }}
                   onKeyDown={handleSearchKeyDown}
-                  className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-11 pr-4 text-base font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none transition-all placeholder:text-slate-400 placeholder:font-medium"
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-10 pr-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none transition-all placeholder:text-slate-400 placeholder:font-medium"
                   placeholder="Cari barang atau scan barcode (F1)..."
                 />
               </div>
@@ -325,9 +309,9 @@ export function CashierView({
                 type="button"
                 onClick={() => setShowProductModal(true)}
                 title="Tambah produk baru"
-                className="h-12 px-4.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer shadow-sm shadow-blue-600/20 active:scale-95"
+                className="h-11 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm shadow-blue-600/20 active:scale-95"
               >
-                <Plus className="h-4.5 w-4.5 stroke-[3]" />
+                <Plus className="h-4 w-4 stroke-[3]" />
                 <span className="hidden sm:inline">Tambah Produk</span>
               </button>
             </div>
@@ -344,8 +328,7 @@ export function CashierView({
                 </div>
                 <p className="font-black text-slate-800">Kasir Belum Dibuka</p>
                 <p className="text-xs text-slate-500 font-medium max-w-xs">
-                  Buka shift kasir terlebih dahulu untuk melihat dan menjual
-                  produk
+                  Buka shift kasir terlebih dahulu untuk melihat dan menjual produk
                 </p>
                 <button
                   onClick={() => setShowOpenShiftModal(true)}
@@ -401,25 +384,25 @@ export function CashierView({
                   <div
                     key={product.id}
                     onClick={() => addToCart(product, "small")}
-                    className={`p-3.5 sm:p-4 bg-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 transition-all cursor-pointer shadow-2xs ${
+                    className={`p-3.5 bg-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all cursor-pointer shadow-2xs ${
                       inCartQty > 0
                         ? "border-2 border-blue-600 ring-2 ring-blue-600/15 bg-blue-50/20"
                         : "border border-slate-200 hover:border-slate-300 hover:shadow-xs"
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span className="text-xs font-black px-2.5 py-0.5 rounded bg-slate-100 text-slate-800 uppercase tracking-wide border border-slate-200">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span className="text-[11px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-800 uppercase tracking-wide border border-slate-200">
                           {skuCode}
                         </span>
 
                         {inCartQty > 0 ? (
-                          <span className="text-xs font-black px-3 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
+                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
                             Di Keranjang ({inCartQty})
                           </span>
                         ) : (
                           <span
-                            className={`text-xs font-black px-2.5 py-0.5 rounded border ${
+                            className={`text-[11px] font-black px-2 py-0.5 rounded border ${
                               product.stock <= 5
                                 ? "bg-red-100 text-red-800 border-red-200"
                                 : product.stock <= 15
@@ -436,16 +419,10 @@ export function CashierView({
                         {product.name}
                       </h3>
 
-                      <div className="flex items-center gap-2 mt-1 flex-wrap text-xs sm:text-sm text-slate-600 font-bold">
-                        <span>
-                          {product.unit
-                            ? `Satuan: ${product.unit}`
-                            : "Satuan: Pcs"}
-                        </span>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-slate-600 font-bold">
+                        <span>{product.unit ? `Satuan: ${product.unit}` : "Satuan: Pcs"}</span>
                         {product.category && (
-                          <span className="text-slate-400">
-                            • {product.category}
-                          </span>
+                          <span className="text-slate-400">• {product.category}</span>
                         )}
                       </div>
                     </div>
@@ -453,11 +430,11 @@ export function CashierView({
                     {/* Right Price & Actions */}
                     <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                       <div className="text-left sm:text-right">
-                        <p className="text-base sm:text-xl font-black text-blue-700 tracking-tight">
+                        <p className="text-sm sm:text-lg font-black text-blue-700 tracking-tight">
                           Rp {product.price.toLocaleString("id-ID")}
                         </p>
                         {grosirPrice ? (
-                          <p className="text-xs sm:text-sm font-black text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
+                          <p className="text-xs font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
                             Grosir: Rp {grosirPrice.toLocaleString("id-ID")}
                           </p>
                         ) : null}
@@ -471,21 +448,21 @@ export function CashierView({
                           <button
                             type="button"
                             onClick={() => decreaseQty(product.id)}
-                            className="h-10 w-10 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-blue-200"
+                            className="h-9 w-9 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-blue-200"
                             title="Kurangi Qty"
                           >
-                            <Minus className="h-4 w-4 stroke-[3]" />
+                            <Minus className="h-3.5 w-3.5 stroke-[3]" />
                           </button>
-                          <span className="w-9 text-center font-mono font-black text-base text-slate-900">
+                          <span className="w-8 text-center font-mono font-black text-sm text-slate-900">
                             {inCartQty}
                           </span>
                           <button
                             type="button"
                             onClick={() => addToCart(product, "small")}
-                            className="h-10 w-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
+                            className="h-9 w-9 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
                             title="Tambah Qty"
                           >
-                            <Plus className="h-4 w-4 stroke-[3]" />
+                            <Plus className="h-3.5 w-3.5 stroke-[3]" />
                           </button>
                         </div>
                       ) : (
@@ -495,9 +472,9 @@ export function CashierView({
                             e.stopPropagation();
                             addToCart(product, "small");
                           }}
-                          className="h-10 px-4.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                          className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
                         >
-                          <Plus className="h-4 w-4 stroke-[3]" /> TAMBAH
+                          <Plus className="h-3.5 w-3.5 stroke-[3]" /> TAMBAH
                         </button>
                       )}
                     </div>
@@ -529,15 +506,15 @@ export function CashierView({
           </div>
         </section>
 
-        {/* RIGHT COLUMN: Cart Panel (Optimized for 1280x800 Tablets & Elderly Readability) */}
-        <section className="w-full lg:w-[480px] xl:w-[560px] flex flex-col bg-white border-l border-slate-200 shrink-0 relative z-20">
+        {/* RIGHT COLUMN: Cart Panel (Well-balanced & Compact High-Contrast Layout) */}
+        <section className="w-full lg:w-[450px] xl:w-[600px] flex flex-col bg-white border-l border-slate-200 shrink-0 relative z-20">
           {/* Header Cart */}
-          <div className="px-4 py-3.5 border-b border-slate-200 flex justify-between items-center bg-white">
-            <div className="flex items-center gap-2.5">
-              <h2 className="font-black text-lg text-slate-900">
+          <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-white">
+            <div className="flex items-center gap-2">
+              <h2 className="font-black text-base font-black text-slate-900">
                 Keranjang
               </h2>
-              <span className="bg-slate-900 text-white font-black text-xs sm:text-sm px-3 py-0.5 rounded-full">
+              <span className="bg-slate-900 text-white font-black text-xs px-2.5 py-0.5 rounded-full">
                 {cart.length} item
               </span>
             </div>
@@ -546,16 +523,16 @@ export function CashierView({
               <button
                 type="button"
                 onClick={() => setShowClearConfirm(true)}
-                className="text-xs sm:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
               >
-                <Trash2 className="h-4 w-4" /> Hapus Semua
+                <Trash2 className="h-3.5 w-3.5" /> Hapus Semua
               </button>
             )}
           </div>
 
-          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <label className="text-sm font-black text-slate-800 shrink-0">
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-black text-slate-800 shrink-0">
                 Pelanggan:
               </label>
               <select
@@ -565,7 +542,7 @@ export function CashierView({
                   const found = members.find((m: any) => m.id === id);
                   setSelectedMember(found || null);
                 }}
-                className="flex-1 h-10 px-3 text-sm font-bold border border-slate-300 rounded-lg outline-none focus:border-blue-600 transition-all bg-white text-slate-900 cursor-pointer shadow-2xs"
+                className="flex-1 h-8 px-2.5 text-xs font-bold border border-slate-300 rounded-lg outline-none focus:border-blue-600 transition-all bg-white text-slate-900 cursor-pointer"
               >
                 <option value="">Pelanggan Umum</option>
                 {members.map((mbr: any) => (
@@ -577,20 +554,20 @@ export function CashierView({
             </div>
           </div>
 
-          {/* Cart Items List */}
+          {/* Cart Items List: Compact High-Contrast 2-Line Items (Fits 4-5 items comfortably) */}
           <div
             ref={cartContainerRef}
-            className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"
+            className="flex-1 overflow-y-auto p-2.5 space-y-1.5 bg-slate-50/50"
           >
             {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400 gap-3">
-                <div className="h-14 w-14 rounded-2xl bg-slate-200 flex items-center justify-center">
-                  <Inbox className="h-7 w-7 text-slate-500" />
+              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400 gap-2.5">
+                <div className="h-12 w-12 rounded-2xl bg-slate-200 flex items-center justify-center">
+                  <Inbox className="h-6 w-6 text-slate-500" />
                 </div>
-                <p className="font-black text-base text-slate-800">
+                <p className="font-black text-sm text-slate-800">
                   Keranjang Masih Kosong
                 </p>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xs">
+                <p className="text-xs text-slate-400 font-medium max-w-xs">
                   Pilih produk di katalog sebelah kiri untuk memasukkan ke keranjang
                 </p>
               </div>
@@ -611,60 +588,34 @@ export function CashierView({
                 return (
                   <div
                     key={item.id}
-                    className="p-3 bg-white border border-slate-200 hover:border-slate-300 rounded-xl flex flex-col gap-2 shadow-2xs transition-all"
+                    className="p-2.5 bg-white border border-slate-200 hover:border-slate-300 rounded-xl flex flex-col gap-1.5 shadow-2xs transition-all"
                   >
-                    {/* Line 1: Name + Custom Tag + Action Buttons (Edit & Delete) */}
+                    {/* Line 1: Name + Delete Button */}
                     <div className="flex justify-between items-center gap-2">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <h4
-                          className="font-black text-sm sm:text-base text-slate-900 uppercase tracking-tight truncate"
-                          title={item.name}
-                        >
-                          {item.name}
-                        </h4>
-                        {item.custom_price != null && item.custom_price > 0 && (
-                          <span className="text-xs font-black uppercase px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md shrink-0 shadow-2xs">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* Prominent Edit Price Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingPriceId(item.id);
-                            setTempPrice(hargaTampil.toString());
-                          }}
-                          className="h-8.5 px-3 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-300 text-blue-700 rounded-lg flex items-center gap-1.5 text-xs sm:text-sm font-black transition-all cursor-pointer shadow-2xs hover:shadow-xs"
-                          title="Edit Harga Satuan"
-                        >
-                          <Pencil className="h-3.5 w-3.5 stroke-[2.5]" />
-                          <span>Edit</span>
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(item.id)}
-                          className="h-8.5 w-8.5 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 text-red-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:shadow-xs"
-                          title="Hapus Item"
-                        >
-                          <X className="h-4 w-4 stroke-[2.5]" />
-                        </button>
-                      </div>
+                      <h4
+                        className="font-black text-xs sm:text-sm text-slate-900 uppercase tracking-tight truncate flex-1"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </h4>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="h-5 w-5 rounded-md border border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                        title="Hapus Item"
+                      >
+                        <X className="h-3 w-3 stroke-[2.5]" />
+                      </button>
                     </div>
 
                     {/* Line 2: Unit Toggle + Stepper + Unit Price + Subtotal */}
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {item.unit_big ? (
                           <div className="flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200">
                             <button
                               type="button"
                               onClick={() => isBig && toggleUnitChoice(item.id)}
-                              className={`text-xs sm:text-sm font-black px-3 py-1.5 rounded transition-all cursor-pointer ${
+                              className={`text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded transition-all cursor-pointer ${
                                 !isBig
                                   ? "bg-blue-600 text-white shadow-2xs"
                                   : "text-slate-700 hover:text-slate-900"
@@ -677,7 +628,7 @@ export function CashierView({
                               onClick={() =>
                                 !isBig && toggleUnitChoice(item.id)
                               }
-                              className={`text-xs sm:text-sm font-black px-3 py-1.5 rounded transition-all cursor-pointer ${
+                              className={`text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded transition-all cursor-pointer ${
                                 isBig
                                   ? "bg-blue-600 text-white shadow-2xs"
                                   : "text-slate-700 hover:text-slate-900"
@@ -687,20 +638,20 @@ export function CashierView({
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs sm:text-sm font-black text-slate-800 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                          <span className="text-[11px] font-black text-slate-800 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                             {item.unit || "Pcs"}
                           </span>
                         )}
 
-                        {/* Ergonomic Stepper */}
-                        <div className="flex items-center border-2 border-slate-300 rounded-lg overflow-hidden bg-white shadow-2xs">
+                        {/* Compact Stepper */}
+                        <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-2xs">
                           <button
                             type="button"
                             onClick={() => decreaseQty(item.id)}
-                            className="h-9.5 w-9.5 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-slate-200"
+                            className="h-7 w-7 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-slate-200"
                             title="Kurangi Qty"
                           >
-                            <Minus className="h-4 w-4 stroke-[3]" />
+                            <Minus className="h-3 w-3 stroke-[3]" />
                           </button>
                           <QuantityInput
                             itemId={item.id}
@@ -711,39 +662,26 @@ export function CashierView({
                           <button
                             type="button"
                             onClick={() => addToCart(item, item.unit_choice)}
-                            className="h-9.5 w-9.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
+                            className="h-7 w-7 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
                             title="Tambah Qty"
                           >
-                            <Plus className="h-4 w-4 stroke-[3]" />
+                            <Plus className="h-3 w-3 stroke-[3]" />
                           </button>
                         </div>
 
-                        {/* Unit price pill (Clickable to Edit) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingPriceId(item.id);
-                            setTempPrice(hargaTampil.toString());
-                          }}
-                          className={`text-xs sm:text-sm font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                            item.custom_price != null && item.custom_price > 0
-                              ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100"
-                              : "bg-slate-100 hover:bg-blue-50 border-slate-300 hover:border-blue-300 text-slate-800 hover:text-blue-700"
-                          }`}
-                          title="Klik untuk ubah harga satuan"
-                        >
-                          <span>@ Rp {hargaTampil.toLocaleString("id-ID")}</span>
-                          <Pencil className="h-3 w-3 opacity-70" />
-                        </button>
+                        {/* Unit price pill */}
+                        <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap hidden sm:inline">
+                          @ Rp {hargaTampil.toLocaleString("id-ID")}
+                        </span>
                       </div>
 
                       {/* Subtotal */}
                       <div className="text-right shrink-0">
-                        <span className="font-black text-base sm:text-lg text-blue-700">
+                        <span className="font-black text-xs sm:text-sm text-blue-700">
                           Rp {(hargaTampil * item.qty).toLocaleString("id-ID")}
                         </span>
                         {isBig && item.conversion > 1 && (
-                          <p className="text-xs text-slate-600 font-bold">
+                          <p className="text-[9px] text-slate-600 font-bold">
                             ({item.qty * item.conversion} {item.unit || "pcs"})
                           </p>
                         )}
@@ -756,9 +694,9 @@ export function CashierView({
           </div>
 
           {/* Bottom Checkout & Actions Area */}
-          <div className="border-t border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+          <div className="border-t border-slate-200 bg-white p-3.5 sm:p-4 space-y-2.5 shadow-sm">
             {discountAmount > 0 && (
-              <div className="space-y-1.5 text-sm font-bold text-slate-700 border-b border-slate-100 pb-2">
+              <div className="space-y-1 text-xs font-bold text-slate-700 border-b border-slate-100 pb-2">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>Rp {totalNormal.toLocaleString("id-ID")}</span>
@@ -771,34 +709,34 @@ export function CashierView({
             )}
 
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm font-black text-slate-600 uppercase tracking-wider">
+              <span className="text-xs font-black text-slate-600 uppercase tracking-wider">
                 TOTAL TAGIHAN
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
                 Rp {grandTotal.toLocaleString("id-ID")}
               </h2>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowHoldModal(true)}
                 disabled={cart.length === 0}
-                className="flex-1 h-14 sm:h-16 rounded-2xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 font-black text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="flex-1 h-11 sm:h-12 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
                 title="Tahan/Simpan keranjang saat ini (F4)"
               >
-                <Inbox className="h-5 w-5 text-amber-800" />
-                <span>SIMPAN</span>
+                <Inbox className="h-4 w-4 text-amber-800" />
+                <span>SIMPAN KERANJANG</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowPaymentModal(true)}
                 disabled={cart.length === 0 || !isShiftActive}
-                className="flex-1 h-14 sm:h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
+                className="flex-1 h-11 sm:h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
                 title="Bayar Sekarang (F8)"
               >
-                <CreditCard className="h-5 w-5" />
+                <CreditCard className="h-4 w-4" />
                 <span>BAYAR</span>
               </button>
             </div>

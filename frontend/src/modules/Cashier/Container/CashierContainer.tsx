@@ -83,7 +83,6 @@ export default function CashierContainer() {
       staleShiftInfo={cashierData.staleShiftInfo}
       showStaleShiftModal={cashierData.showStaleShiftModal}
       setShowStaleShiftModal={cashierData.setShowStaleShiftModal}
-      scanAlert={cashierData.scanAlert}
     />
   );
 }
