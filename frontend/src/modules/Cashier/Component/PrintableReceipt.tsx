@@ -40,8 +40,8 @@ interface PrintableReceiptProps {
 
 export const PrintableReceipt = ({
   transaction,
-  shopName = "KURNIA TELUR",
-  shopAddress = "Jl. Perumnas Raya Blok X No.7, Jakarta",
+  shopName = "",
+  shopAddress = "",
   shopPhone = "",
   showPrintButton = false,
   paperSize: propPaperSize,
@@ -54,18 +54,30 @@ export const PrintableReceipt = ({
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("gopos_paper_size") as "37mm" | "58mm" | "80mm";
+      const saved = localStorage.getItem("gopos_paper_size") as
+        | "37mm"
+        | "58mm"
+        | "80mm";
       if (saved) setPaperSize(saved);
     }
   }, []);
 
   const activePaperSize = propPaperSize || paperSize || "80mm";
-  const widthClass = activePaperSize === "37mm" ? "max-w-[35mm]" : activePaperSize === "58mm" ? "max-w-[52mm]" : "max-w-[70mm] w-[70mm]";
-  const printWidthMm = activePaperSize === "37mm" ? "35mm" : activePaperSize === "58mm" ? "52mm" : "70mm";
+  const widthClass =
+    activePaperSize === "37mm"
+      ? "max-w-[35mm]"
+      : activePaperSize === "58mm"
+        ? "max-w-[52mm]"
+        : "max-w-[70mm] w-[70mm]";
+  const printWidthMm =
+    activePaperSize === "37mm"
+      ? "35mm"
+      : activePaperSize === "58mm"
+        ? "52mm"
+        : "70mm";
 
   if (!transaction) return null;
 
-  // Format date helper
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return new Date().toLocaleString("id-ID");
     try {
@@ -91,7 +103,10 @@ export const PrintableReceipt = ({
       if (Capacitor.isNativePlatform()) {
         const status = await Printer.checkPrinterStatus();
         if (!status.connected) {
-          throw new Error(status.message || "Printer thermal/USB tidak terhubung atau tidak siap.");
+          throw new Error(
+            status.message ||
+              "Printer thermal/USB tidak terhubung atau tidak siap.",
+          );
         }
       }
 
@@ -117,7 +132,6 @@ export const PrintableReceipt = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* CSS Dinamis untuk Cetak Browser (window.print) */}
       <style>{`
         @media print {
           @page {
@@ -155,17 +169,20 @@ export const PrintableReceipt = ({
           }
         }
       `}</style>
-      {/* Pesan Sukses */}
       {printSuccess && (
-        <div className={`w-full ${widthClass} mb-3 print:hidden p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold`}>
+        <div
+          className={`w-full ${widthClass} mb-3 print:hidden p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold`}
+        >
           Struk berhasil dicetak
         </div>
       )}
 
-      {/* Pesan Error / Alert jika print gagal dengan tombol Coba Cetak Lagi */}
       {printError && (
         <div className={`w-full ${widthClass} mb-3 print:hidden space-y-2`}>
-          <Alert type="error" message={`Gagal mencetak struk: ${printError}. Periksa koneksi printer.`} />
+          <Alert
+            type="error"
+            message={`Gagal mencetak struk: ${printError}. Periksa koneksi printer.`}
+          />
           <button
             onClick={handlePrint}
             disabled={isPrinting}
@@ -176,7 +193,6 @@ export const PrintableReceipt = ({
         </div>
       )}
 
-      {/* Tombol Cetak jika dipanggil sebagai komponen aktif */}
       {showPrintButton && (
         <div className={`mb-4 print:hidden w-full ${widthClass}`}>
           <button
@@ -199,7 +215,6 @@ export const PrintableReceipt = ({
         </div>
       )}
 
-      {/* Tampilan Struk Thermal 80x50 Format Rapi & High-Contrast */}
       <div
         className={`struk-thermal font-mono text-[8.5pt] leading-tight text-black w-full ${widthClass} mx-auto p-[2mm] bg-white select-none border border-slate-200 shadow-sm print:border-none print:shadow-none box-sizing: border-box`}
         style={{
@@ -209,31 +224,51 @@ export const PrintableReceipt = ({
           whiteSpace: "normal",
           wordBreak: "break-word",
           overflowWrap: "break-word",
+          color: "#000000",
+          fontWeight: "900",
+          WebkitTextStroke: "0.2px #000000"
         }}
       >
-        {/* Header Toko */}
         <div className="text-center mb-2">
-          <h2 className="font-black text-[10.5pt] uppercase tracking-wider text-black break-words">{shopName}</h2>
-          <p className="text-[8pt] font-bold leading-tight text-black mt-0.5 break-words">{shopAddress}</p>
-          {shopPhone && <p className="text-[8pt] font-bold text-black break-words">Telp: {shopPhone}</p>}
+          <img
+            src="/logos.png"
+            alt="Logo Toko"
+            className="mx-auto mb-1.5 max-h-18 max-w-[160px] object-contain grayscale"
+            style={{ display: "block", margin: "0 auto 6px auto" }}
+          />
+          <h2 className="font-black text-[10.5pt] uppercase tracking-wider text-black break-words">
+            {shopName}
+          </h2>
+          <p className="text-[8pt] font-bold leading-tight text-black mt-0.5 break-words">
+            {shopAddress}
+          </p>
+          {shopPhone && (
+            <p className="text-[8pt] font-bold text-black break-words">
+              Telp: {shopPhone}
+            </p>
+          )}
         </div>
 
-        {/* Pembatas Line Terang & Jelas */}
         <div className="border-t-2 border-dashed border-black my-1.5" />
 
-        {/* Info Transaksi Rapi */}
         <div className="space-y-0.5 text-[8pt] font-bold text-black">
           <div className="flex justify-between items-start gap-1 min-w-0">
             <span className="font-bold shrink-0">No. Struk:</span>
-            <span className="font-black tracking-wide text-right break-words min-w-0">{transaction.transaction_code}</span>
+            <span className="font-black tracking-wide text-right break-words min-w-0">
+              {transaction.transaction_code}
+            </span>
           </div>
           <div className="flex justify-between items-start gap-1 min-w-0">
             <span className="font-bold shrink-0">Tanggal:</span>
-            <span className="font-black text-right break-words min-w-0">{formatDate(transaction.created_at)}</span>
+            <span className="font-black text-right break-words min-w-0">
+              {formatDate(transaction.created_at)}
+            </span>
           </div>
           <div className="flex justify-between items-start gap-1 min-w-0">
             <span className="font-bold shrink-0">Pembayaran:</span>
-            <span className="uppercase font-black text-right break-words min-w-0">{transaction.payment_method}</span>
+            <span className="uppercase font-black text-right break-words min-w-0">
+              {transaction.payment_method}
+            </span>
           </div>
           {transaction.member && (
             <div className="flex justify-between items-start gap-1 border-2 border-dashed border-black p-1 my-1 rounded font-black text-[8pt] min-w-0">
@@ -245,24 +280,30 @@ export const PrintableReceipt = ({
           )}
         </div>
 
-        {/* Pembatas Line */}
-        {/* <div className="border-t-2 border-dashed border-black my-1.5" /> */}
-
-        {/* Tabel Barang (table-layout: fixed agar subtotal tidak terdorong keluar) */}
         <table className="w-full table-fixed border-collapse my-1 text-[8pt]">
           <thead>
             <tr className="border-b border-black text-black">
-              <th className="w-[58%] text-left py-0.5 font-black uppercase break-words">ITEM / BELANJAAN</th>
-              <th className="w-[42%] text-right py-0.5 font-black uppercase break-words">SUBTOTAL</th>
+              <th className="w-[58%] text-left py-0.5 font-black uppercase break-words">
+                ITEM / BELANJAAN
+              </th>
+              <th className="w-[42%] text-right py-0.5 font-black uppercase break-words">
+                SUBTOTAL
+              </th>
             </tr>
           </thead>
           <tbody>
             {transaction.items?.map((item, index) => {
-              const itemPrice = item.price || (item.qty > 0 ? item.subtotal / item.qty : 0);
+              const itemPrice =
+                item.price || (item.qty > 0 ? item.subtotal / item.qty : 0);
               return (
-                <tr key={item.id || index} className="align-top border-b border-dashed border-slate-200 last:border-none">
+                <tr
+                  key={item.id || index}
+                  className="align-top border-b border-dashed border-slate-200 last:border-none"
+                >
                   <td className="py-1 text-left break-words pr-1">
-                    <div className="font-black text-[8.5pt] leading-tight text-black">{item.product_name}</div>
+                    <div className="font-black text-[8.5pt] leading-tight text-black">
+                      {item.product_name}
+                    </div>
                     <div className="text-[7.5pt] text-black font-bold mt-0.5">
                       {item.qty} x Rp {itemPrice.toLocaleString("id-ID")}
                     </div>
@@ -276,42 +317,44 @@ export const PrintableReceipt = ({
           </tbody>
         </table>
 
-        {/* Pembatas Line */}
-        {/* <div className="border-t border-dashed border-black my-1.5" /> */}
-
-        {/* Total & Rincian Pembayaran Bold */}
         <div className="space-y-0.5 text-[8pt] font-bold text-black">
           {discount > 0 && (
             <div className="flex justify-between items-start gap-1 min-w-0">
               <span className="font-bold shrink-0">Diskon Member:</span>
-              <span className="font-black text-right break-words min-w-0">-Rp {discount.toLocaleString("id-ID")}</span>
+              <span className="font-black text-right break-words min-w-0">
+                -Rp {discount.toLocaleString("id-ID")}
+              </span>
             </div>
           )}
           <div className="flex justify-between items-center font-black text-[9.5pt] text-black pt-1 pb-0.5 border-y-2 border-black my-1 min-w-0">
             <span className="shrink-0">TOTAL AKHIR:</span>
-            <span className="text-right break-words min-w-0">Rp {transaction.total_amount.toLocaleString("id-ID")}</span>
+            <span className="text-right break-words min-w-0">
+              Rp {transaction.total_amount.toLocaleString("id-ID")}
+            </span>
           </div>
 
           {transaction.payment_method.toLowerCase() === "cash" && (
             <>
               <div className="flex justify-between items-start gap-1 pt-0.5 font-bold min-w-0">
                 <span className="shrink-0">TUNAI:</span>
-                <span className="font-black text-right break-words min-w-0">Rp {cashPaid.toLocaleString("id-ID")}</span>
+                <span className="font-black text-right break-words min-w-0">
+                  Rp {cashPaid.toLocaleString("id-ID")}
+                </span>
               </div>
               <div className="flex justify-between items-start gap-1 font-bold min-w-0">
                 <span className="shrink-0">KEMBALIAN:</span>
-                <span className="font-black text-right break-words min-w-0">Rp {change.toLocaleString("id-ID")}</span>
+                <span className="font-black text-right break-words min-w-0">
+                  Rp {change.toLocaleString("id-ID")}
+                </span>
               </div>
             </>
           )}
         </div>
 
-        {/* Pembatas Line */}
-        {/* <div className="border-t-2 border-dashed border-black my-1.5" /> */}
-
-        {/* Footer Struk */}
         <div className="text-center text-[8.5pt] font-bold text-black space-y-1">
-          <p className="font-black uppercase tracking-wider text-black text-[8.5pt]">Terima Kasih</p>
+          <p className="font-black uppercase tracking-wider text-black text-[8.5pt]">
+            Terima Kasih
+          </p>
         </div>
       </div>
     </div>
