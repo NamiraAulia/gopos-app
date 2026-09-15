@@ -1,41 +1,57 @@
 import { supabase } from "@/helper/supabaseClient";
 import type { ApiResponse } from "@/interface/api";
-import type { ProductDTO, BatchImportItemDTO, BatchImportResultDTO } from "@/modules/Products/DTO/products.dto";
+import type {
+  ProductDTO,
+  BatchImportItemDTO,
+  BatchImportResultDTO,
+} from "@/modules/Products/DTO/products.dto";
 
 export async function fetchProductsList(params?: {
   page?: number;
   limit?: number;
   search?: string;
-}): Promise<{ products: ProductDTO[]; total: number; page: number; limit: number }> {
+}): Promise<{
+  products: ProductDTO[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
   const page = params?.page || 1;
-  const limit = params?.limit || 20;
+  const limit = params?.limit;
   const search = params?.search || "";
 
-  let query = supabase.from("products").select("*", { count: "exact" }).eq("is_active", true);
+  let query = supabase
+    .from("products")
+    .select("*", { count: "exact" })
+    .eq("is_active", true);
 
   if (search) {
     const trimmed = search.trim();
-    query = query.or(`name.ilike.%${trimmed}%,barcode.ilike.%${trimmed}%`);
+    query = query.or(
+      `name.ilike.%${trimmed}%,barcode.ilike.%${trimmed}%,supplier_name.ilike.%${trimmed}%`,
+    );
   }
 
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
-  const { data, error, count } = await query
-    .order("id", { ascending: true })
-    .range(from, to);
+  if (limit && limit > 0) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+  }
+  const { data, error, count } = await query.order("id", { ascending: true });
 
   if (error) throw error;
 
   return {
-    products: (data as ProductDTO[]) || [],
+    products: data as ProductDTO[],
     total: count || 0,
     page,
-    limit,
+    limit: limit || 0,
   };
 }
 
-export async function getProductByIdService(id: number): Promise<ApiResponse<ProductDTO | null>> {
+export async function getProductByIdService(
+  id: number,
+): Promise<ApiResponse<ProductDTO | null>> {
   try {
     const { data, error } = await supabase
       .from("products")
@@ -61,7 +77,9 @@ export async function getProductByIdService(id: number): Promise<ApiResponse<Pro
   }
 }
 
-export async function createProductService(payload: Partial<ProductDTO>): Promise<ApiResponse<ProductDTO | null>> {
+export async function createProductService(
+  payload: Partial<ProductDTO>,
+): Promise<ApiResponse<ProductDTO | null>> {
   const { min_stock, unit_choice, ...dbPayload } = payload as any;
 
   try {
@@ -89,7 +107,10 @@ export async function createProductService(payload: Partial<ProductDTO>): Promis
   }
 }
 
-export async function updateProductService(id: number, payload: Partial<ProductDTO>): Promise<ApiResponse<ProductDTO | null>> {
+export async function updateProductService(
+  id: number,
+  payload: Partial<ProductDTO>,
+): Promise<ApiResponse<ProductDTO | null>> {
   const { min_stock, unit_choice, ...dbPayload } = payload as any;
 
   try {
@@ -118,7 +139,9 @@ export async function updateProductService(id: number, payload: Partial<ProductD
   }
 }
 
-export async function softDeleteProductService(id: number): Promise<{ success: boolean }> {
+export async function softDeleteProductService(
+  id: number,
+): Promise<{ success: boolean }> {
   const { error } = await supabase
     .from("products")
     .update({ is_active: false })
@@ -128,18 +151,25 @@ export async function softDeleteProductService(id: number): Promise<{ success: b
   return { success: true };
 }
 
-export async function bulkSoftDeleteProductsService(ids: number[]): Promise<{ success: boolean }> {
+export async function bulkSoftDeleteProductsService(
+  ids: number[],
+): Promise<{ success: boolean }> {
   await Promise.all(ids.map((id) => softDeleteProductService(id)));
   return { success: true };
 }
 
-export async function importProductsCsvService(file: File): Promise<ApiResponse<any>> {
+export async function importProductsCsvService(
+  file: File,
+): Promise<ApiResponse<any>> {
   return new Promise<ApiResponse<any>>((resolve) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+        const lines = text
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0);
         const headers = lines[0].split(",");
 
         const rows = lines.slice(1).map((line) => {
@@ -149,7 +179,8 @@ export async function importProductsCsvService(file: File): Promise<ApiResponse<
             const val = values[index];
             if (val === "true") row[header] = true;
             else if (val === "false") row[header] = false;
-            else if (!isNaN(Number(val)) && val !== "") row[header] = Number(val);
+            else if (!isNaN(Number(val)) && val !== "")
+              row[header] = Number(val);
             else row[header] = val;
           });
           return row;
@@ -183,8 +214,13 @@ export async function importProductsCsvService(file: File): Promise<ApiResponse<
 
 export async function batchImportProductsService(
   products: BatchImportItemDTO[],
-  signal?: AbortSignal
-): Promise<{ ok: boolean; success: boolean; data?: BatchImportResultDTO; message?: string }> {
+  signal?: AbortSignal,
+): Promise<{
+  ok: boolean;
+  success: boolean;
+  data?: BatchImportResultDTO;
+  message?: string;
+}> {
   try {
     let success_count = 0;
     let updated_count = 0;
@@ -227,21 +263,41 @@ export async function batchImportProductsService(
           .eq("barcode", item.barcode);
         if (error) {
           failed_count++;
-          details.push({ index: i, status: "failed", name: item.name, barcode: item.barcode, error: error.message });
+          details.push({
+            index: i,
+            status: "failed",
+            name: item.name,
+            barcode: item.barcode,
+            error: error.message,
+          });
         } else {
           updated_count++;
-          details.push({ index: i, status: "updated", name: item.name, barcode: item.barcode });
+          details.push({
+            index: i,
+            status: "updated",
+            name: item.name,
+            barcode: item.barcode,
+          });
         }
       } else {
-        const { error } = await supabase
-          .from("products")
-          .insert(dbPayload);
+        const { error } = await supabase.from("products").insert(dbPayload);
         if (error) {
           failed_count++;
-          details.push({ index: i, status: "failed", name: item.name, barcode: item.barcode, error: error.message });
+          details.push({
+            index: i,
+            status: "failed",
+            name: item.name,
+            barcode: item.barcode,
+            error: error.message,
+          });
         } else {
           success_count++;
-          details.push({ index: i, status: "success", name: item.name, barcode: item.barcode });
+          details.push({
+            index: i,
+            status: "success",
+            name: item.name,
+            barcode: item.barcode,
+          });
         }
       }
     }
@@ -267,7 +323,11 @@ export async function batchImportProductsService(
   }
 }
 
-export async function fetchProductBarcodesService(): Promise<{ success: boolean; ok: boolean; data: string[] }> {
+export async function fetchProductBarcodesService(): Promise<{
+  success: boolean;
+  ok: boolean;
+  data: string[];
+}> {
   try {
     const { data, error } = await supabase.from("products").select("barcode");
     if (error) throw error;
@@ -280,7 +340,11 @@ export async function fetchProductBarcodesService(): Promise<{ success: boolean;
 
 // Service object for backward compatibility
 export const productsDAO = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => {
     try {
       const res = await fetchProductsList(params);
       return {
@@ -292,7 +356,12 @@ export const productsDAO = {
       return {
         success: false,
         message: err.message || "Gagal memuat produk",
-        data: { products: [], total: 0, page: params?.page || 1, limit: params?.limit || 20 },
+        data: {
+          products: [],
+          total: 0,
+          page: params?.page || 1,
+          limit: params?.limit || 20,
+        },
       };
     }
   },
@@ -302,9 +371,17 @@ export const productsDAO = {
   softDelete: async (id: number) => {
     try {
       await softDeleteProductService(id);
-      return { success: true, message: "Produk berhasil dinonaktifkan", data: null };
+      return {
+        success: true,
+        message: "Produk berhasil dinonaktifkan",
+        data: null,
+      };
     } catch (err: any) {
-      return { success: false, message: err.message || "Gagal menonaktifkan produk", data: null };
+      return {
+        success: false,
+        message: err.message || "Gagal menonaktifkan produk",
+        data: null,
+      };
     }
   },
   importCsv: importProductsCsvService,

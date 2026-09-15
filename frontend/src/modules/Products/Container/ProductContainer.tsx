@@ -53,7 +53,8 @@ export default function ProductContainer() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["productsList", page, debouncedSearch],
-    queryFn: () => fetchProductsList({ page, limit: 20, search: debouncedSearch }),
+    queryFn: () =>
+      fetchProductsList({ page, limit: 20, search: debouncedSearch }),
   });
 
   const products = data?.products || [];
@@ -146,11 +147,19 @@ export default function ProductContainer() {
 
   const handleTogglePromo = () => {};
 
-  const handleExportCSV = () => {
-    let csv = "ID,Barcode,Nama,Harga,Harga Member,Best Price,Stok,Satuan,Satuan Besar,Konversi\n";
-    products.forEach((p) => {
+  const handleExportCSV = async () => {
+    const result = await fetchProductsList({
+      search: debouncedSearch,
+      limit: 0,
+    });
+    const allProducts = result.products;
+
+    let csv =
+      "ID,Barcode,Nama,Harga,Harga Member,Best Price,Stok,Satuan,Satuan Besar,Konversi\n";
+    allProducts.forEach((p) => {
       csv += `${p.id},"${p.barcode}","${p.name}",${p.price},${p.price_member || 0},${p.best_price || 0},${p.stock},"${p.unit}","${p.unit_big || ""}",${p.conversion || 1}\n`;
     });
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -167,7 +176,9 @@ export default function ProductContainer() {
     return true;
   });
 
-  const incompleteCount = products.filter((p) => !p.barcode || p.price <= 0).length;
+  const incompleteCount = products.filter(
+    (p) => !p.barcode || p.price <= 0,
+  ).length;
 
   return (
     <ProductView
