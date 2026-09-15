@@ -1,40 +1,50 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const ADMIN_ONLY_ROUTES = [
+  '/admin',
+  '/dashboard',
+  '/finance',
+  '/suppliers',
+  '/restock',
+  '/settings',
+];
+
 export function middleware(request: NextRequest) {
-  // 1. Ambil token dari cookies
+  // 1. Ambil token & role dari cookies
   const token = request.cookies.get('auth_token')?.value;
+  const role = request.cookies.get('user_role')?.value;
+  const { pathname } = request.nextUrl;
   
   // 2. Cek apakah user sedang mencoba membuka halaman /login
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login');
+  const isLoginPage = pathname.startsWith('/login');
 
   // SKENARIO A: Belum punya token, dan mencoba buka halaman selain /login
   if (!token && !isLoginPage) {
-    // Tilang dan lempar ke halaman login
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // SKENARIO B: Sudah punya token, tapi iseng buka halaman /login lagi
+  // SKENARIO B: Sudah punya token, tapi membuka halaman /login lagi
   if (token && isLoginPage) {
-    // Langsung arahkan ke Kasir, nggak usah login ulang
-    return NextResponse.redirect(new URL('/cashier', request.url));
+    const destination = role === 'admin' ? '/dashboard' : '/cashier';
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
-  // SKENARIO C: Semua aman, silakan lewat
+  // SKENARIO C: User dengan role Kasir mencoba mengakses rute khusus Admin
+  if (token && role === 'kasir') {
+    const isTryingAdminRoute = ADMIN_ONLY_ROUTES.some((route) =>
+      pathname.startsWith(route)
+    );
+    if (isTryingAdminRoute) {
+      return NextResponse.redirect(new URL('/cashier', request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
-// Bagian konfigurasi matcher route Next.js
-// Jangan jalankan middleware ini untuk file sistem Next.js (seperti gambar, CSS, dll)
 export const config = {
   matcher: [
-    /*
-     * Match semua rute KECUALI:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

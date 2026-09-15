@@ -19,6 +19,7 @@ const UNIT_OPTIONS = [
   { value: "pack", label: "Pack / Pak" },
   { value: "kg", label: "Kg" },
   { value: "ltr", label: "Liter" },
+  { value: "box", label: "Box" },
 ];
 
 const UNIT_BIG_OPTIONS = [
@@ -27,6 +28,7 @@ const UNIT_BIG_OPTIONS = [
   { value: "krat", label: "Krat" },
   { value: "lusin", label: "Lusin" },
   { value: "ikat", label: "Ikat" },
+  { value: "box", label: "Box" },
 ];
 
 const unitLabel = (val: string) => {

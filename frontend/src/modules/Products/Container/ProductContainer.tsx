@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchProductsList,
@@ -38,9 +38,22 @@ export default function ProductContainer() {
     setPage,
   } = useProductStore();
 
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(localSearch);
+      setSearchQuery(localSearch);
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchQuery, setPage]);
+
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["productsList", page, searchQuery],
-    queryFn: () => fetchProductsList({ page, limit: 20, search: searchQuery }),
+    queryKey: ["productsList", page, debouncedSearch],
+    queryFn: () => fetchProductsList({ page, limit: 20, search: debouncedSearch }),
   });
 
   const products = data?.products || [];
@@ -96,11 +109,12 @@ export default function ProductContainer() {
   };
 
   const handleSearch = (q: string) => {
-    setSearchQuery(q);
-    setPage(1);
+    setLocalSearch(q);
   };
 
   const handleResetSearch = () => {
+    setLocalSearch("");
+    setDebouncedSearch("");
     setSearchQuery("");
     setFilterStokKritis(false);
     setFilterDataIncomplete(false);
@@ -157,7 +171,7 @@ export default function ProductContainer() {
 
   return (
     <ProductView
-      searchQuery={searchQuery}
+      searchQuery={localSearch}
       showProductModal={showProductModal}
       setShowProductModal={setShowProductModal}
       showDeleteModal={showDeleteModal}

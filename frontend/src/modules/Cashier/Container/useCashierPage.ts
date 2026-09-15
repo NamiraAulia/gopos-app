@@ -7,6 +7,7 @@ import type { Product } from "@/interface/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/authStore";
 import { broadcastCustomerDisplayState, listenForCustomerDisplayRequests } from "@/service/customerDisplay.service";
+import { useBarcodeScanner } from "./useBarcodeScanner";
 
 const PRODUCTS_PER_PAGE = 50;
 
@@ -189,36 +190,45 @@ export function useCashierPage() {
   }, [getCurrentDisplayPayload]);
 
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const query = searchInputRef.current?.value?.trim() || searchQuery;
-      if (!query) return;
+  const handleBarcodeScan = useCallback((barcode: string) => {
+    if (!barcode || !barcode.trim()) return;
+    const cleanBarcode = barcode.trim();
 
-      // Try barcode exact match first
-      cashierDAO
-        .getProductByBarcode(query)
-        .then((res) => {
-          if (res.success && res.data) {
-            addToCart(res.data, "small");
-            if (searchInputRef.current) searchInputRef.current.value = "";
-            setSearchQuery("");
-            fetchProducts();
-          } else {
-            // Not found alert & auto-clear
-            setScanAlert(`Produk dengan barcode "${query}" tidak ditemukan!`);
-            setTimeout(() => setScanAlert(null), 3500);
-            if (searchInputRef.current) searchInputRef.current.value = "";
-            setSearchQuery("");
-            fetchProducts();
-          }
-        })
-        .catch(() => {
-          setScanAlert(`Produk dengan barcode "${query}" tidak ditemukan!`);
+    cashierDAO
+      .getProductByBarcode(cleanBarcode)
+      .then((res) => {
+        if (res.success && res.data) {
+          addToCart(res.data, "small");
+          if (searchInputRef.current) searchInputRef.current.value = "";
+          setSearchQuery("");
+          fetchProducts();
+        } else {
+          setScanAlert(`Produk dengan barcode "${cleanBarcode}" tidak ditemukan!`);
           setTimeout(() => setScanAlert(null), 3500);
           if (searchInputRef.current) searchInputRef.current.value = "";
           setSearchQuery("");
           fetchProducts();
-        });
+        }
+      })
+      .catch(() => {
+        setScanAlert(`Produk dengan barcode "${cleanBarcode}" tidak ditemukan!`);
+        setTimeout(() => setScanAlert(null), 3500);
+        if (searchInputRef.current) searchInputRef.current.value = "";
+        setSearchQuery("");
+        fetchProducts();
+      });
+  }, [addToCart, fetchProducts]);
+
+  useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: activeShift?.status === "open" && !showPaymentModal && !showOpenShiftModal,
+  });
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      const query = searchInputRef.current?.value?.trim() || searchQuery;
+      if (!query) return;
+      handleBarcodeScan(query);
     }
   };
 

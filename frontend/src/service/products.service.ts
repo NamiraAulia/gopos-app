@@ -14,7 +14,8 @@ export async function fetchProductsList(params?: {
   let query = supabase.from("products").select("*", { count: "exact" }).eq("is_active", true);
 
   if (search) {
-    query = query.ilike("name", `%${search}%`);
+    const trimmed = search.trim();
+    query = query.or(`name.ilike.%${trimmed}%,barcode.ilike.%${trimmed}%`);
   }
 
   const from = (page - 1) * limit;
