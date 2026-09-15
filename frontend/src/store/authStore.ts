@@ -57,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('token', token);
           if (typeof window !== 'undefined') {
             document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+            document.cookie = `user_role=${user.role}; path=/; max-age=86400; SameSite=Lax`;
           }
           set({ user, token });
 
@@ -72,6 +73,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('token');
         if (typeof window !== 'undefined') {
           document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+          document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         }
         set({ user: null, token: null, activeShift: null });
       },

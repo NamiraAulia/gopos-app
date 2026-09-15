@@ -40,7 +40,6 @@ export default function Sidebar() {
     { name: "Pengaturan", href: "/settings", icon: Printer },
     { name: "Kasbon", href: "/kasbon", icon: CreditCard },
     { name: "Distributor", href: "/suppliers", icon: Truck },
-    { name: "Gudang", href: "/products", icon: Warehouse },
     ...(isAdmin ? [
       { name: "Kelola Kasir", href: "/admin/users", icon: Users },
       { name: "Keuangan & Pengeluaran", href: "/finance", icon: Wallet },
