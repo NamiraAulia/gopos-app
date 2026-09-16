@@ -378,6 +378,68 @@ export async function checkoutService(payload: CheckoutPayload) {
     } catch (err) {
       console.warn("Shift update error:", err);
     }
+  } else if (payload.payment_method === "split" && payload.payment_splits) {
+    const cashSplit = payload.payment_splits.find((s) => s.method === "cash");
+    if (cashSplit && cashSplit.amount > 0) {
+      try {
+        const { data: activeShift } = await supabase
+          .from("shifts")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "open")
+          .maybeSingle();
+
+        if (activeShift) {
+          await supabase
+            .from("shifts")
+            .update({
+              total_cash_expected: activeShift.total_cash_expected + cashSplit.amount,
+            })
+            .eq("id", activeShift.id);
+        }
+      } catch (err) {
+        console.warn("Shift split cash update error:", err);
+      }
+    }
+
+    const kasbonSplit = payload.payment_splits.find((s) => s.method === "kasbon");
+    if (kasbonSplit && kasbonSplit.amount > 0 && payload.member_id) {
+      try {
+        const { data: mbr, error: fetchMbrErr } = await supabase
+          .from("members")
+          .select("total_debt")
+          .eq("id", payload.member_id)
+          .single();
+
+        if (fetchMbrErr) console.error("Error fetching member debt:", fetchMbrErr);
+
+        const currentDebt = mbr?.total_debt || 0;
+        const newTotalDebt = currentDebt + kasbonSplit.amount;
+
+        await supabase
+          .from("members")
+          .update({
+            total_debt: newTotalDebt,
+            last_debt_at: new Date().toISOString(),
+          })
+          .eq("id", payload.member_id);
+
+        await supabase.from("debt_logs").insert({
+          member_id: payload.member_id,
+          transaction_id: tx.id,
+          type: "kasbon",
+          amount: kasbonSplit.amount,
+          remaining_debt: newTotalDebt,
+          payment_method: "kasbon",
+          notes: `Split Kasbon transaksi ${tx.transaction_code} (Porsi Kasbon: Rp ${kasbonSplit.amount.toLocaleString("id-ID")})`,
+          user_id: userId,
+          created_at: new Date().toISOString(),
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+      } catch (err) {
+        console.warn("Supabase split kasbon debt error:", err);
+      }
+    }
   } else if (payload.payment_method === "kasbon" && payload.member_id) {
     const dpAmount = payload.amount_paid > 0 ? payload.amount_paid : 0;
     const masukUtang = totalAmount - dpAmount;
@@ -473,6 +535,7 @@ export async function checkoutService(payload: CheckoutPayload) {
       amount_paid: tx.amount_paid,
       change_amount: tx.change_amount,
       date: tx.created_at,
+      payment_splits: payload.payment_splits,
       items: itemsResult,
     },
   };

@@ -49,9 +49,7 @@ export const HeldCartsModal = ({ isOpen, onClose }: HeldCartsModalProps) => {
   };
 
   const handleDelete = (id: string, note: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus keranjang "${note}"?`)) {
-      deleteHeldCart(id);
-    }
+    deleteHeldCart(id);
   };
 
   return (
@@ -96,6 +94,7 @@ export const HeldCartsModal = ({ isOpen, onClose }: HeldCartsModalProps) => {
               return (
                 <div
                   key={item.id}
+                  onClick={() => handleRecall(item.id)}
                   className="p-4 rounded-xl border border-slate-200 hover:border-blue-400 bg-white shadow-sm flex items-center justify-between gap-4 transition-all"
                 >
                   <div className="flex-1 min-w-0">
@@ -131,13 +130,13 @@ export const HeldCartsModal = ({ isOpen, onClose }: HeldCartsModalProps) => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
+                      {/* <button
                         onClick={() => handleRecall(item.id)}
                         className="h-9 px-3.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-black uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer"
                         title="Buka kembali keranjang"
                       >
                         Buka <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => handleDelete(item.id, item.note)}
                         className="h-9 w-9 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer"

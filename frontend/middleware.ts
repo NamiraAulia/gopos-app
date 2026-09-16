@@ -11,27 +11,21 @@ const ADMIN_ONLY_ROUTES = [
 ];
 
 export function middleware(request: NextRequest) {
-  // 1. Ambil token & role dari cookies
   const token = request.cookies.get('auth_token')?.value;
   const role = request.cookies.get('user_role')?.value;
   const { pathname } = request.nextUrl;
   
-  // 2. Cek apakah user sedang mencoba membuka halaman /login
   const isLoginPage = pathname.startsWith('/login');
 
-  // SKENARIO A: Belum punya token, dan mencoba buka halaman selain /login
   if (!token && !isLoginPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-
-  // SKENARIO B: Sudah punya token, tapi membuka halaman /login lagi
   if (token && isLoginPage) {
     const destination = role === 'admin' ? '/dashboard' : '/cashier';
     return NextResponse.redirect(new URL(destination, request.url));
   }
 
-  // SKENARIO C: User dengan role Kasir mencoba mengakses rute khusus Admin
-  if (token && role === 'kasir') {
+  if (token && role !== 'admin') {
     const isTryingAdminRoute = ADMIN_ONLY_ROUTES.some((route) =>
       pathname.startsWith(route)
     );
