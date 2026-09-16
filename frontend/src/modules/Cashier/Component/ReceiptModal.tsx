@@ -89,6 +89,29 @@ export const ReceiptModal = ({ isOpen, onClose, transaction }: ReceiptModalProps
             <span className="font-bold text-slate-500">Metode</span>
             <span className="font-bold text-slate-900 uppercase">{transaction.payment_method}</span>
           </div>
+          {transaction.payment_splits && transaction.payment_splits.length > 0 && (
+            <div className="mb-3 p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg space-y-1 text-xs">
+              <span className="font-bold text-indigo-900 block text-[11px] uppercase tracking-wider">
+                Rincian Split:
+              </span>
+              {transaction.payment_splits.map((s: any, idx: number) => (
+                <div key={idx} className="flex justify-between text-slate-700 font-medium">
+                  <span className="capitalize">
+                    {s.method === "cash"
+                      ? "Tunai"
+                      : s.method === "qris"
+                      ? "QRIS"
+                      : s.method === "transfer"
+                      ? `Bank ${s.bank_info ? `(${s.bank_info})` : ""}`
+                      : "Kasbon"}
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    Rp {Number(s.amount).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {transaction.discount_amount > 0 && (
             <div className="flex justify-between text-sm mb-3">
               <span className="font-bold text-slate-500">Diskon Member</span>

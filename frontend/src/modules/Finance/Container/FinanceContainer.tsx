@@ -5,9 +5,13 @@ import { fetchFinancialOverview, deleteExpenseService } from "@/service/finance.
 import { useFinanceStore } from "../Store/useFinanceStore";
 import { FinanceView } from "../Component/FinanceView";
 import type { ExpenseDTO as Expense } from "@/modules/Cashier/DTO/cashier.dto";
+import { useIsAdmin, useIsHydrated } from "@/store/authStore";
+import ForbiddenView from "@/components/ForbiddenView";
 
 export default function FinanceContainer() {
   const queryClient = useQueryClient();
+  const isAdmin = useIsAdmin();
+  const isHydrated = useIsHydrated();
 
   const {
     activeTab,
@@ -27,7 +31,12 @@ export default function FinanceContainer() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["financeOverview"],
     queryFn: fetchFinancialOverview,
+    enabled: isHydrated && isAdmin,
   });
+
+  if (isHydrated && !isAdmin) {
+    return <ForbiddenView />;
+  }
 
   const deleteMutation = useMutation({
     mutationFn: deleteExpenseService,

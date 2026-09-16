@@ -6,9 +6,11 @@ import {
   Edit2,
   Trash2,
   Phone,
-  ArrowLeft,
   RefreshCw,
+  Truck,
+  ChevronRight,
 } from "lucide-react";
+import Sidebar from "@/components/Sidebar";
 import { SupplierModal } from "@/modules/Suppliers/Component/SupplierModal";
 import { TodayScheduleWidget } from "@/modules/Suppliers/Component/TodayScheduleWidget";
 import { SupplierSearchBar } from "@/modules/Suppliers/Component/SupplierSearchBar";
@@ -67,47 +69,49 @@ export function SuppliersView({
   handleDeleteSupplier,
 }: SuppliersViewProps) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-12">
-      {/* Header Bar */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-md px-6 print:hidden">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/cashier")}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-slate-900 flex items-center gap-2">
-              <Building className="h-5 w-5 text-blue-600" />
-              Manajemen Distributor & Sales
-            </h1>
-            <p className="text-xs text-slate-500 font-medium hidden sm:block">
-              Pencatatan distributor, salesman, dan monitoring jadwal kunjungan toko
-            </p>
+    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
+      <Sidebar />
+
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Header Breadcrumb */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Truck className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-sm font-bold text-slate-900">Manajemen Distributor & Sales</span>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="flex h-10 px-3.5 items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-xl bg-blue-600 text-white text-xs font-black uppercase tracking-wider hover:bg-blue-700 transition-all shadow-md shadow-blue-200 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah Distributor</span>
-          </button>
-        </div>
-      </header>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="flex h-10 px-3.5 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/10 hover:shadow-lg cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Tambah Distributor</span>
+            </button>
+          </div>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Title Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Distributor & Sales Toko</h2>
+                <p className="text-slate-500 text-sm mt-1">
+                  Pencatatan data distributor, salesman, dan monitoring jadwal kunjungan toko Anda.
+                </p>
+              </div>
+            </div>
         {/* Today's Schedule Widget */}
         <TodayScheduleWidget
           scheduleData={scheduleData as any}
@@ -254,7 +258,9 @@ export function SuppliersView({
             </div>
           )}
         </div>
-      </main>
+      </div>
+    </div>
+  </main>
 
       {/* Supplier Create/Edit Modal */}
       <SupplierModal
