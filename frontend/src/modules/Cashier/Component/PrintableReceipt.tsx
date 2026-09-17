@@ -23,6 +23,12 @@ export interface ReceiptTransaction {
   change_amount?: number;
   discount_amount?: number;
   items?: ReceiptItem[];
+  payment_splits?: Array<{
+    method: "cash" | "qris" | "transfer" | "kasbon" | string;
+    amount: number;
+    bank_info?: string;
+    ref_number?: string;
+  }>;
   member?: {
     name: string;
     member_code: string;
@@ -348,6 +354,43 @@ export const PrintableReceipt = ({
                 </span>
               </div>
             </>
+          )}
+
+          {transaction.payment_splits && transaction.payment_splits.length > 0 && (
+            <div className="pt-1.5 space-y-0.5 border-t border-dashed border-black mt-1">
+              <div className="text-[7.5pt] font-black uppercase text-black">
+                Rincian Pembayaran (Kombinasi):
+              </div>
+              {transaction.payment_splits.map((s, idx) => {
+                const label =
+                  s.method === "cash"
+                    ? "Tunai"
+                    : s.method === "qris"
+                    ? "QRIS"
+                    : s.method === "transfer"
+                    ? `Transfer ${s.bank_info ? `(${s.bank_info})` : ""}`
+                    : "Kasbon";
+                return (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-start text-[7.5pt] font-bold text-black min-w-0"
+                  >
+                    <span className="shrink-0">- {label}:</span>
+                    <span className="font-black text-right break-words min-w-0">
+                      Rp {s.amount.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                );
+              })}
+              {change > 0 && (
+                <div className="flex justify-between items-start text-[7.5pt] font-bold text-black min-w-0 pt-0.5">
+                  <span className="shrink-0">Kembalian Tunai:</span>
+                  <span className="font-black text-right break-words min-w-0">
+                    Rp {change.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

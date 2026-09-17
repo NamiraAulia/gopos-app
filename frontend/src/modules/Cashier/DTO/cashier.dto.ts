@@ -7,13 +7,21 @@ export interface CheckoutItemPayload {
 
 export type CartItemDTO = CheckoutItemPayload;
 
+export interface PaymentSplitItem {
+  method: "cash" | "qris" | "transfer" | "kasbon";
+  amount: number;
+  bank_info?: string;
+  ref_number?: string;
+}
+
 export interface CheckoutPayload {
   items: CheckoutItemPayload[];
-  payment_method: "cash" | "qris" | "transfer" | "kasbon";
+  payment_method: "cash" | "qris" | "transfer" | "kasbon" | "split";
   amount_paid: number;
   member_id?: number;
   discount_amount?: number;
   idempotency_key?: string;
+  payment_splits?: PaymentSplitItem[];
 }
 
 export interface TransactionResultDTO {
@@ -23,6 +31,7 @@ export interface TransactionResultDTO {
   amount_paid: number;
   change_amount?: number;
   date?: string;
+  payment_splits?: PaymentSplitItem[];
   items?: Array<{
     id: number;
     product_name: string;
@@ -54,6 +63,7 @@ export interface TransactionDTO {
   created_at: string;
   items?: any[];
   discount_amount?: number;
+  payment_splits?: PaymentSplitItem[];
   member?: {
     id: number;
     name: string;
