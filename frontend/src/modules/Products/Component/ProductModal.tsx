@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ProductDTO as Product } from "../DTO/products.dto";
 import { productsDAO } from "@/service/products.service";
-import { Calculator, Lightbulb } from "lucide-react";
+import { Calculator, Lightbulb, Package } from "lucide-react";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -73,26 +73,26 @@ interface FieldProps {
 }
 
 const Field = ({ label, helper, required, children }: FieldProps) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-xs font-bold text-slate-600 tracking-wide uppercase">
+  <div className="flex flex-col gap-1.5">
+    <label className="text-sm font-black text-slate-800 tracking-wide uppercase">
       {label}
-      {required && <span className="text-blue-500 ml-0.5">*</span>}
+      {required && <span className="text-blue-600 ml-1">*</span>}
     </label>
     {children}
     {helper && (
-      <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{helper}</p>
+      <p className="text-xs sm:text-sm font-bold text-slate-600 leading-snug mt-1">{helper}</p>
     )}
   </div>
 );
 
 const inputClass =
-  "w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all bg-white placeholder:text-slate-300";
+  "w-full h-12 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all bg-white placeholder:text-slate-400 text-slate-900";
 
 const inputMoneyClass =
-  "w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all bg-white text-blue-600 font-bold placeholder:text-slate-300";
+  "w-full h-12 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-base font-black outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all bg-white text-blue-700 placeholder:text-slate-400";
 
 const disabledClass =
-  "w-full border border-slate-100 rounded-lg px-3 py-2.5 text-sm bg-slate-50 text-slate-300 cursor-not-allowed";
+  "w-full h-12 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-base font-bold bg-slate-100 text-slate-400 cursor-not-allowed";
 
 
 export const ProductModal = ({
@@ -223,21 +223,26 @@ export const ProductModal = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(3px)" }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex-shrink-0">
-          <div>
-            <h2 className="text-base font-bold text-slate-800">
-              {existingProduct ? "Edit Produk" : "Tambah Produk Baru"}
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {existingProduct
-                ? "Perubahan langsung tersimpan ke database"
-                : "Isi data barang yang akan ditambahkan ke toko"}
-            </p>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden border-2 border-slate-200">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b-2 border-slate-200 bg-slate-50 flex-shrink-0">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <Package className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                {existingProduct ? "Edit Produk" : "Tambah Produk Baru"}
+              </h2>
+              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-0.5">
+                {existingProduct
+                  ? "Perubahan langsung tersimpan ke database"
+                  : "Isi data barang yang akan ditambahkan ke toko"}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors text-xl leading-none font-light"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors text-2xl leading-none font-bold cursor-pointer"
             aria-label="Tutup"
           >
             ×
@@ -574,11 +579,11 @@ export const ProductModal = ({
           </div>
         </form>
 
-        <div className="px-6 py-4 border-t border-slate-100 bg-white flex-shrink-0 flex gap-3">
+        <div className="px-6 py-4.5 border-t-2 border-slate-200 bg-white flex-shrink-0 flex gap-3.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            className="flex-1 h-13 border-2 border-slate-300 rounded-xl text-base font-black text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Batal
           </button>
@@ -586,11 +591,11 @@ export const ProductModal = ({
             type="submit"
             form="product-form"
             disabled={isMutating}
-            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-white transition-colors"
+            className="flex-1 h-13 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-base font-black text-white shadow-md shadow-blue-600/20 transition-all cursor-pointer"
           >
             {isMutating ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 Menyimpan...
               </span>
             ) : existingProduct ? (
@@ -607,9 +612,9 @@ export const ProductModal = ({
 
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+  <p className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-wider">
     {children}
   </p>
 );
 
-const Divider = () => <hr className="border-slate-100" />;
+const Divider = () => <hr className="border-slate-200 my-2" />;

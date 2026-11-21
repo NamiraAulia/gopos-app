@@ -108,18 +108,20 @@ export function SettingsView({
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shrink-0 shadow-sm relative z-30">
-          <div className="flex items-center gap-2 text-slate-500">
-            <PrinterIcon className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Pengaturan Perangkat & Layar</span>
+        <header className="h-16 sm:h-18 bg-white border-b-2 border-slate-200 flex items-center px-6 sm:px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <PrinterIcon className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <span className="text-base sm:text-lg font-black text-slate-900">Pengaturan Perangkat & Layar</span>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50">
           <div className="max-w-5xl mx-auto space-y-6">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Pengaturan Perangkat POS</h2>
-              <p className="text-slate-500 text-sm mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Pengaturan Perangkat POS</h2>
+              <p className="text-slate-600 text-sm sm:text-base font-bold mt-1">
                 Kelola konfigurasi printer thermal internal (USB Host) dan layar eksternal untuk pelanggan.
               </p>
             </div>

@@ -277,72 +277,72 @@ export const PaymentModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 sm:p-6 shadow-2xl my-auto">
+      <div className="w-full max-w-xl rounded-2xl bg-white p-5 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto border-2 border-slate-200">
         <div className="text-center mb-5">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <p className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-wider">
             Total Tagihan
           </p>
-          <h2 className="text-3xl font-black text-blue-600 mt-1">
+          <h2 className="text-3xl sm:text-4xl font-black text-blue-600 mt-1">
             Rp {grandTotal.toLocaleString("id-ID")}
           </h2>
         </div>
 
         {/* 5-Method Grid Selector */}
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mb-5">
+        <div className="grid grid-cols-5 gap-2 mb-5">
           <button
             type="button"
             onClick={() => setPaymentMethod("CASH")}
-            className={`py-3 rounded-xl border-2 text-[11px] sm:text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               paymentMethod === "CASH"
                 ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
             }`}
           >
-            <Banknote className="h-4 w-4 shrink-0" /> TUNAI
+            <Banknote className="h-5 w-5 shrink-0 stroke-[2.5]" /> TUNAI
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("QRIS")}
-            className={`py-3 rounded-xl border-2 text-[11px] sm:text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               paymentMethod === "QRIS"
                 ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
             }`}
           >
-            <CreditCard className="h-4 w-4 shrink-0" /> QRIS
+            <CreditCard className="h-5 w-5 shrink-0 stroke-[2.5]" /> QRIS
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("TRANSFER")}
-            className={`py-3 rounded-xl border-2 text-[11px] sm:text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               paymentMethod === "TRANSFER"
                 ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
             }`}
           >
-            <Landmark className="h-4 w-4 shrink-0" /> BANK
+            <Landmark className="h-5 w-5 shrink-0 stroke-[2.5]" /> BANK
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("KASBON")}
-            className={`py-3 rounded-xl border-2 text-[11px] sm:text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               paymentMethod === "KASBON"
                 ? "border-red-600 bg-red-600 text-white shadow-md shadow-red-600/20"
                 : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
             }`}
           >
-            <BookOpen className="h-4 w-4 shrink-0" /> KASBON
+            <BookOpen className="h-5 w-5 shrink-0 stroke-[2.5]" /> KASBON
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("SPLIT")}
-            className={`py-3 rounded-xl border-2 text-[11px] sm:text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+            className={`py-3.5 rounded-xl border-2 text-xs sm:text-sm font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               paymentMethod === "SPLIT"
                 ? "border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "border-slate-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50"
             }`}
           >
-            <Layers className="h-4 w-4 shrink-0" /> SPLIT
+            <Layers className="h-5 w-5 shrink-0 stroke-[2.5]" /> SPLIT
           </button>
         </div>
 
@@ -350,17 +350,17 @@ export const PaymentModal = ({
         {paymentMethod === "CASH" && (
           <div className="space-y-4 mb-5 animate-in fade-in duration-150">
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+              <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
                 Uang Cepat
               </label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
                   type="button"
                   onClick={() => setAmountPaid(grandTotal.toString())}
-                  className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 cursor-pointer ${
+                  className={`h-12 rounded-xl text-sm sm:text-base font-black transition-all border-2 cursor-pointer ${
                     amountPaidNum === grandTotal
-                      ? "border-blue-600 text-blue-600 bg-blue-50 shadow-2xs"
-                      : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                      ? "border-blue-600 text-blue-700 bg-blue-50 shadow-xs"
+                      : "border-slate-200 text-slate-800 bg-white hover:bg-slate-50"
                   }`}
                 >
                   Uang Pas
@@ -370,10 +370,10 @@ export const PaymentModal = ({
                     key={amt}
                     type="button"
                     onClick={() => setAmountPaid(amt.toString())}
-                    className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 cursor-pointer ${
+                    className={`h-12 rounded-xl text-sm sm:text-base font-black transition-all border-2 cursor-pointer ${
                       amountPaidNum === amt
-                        ? "border-blue-600 text-blue-600 bg-blue-50 shadow-2xs"
-                        : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                        ? "border-blue-600 text-blue-700 bg-blue-50 shadow-xs"
+                        : "border-slate-200 text-slate-800 bg-white hover:bg-slate-50"
                     }`}
                   >
                     Rp {amt.toLocaleString("id-ID")}
@@ -383,11 +383,11 @@ export const PaymentModal = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+              <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
                 Uang Tunai Diterima
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-500 text-lg">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-500 text-xl">
                   Rp
                 </span>
                 <input
@@ -400,7 +400,7 @@ export const PaymentModal = ({
                   onChange={(e) =>
                     setAmountPaid(e.target.value.replace(/\D/g, ""))
                   }
-                  className="w-full h-14 sm:h-16 rounded-xl border-2 border-slate-300 pl-14 pr-4 text-2xl font-black text-slate-900 focus:border-blue-600 outline-none transition-all"
+                  className="w-full h-15 sm:h-16 rounded-xl border-2 border-slate-300 pl-14 pr-4 text-2xl sm:text-3xl font-black text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none transition-all"
                   autoFocus
                 />
               </div>
@@ -414,18 +414,18 @@ export const PaymentModal = ({
               }`}
             >
               <p
-                className={`text-xs font-bold uppercase tracking-wider ${
+                className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
                   change >= 0 ? "text-emerald-700" : "text-slate-500"
                 }`}
               >
                 Kembalian
               </p>
               <p
-                className={`text-2xl sm:text-3xl font-black mt-0.5 ${
+                className={`text-3xl sm:text-4xl font-black mt-1 ${
                   change >= 0 ? "text-emerald-600" : "text-slate-400"
                 }`}
               >
-                {change >= 0 ? `Rp ${change.toLocaleString("id-ID")} ` : "Rp 0"}
+                {change >= 0 ? `Rp ${change.toLocaleString("id-ID")}` : "Rp 0"}
               </p>
             </div>
           </div>
@@ -898,12 +898,12 @@ export const PaymentModal = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-2.5 mt-2">
+        <div className="flex flex-col gap-3 mt-3">
           <button
             type="button"
             onClick={handleConfirmPayment}
             disabled={!isPaymentValid || isLoading}
-            className="w-full h-13 sm:h-14 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-black uppercase tracking-wide hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed shadow-md"
+            className="w-full h-14 sm:h-15 rounded-xl bg-blue-600 text-white text-base sm:text-lg font-black uppercase tracking-wider hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed shadow-md shadow-blue-600/20"
           >
             {isLoading ? "Memproses..." : "Selesaikan Transaksi"}
           </button>
@@ -911,7 +911,7 @@ export const PaymentModal = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="w-full py-2.5 text-xs sm:text-sm font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+            className="w-full h-12 rounded-xl border-2 border-slate-200 text-sm sm:text-base font-black text-slate-600 hover:text-slate-900 hover:bg-slate-50 cursor-pointer transition-colors"
           >
             Batal Pembayaran
           </button>

@@ -16,38 +16,40 @@ export function DeleteModal({ isOpen, onClose, onConfirm, product, isDeleting }:
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 text-red-600">
-            <Trash2 className="h-4 w-4" />
-            <h3 className="font-bold text-sm">Konfirmasi Hapus</h3>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border-2 border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b-2 border-slate-200 bg-red-50">
+          <div className="flex items-center gap-3 text-red-600">
+            <div className="h-10 w-10 rounded-xl bg-red-100 flex items-center justify-center">
+              <Trash2 className="h-5 w-5 stroke-[2.5]" />
+            </div>
+            <h3 className="font-black text-lg text-red-900">Konfirmasi Hapus Produk</h3>
           </div>
           <button 
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-white/80 transition-colors cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5 stroke-[2.5]" />
           </button>
         </div>
 
-        <div className="p-5">
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Apakah Anda yakin ingin menghapus produk <span className="font-black text-slate-900">"{product.name}"</span> dari sistem inventori?
+        <div className="p-6 space-y-4">
+          <p className="text-base font-bold text-slate-700 leading-relaxed">
+            Apakah Anda yakin ingin menghapus produk <span className="font-black text-slate-900 text-lg">"{product.name}"</span> dari sistem inventori?
           </p>
-          <p className="text-xs text-red-500 mt-2 bg-red-50 px-3 py-2 rounded-lg border border-red-100/50 flex items-start gap-1.5">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <div className="text-sm font-bold text-red-700 bg-red-50 p-4 rounded-xl border-2 border-red-200 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 stroke-[2.5]" />
             <span>Tindakan ini bersifat permanen dan data stok yang berkaitan akan dihapus dari sistem kasir.</span>
-          </p>
+          </div>
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex gap-3 justify-end">
+        <div className="px-6 py-4 border-t-2 border-slate-200 bg-slate-50 flex gap-3.5 justify-end">
           <button
             type="button"
             disabled={isDeleting}
             onClick={onClose}
-            className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            className="h-12 px-5 border-2 border-slate-300 bg-white rounded-xl text-base font-black text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Batal
           </button>
@@ -55,7 +57,7 @@ export function DeleteModal({ isOpen, onClose, onConfirm, product, isDeleting }:
             type="button"
             disabled={isDeleting}
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2"
+            className="h-12 px-6 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-base font-black shadow-md transition-colors flex items-center gap-2 cursor-pointer"
           >
             {isDeleting ? "Menghapus..." : "Ya, Hapus Produk"}
           </button>

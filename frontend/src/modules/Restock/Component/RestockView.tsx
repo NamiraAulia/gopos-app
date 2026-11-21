@@ -29,20 +29,24 @@ export function RestockView({
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shrink-0">
-          <div className="flex items-center gap-2 text-slate-500">
-            <AlertTriangle className="h-4 w-4" />
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Lembar Belanja Stok</span>
+        <header className="h-16 sm:h-18 bg-white border-b-2 border-slate-200 flex items-center px-6 sm:px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shadow-xs">
+              <AlertTriangle className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <ChevronRight className="h-4 w-4 stroke-[2.5]" />
+              <span className="text-base sm:text-lg font-black text-slate-900">Lembar Belanja Stok</span>
+            </div>
           </div>
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">Lembar Belanja Stok</h2>
-              <p className="text-slate-500 text-sm mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Lembar Belanja Stok</h2>
+              <p className="text-slate-600 text-sm sm:text-base font-bold mt-1">
                 Daftar produk yang harus segera dipesan ulang agar jualan tidak terhenti.
               </p>
             </div>
@@ -50,15 +54,15 @@ export function RestockView({
 
           {/* Supplier Filter Bar */}
           {!isLoading && items.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-5 rounded-2xl border-2 border-slate-200 shadow-sm">
+              <span className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-wider">
                 Saring Berdasarkan Supplier Salesman:
               </span>
-              <div className="w-full sm:w-72">
+              <div className="w-full sm:w-80">
                 <select
                   value={selectedSupplier}
                   onChange={(e) => setSelectedSupplier(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                  className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-sm sm:text-base font-bold text-slate-800 outline-none focus:border-blue-500 transition-colors cursor-pointer"
                 >
                   <option value="all">Semua Supplier ({items.length} Produk)</option>
                   {suppliers.map((sup) => {

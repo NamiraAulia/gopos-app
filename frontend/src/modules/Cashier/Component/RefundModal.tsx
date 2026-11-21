@@ -121,39 +121,41 @@ export const RefundModal = ({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 text-amber-600">
-            <RotateCcw className="h-5 w-5" />
+        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3 text-amber-700">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shadow-xs">
+              <RotateCcw className="h-6 w-6 stroke-[2.5]" />
+            </div>
             <div>
-              <h3 className="font-bold text-sm">Proses Retur Barang</h3>
-              <p className="text-[10px] text-slate-400 font-medium">#{transaction.transaction_code}</p>
+              <h3 className="font-black text-lg sm:text-xl text-slate-900">Proses Retur Barang</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold font-mono">Nota: #{transaction.transaction_code}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition-colors"
+            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           
-          <div className="p-6 overflow-y-auto flex-1 space-y-4">
+          <div className="p-6 overflow-y-auto flex-1 space-y-5">
             
             {errorMsg && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-semibold px-4 py-3 rounded-xl flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="bg-red-50 border-2 border-red-200 text-red-600 text-sm font-bold px-4 py-3 rounded-xl flex items-start gap-2.5">
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+              <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
                 Pilih Item Yang Diretur
               </label>
-              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden bg-slate-50/30">
+              <div className="border-2 border-slate-200 rounded-xl divide-y-2 divide-slate-100 overflow-hidden bg-slate-50/30">
                 {(transaction.items || []).map((item) => {
                   const isChecked = !!selectedItems[item.product_id];
                   const currentQty = refundQtys[item.product_id] || 1;
@@ -161,30 +163,30 @@ export const RefundModal = ({
                   return (
                     <div
                       key={item.product_id}
-                      className={`p-3.5 flex items-center justify-between transition-colors ${isChecked ? "bg-blue-50/30" : "hover:bg-slate-50"}`}
+                      className={`p-4 flex items-center justify-between transition-colors ${isChecked ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3.5">
                         <input
                           type="checkbox"
                           id={`item-${item.product_id}`}
                           checked={isChecked}
                           onChange={() => handleToggleSelect(item.product_id)}
-                          className="size-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                          className="size-5 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <label
                           htmlFor={`item-${item.product_id}`}
-                          className="text-xs font-bold text-slate-800 cursor-pointer select-none"
+                          className="text-sm sm:text-base font-black text-slate-900 cursor-pointer select-none"
                         >
                           <p className="leading-snug">{item.product_name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                          <p className="text-xs sm:text-sm text-slate-500 font-bold mt-0.5">
                             Beli: {item.qty} {item.unit_choice === "big" ? "grosir" : "pcs"} · Rp {item.unit_price.toLocaleString("id-ID")}
                           </p>
                         </label>
                       </div>
 
                       {isChecked && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-semibold text-slate-400 mr-1">Qty Retur:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-600 mr-1">Qty Retur:</span>
                           <input
                             type="number"
                             step="any"
@@ -192,7 +194,7 @@ export const RefundModal = ({
                             max={item.qty}
                             value={currentQty}
                             onChange={(e) => handleQtyChange(item.product_id, parseFloat(e.target.value) || 0.1, item.qty)}
-                            className="w-16 h-8 text-center text-xs font-black border-2 border-slate-200 rounded-lg focus:border-blue-600 outline-none transition-all"
+                            className="w-20 h-10 text-center text-sm sm:text-base font-black border-2 border-slate-300 rounded-xl focus:border-blue-600 outline-none transition-all bg-white"
                           />
                         </div>
                       )}
@@ -203,44 +205,44 @@ export const RefundModal = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                Alasan Retur (Wajib)
+              <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
+                Alasan Retur <span className="text-red-500">*</span>
               </label>
               <textarea
                 required
-                rows={2}
+                rows={3}
                 placeholder="Contoh: Barang cacat/rusak, salah input barang oleh kasir, dll..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full text-xs font-bold border-2 border-slate-200 rounded-xl p-3 focus:border-blue-600 outline-none transition-all resize-none placeholder:text-slate-300"
+                className="w-full text-sm sm:text-base font-bold border-2 border-slate-300 rounded-xl p-3.5 focus:border-blue-600 outline-none transition-all resize-none placeholder:text-slate-300 bg-white"
               />
             </div>
 
           </div>
 
           {/* Footer Actions */}
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex gap-3 justify-end">
+          <div className="px-6 py-4 border-t-2 border-slate-100 bg-slate-50/50 flex gap-3 justify-end">
             <button
               type="button"
               disabled={loading}
               onClick={onClose}
-              className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-xs font-bold text-slate-600 rounded-lg transition-colors cursor-pointer"
+              className="h-12 px-5 border-2 border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-sm sm:text-base font-black text-slate-700 rounded-xl transition-colors cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+              className="h-12 px-6 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-sm sm:text-base font-black transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-md shadow-amber-500/20"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   Memproses...
                 </>
               ) : (
                 <>
-                  <RotateCcw className="h-4 w-4" />
+                  <RotateCcw className="h-5 w-5 stroke-[2.5]" />
                   Proses Retur
                 </>
               )}

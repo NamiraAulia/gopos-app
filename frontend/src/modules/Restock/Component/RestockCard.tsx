@@ -37,16 +37,16 @@ export const RestockCard = ({ item }: RestockCardProps) => {
   const unitBig = item.unit_big || "Dus";
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow flex flex-col justify-between h-full">
-      <div className={`absolute top-0 left-0 w-1.5 h-full ${riskColor}`}></div>
+    <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+      <div className={`absolute top-0 left-0 w-2 h-full ${riskColor}`}></div>
       
       <div>
         <div className="flex justify-between items-start mb-3 pl-2">
           <div>
-            <h3 className="font-bold text-lg text-slate-900 leading-tight mb-1">{item.product_name}</h3>
+            <h3 className="font-black text-xl text-slate-900 leading-tight mb-1">{item.product_name}</h3>
             {item.supplier_name && (
-              <p className="text-xs text-slate-400">
-                Supplier: <span className="font-semibold text-slate-600">{item.supplier_name}</span>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold">
+                Supplier: <span className="font-black text-slate-800">{item.supplier_name}</span>
               </p>
             )}
           </div>
@@ -54,70 +54,70 @@ export const RestockCard = ({ item }: RestockCardProps) => {
 
         {/* Risk Badge */}
         <div className="pl-2 mb-4">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${riskBg}`}>
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border-2 ${riskBg}`}>
             {riskTier === "high" ? (
-              <AlertTriangle className="size-3" />
+              <AlertTriangle className="h-4 w-4 stroke-[2.5]" />
             ) : (
-              <ShieldCheck className="size-3" />
+              <ShieldCheck className="h-4 w-4 stroke-[2.5]" />
             )}
             {riskLabel}
           </span>
         </div>
 
         {/* Stock Status Grid */}
-        <div className="grid grid-cols-2 gap-4 pl-2 mt-2 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+        <div className="grid grid-cols-2 gap-4 pl-2 mt-2 bg-slate-50 p-4 rounded-xl border-2 border-slate-200 text-sm">
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Sisa Stok</p>
-            <p className="text-xl font-black text-rose-600">
-              {currentStock} <span className="text-xs font-bold text-rose-400">{unit}</span>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Sisa Stok</p>
+            <p className="text-2xl font-black text-rose-600">
+              {currentStock} <span className="text-sm font-bold text-rose-500">{unit}</span>
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Prediksi Habis</p>
-            <p className="text-sm font-black text-slate-800 mt-1">
+            <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Prediksi Habis</p>
+            <p className="text-base font-black text-slate-900 mt-1">
               {daysRemaining <= 0 ? "Hari ini!" : `${daysRemaining.toFixed(0)} Hari lagi`}
             </p>
           </div>
         </div>
 
         {/* Demand Projections */}
-        <div className="pl-2 mt-4 space-y-2 border-t border-slate-100 pt-3">
-          <p className="text-xs font-bold text-slate-700">Proyeksi Kebutuhan:</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-slate-50/50 p-2 rounded-lg border border-slate-100/60">
-              <p className="text-[10px] font-medium text-slate-400">Harian (Rata-rata)</p>
-              <p className="font-bold text-slate-800 mt-0.5">~{dailyDemand.toFixed(1)} {unit}/hari</p>
+        <div className="pl-2 mt-4 space-y-2 border-t-2 border-slate-100 pt-3">
+          <p className="text-xs sm:text-sm font-black text-slate-800">Proyeksi Kebutuhan:</p>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <p className="text-xs font-bold text-slate-500">Harian (Rata-rata)</p>
+              <p className="font-black text-slate-900 mt-0.5">~{dailyDemand.toFixed(1)} {unit}/hari</p>
             </div>
-            <div className="bg-slate-50/50 p-2 rounded-lg border border-slate-100/60">
-              <p className="text-[10px] font-medium text-slate-400">Mingguan (7 Hari)</p>
-              <p className="font-bold text-slate-800 mt-0.5">~{weeklyDemand.toFixed(0)} {unit}/minggu</p>
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <p className="text-xs font-bold text-slate-500">Mingguan (7 Hari)</p>
+              <p className="font-black text-slate-900 mt-0.5">~{weeklyDemand.toFixed(0)} {unit}/minggu</p>
             </div>
           </div>
         </div>
 
         {/* Smart Recommendations */}
-        <div className="pl-2 mt-4 space-y-2 border-t border-slate-100 pt-3">
-          <div className="bg-blue-50/40 p-3 rounded-xl border border-blue-100/60">
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Saran Jumlah Order:</p>
-            <p className="text-lg font-black text-blue-700 mt-1">
+        <div className="pl-2 mt-4 space-y-3 border-t-2 border-slate-100 pt-3">
+          <div className="bg-blue-50/70 p-3.5 rounded-xl border-2 border-blue-200">
+            <p className="text-xs font-black text-blue-700 uppercase tracking-wider">Saran Jumlah Order:</p>
+            <p className="text-xl font-black text-blue-800 mt-1">
               {recommendQty} {unit}
               {conversion > 1 && recommendBigQty > 0 && (
-                <span className="text-xs font-medium text-blue-500 block sm:inline sm:ml-1">
+                <span className="text-sm font-bold text-blue-600 block sm:inline sm:ml-1.5">
                   (setara {recommendBigQty} {unitBig})
                 </span>
               )}
             </p>
           </div>
 
-          <div className="bg-orange-50/40 p-3 rounded-xl border border-orange-100/60 text-xs">
-            <p className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">Batas Maksimum Aman:</p>
-            <p className="font-extrabold text-orange-700 mt-0.5">
+          <div className="bg-orange-50/70 p-3.5 rounded-xl border-2 border-orange-200 text-xs sm:text-sm">
+            <p className="text-xs font-black text-orange-700 uppercase tracking-wider">Batas Maksimum Aman:</p>
+            <p className="font-black text-base text-orange-800 mt-0.5">
               {maxSafeQty} {unit}
               {conversion > 1 && maxSafeBigQty > 0 && (
-                <span className="font-normal text-orange-600"> (atau {maxSafeBigQty} {unitBig})</span>
+                <span className="font-bold text-orange-700"> (atau {maxSafeBigQty} {unitBig})</span>
               )}
             </p>
-            <p className="text-[10px] text-orange-500 mt-1 leading-normal">
+            <p className="text-xs text-orange-600 font-bold mt-1 leading-normal">
               Jangan memesan melebihi batas aman ini untuk mencegah kerugian barang kedaluwarsa.
             </p>
           </div>

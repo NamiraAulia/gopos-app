@@ -200,25 +200,25 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="font-black text-slate-900 uppercase tracking-tight">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-200 max-h-[88vh] flex flex-col">
+        <div className="p-6 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+          <h3 className="font-black text-slate-900 text-xl tracking-tight">
             {isEditMode ? "Ubah Catatan Pengeluaran" : "Catat Pengeluaran Baru"}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-red-500 transition-colors">
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
-              Kategori
+            <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
+              Kategori Pengeluaran
             </label>
             <select
               value={newExpense.category}
               onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-colors font-bold text-slate-700 bg-white"
+              className="w-full h-12 px-4 rounded-xl border-2 border-slate-300 text-sm sm:text-base focus:outline-none focus:border-blue-600 transition-colors font-bold text-slate-800 bg-white cursor-pointer"
             >
               <option value="Operasional">Operasional (Mengurangi Kas Laci)</option>
               <option value="Inventaris">Inventaris (Bukan dari Kas Kasir)</option>
@@ -227,8 +227,8 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
-              Nama / Deskripsi Pengeluaran
+            <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
+              Nama / Deskripsi Pengeluaran <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -236,13 +236,13 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
               value={newExpense.name}
               onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
               placeholder="Contoh: Beli Es Batu, Isi Ulang Gas..."
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-colors font-bold text-slate-800"
+              className="w-full h-12 px-4 rounded-xl border-2 border-slate-300 text-sm sm:text-base focus:outline-none focus:border-blue-600 transition-colors font-bold text-slate-900 placeholder:text-slate-300"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
-              Jumlah Uang (Rp)
+            <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider mb-2">
+              Jumlah Uang (Rp) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -254,27 +254,27 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess, expenseData }: Expens
                 setNewExpense({ ...newExpense, amount: formatted });
               }}
               placeholder="0"
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-colors font-black text-blue-600 text-lg"
+              className="w-full h-14 px-4 rounded-xl border-2 border-slate-300 text-2xl font-black focus:outline-none focus:border-blue-600 transition-colors text-blue-700 font-mono"
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             {isEditMode && (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={isLoading}
-                className="flex-1 py-3 px-4 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold hover:bg-red-100 hover:border-red-200 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="h-12 px-5 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 font-black text-sm sm:text-base hover:bg-red-100 hover:border-red-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                <Trash2 className="h-4 w-4" /> HAPUS
+                <Trash2 className="h-5 w-5 stroke-[2.5]" /> HAPUS
               </button>
             )}
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-colors disabled:opacity-50 flex-grow"
+              className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-black text-sm sm:text-base hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-md shadow-blue-600/20 cursor-pointer"
             >
-              {isLoading ? "MENYIMPAN..." : "SIMPAN"}
+              {isLoading ? "MENYIMPAN..." : "SIMPAN PENGELUARAN"}
             </button>
           </div>
         </form>

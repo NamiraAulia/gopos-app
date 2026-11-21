@@ -861,40 +861,40 @@ const useBatchImport = () => {
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 border-t-2 border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
           <div>
             {rows.length > 0 && progress.status === "idle" && (
               <button
                 onClick={handleReset}
-                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                className="h-12 px-5 text-sm font-black text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
               >
                 Ganti File CSV
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {progress.status === "idle" ? (
               <>
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 border bg-white text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="h-12 px-5 border-2 border-slate-200 bg-white text-slate-700 rounded-xl text-sm sm:text-base font-black hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   disabled={summary.importableCount === 0}
                   onClick={handleSubmitBatch}
-                  className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                  className="flex items-center gap-2 h-12 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 text-white rounded-xl text-sm sm:text-base font-black shadow-md shadow-blue-600/20 transition-colors cursor-pointer"
                 >
-                  <Play className="h-3.5 w-3.5 fill-current" />
+                  <Play className="h-4 w-4 fill-current stroke-[2.5]" />
                   Simpan Semua Ke Database ({summary.importableCount} baris)
                 </button>
               </>
             ) : progress.status === "completed" || progress.status === "cancelled" ? (
               <button
                 onClick={handleFinishSuccess}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base font-black shadow-md transition-colors cursor-pointer"
               >
                 Selesai & Tutup
               </button>
