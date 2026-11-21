@@ -241,9 +241,11 @@ export default function SettingsContainer() {
     addLog(`Resolving cols: ${cols}, printerType: ${printerType}`);
 
     const testReceiptData = {
-      storeName: shopName || "GoPOS STORE",
-      storeAddress: shopAddress || "Jl. Pengujian POS No. 123",
-      storePhone: shopPhone || "0812-3456-7890",
+      storeName: shopName || "KURNIA TELUR",
+      storeAddress:
+        shopAddress ||
+        "Jl. Perumnas Raya No.7 4, RT.4/RW.2, Malaka Sari, Kec. Duren Sawit, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta",
+      storePhone: shopPhone || "08128303200",
       transactionDate: new Date().toLocaleString("id-ID"),
       transactionCode: "TRX-TEST-0001",
       cashierName: "Penguji Sistem",

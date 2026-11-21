@@ -175,20 +175,22 @@ export function generateEscPosReceiptBytes(data: ReceiptData, width = 48): Uint8
   }
 
   // 1. Header (Store Name - Bold, Center, Large)
-  builder.alignCenter()
-         .fontSizeLarge()
-         .bold(true)
-         .textLine(data.storeName)
-         .fontSizeNormal();
+  if (data.storeName) {
+    builder.alignCenter()
+           .fontSizeLarge()
+           .bold(true)
+           .textLine(data.storeName)
+           .fontSizeNormal();
+  }
 
   if (data.storeAddress) {
     const wrappedAddr = wrapText(data.storeAddress, width);
     for (const line of wrappedAddr) {
-      builder.textLine(line);
+      builder.alignCenter().textLine(line);
     }
   }
   if (data.storePhone) {
-    builder.textLine(`Telp: ${data.storePhone}`);
+    builder.alignCenter().textLine(`Telp/WA: ${data.storePhone}`);
   }
   builder.bold(false);
 
@@ -283,12 +285,14 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
     return lines.map(line => centerAlign(line, width)).join("\r\n");
   };
 
-  receipt += centerPcl(data.storeName) + "\r\n";
+  if (data.storeName) {
+    receipt += centerPcl(data.storeName) + "\r\n";
+  }
   if (data.storeAddress) {
     receipt += centerPcl(data.storeAddress) + "\r\n";
   }
   if (data.storePhone) {
-    receipt += centerPcl(`Telp: ${data.storePhone}`) + "\r\n";
+    receipt += centerPcl(`Telp/WA: ${data.storePhone}`) + "\r\n";
   }
 
   receipt += "-".repeat(width) + "\r\n";
@@ -393,37 +397,48 @@ export function generatePclReceiptBytes(data: ReceiptData, width = 20): Uint8Arr
   const encoder = new TextEncoder();
   const textBytes = encoder.encode(receipt);
 
+  const hasLogo = !!(data.logoBytes && data.logoBytes.length > 0);
+  const logoLen = hasLogo ? data.logoBytes!.length + 2 : 0;
+
   // We add ESC (s0P (5 bytes) and ESC (s3B (5 bytes) to select Monospace and Bold (10 bytes total)
-  const bytes = new Uint8Array(2 + 10 + textBytes.length + 1 + 2);
+  const bytes = new Uint8Array(2 + logoLen + 10 + textBytes.length + 1 + 2);
   
   // ESC E (Init)
   bytes[0] = 0x1B;
   bytes[1] = 0x45;
 
+  let offset = 2;
+  if (hasLogo) {
+    bytes.set(data.logoBytes!, offset);
+    offset += data.logoBytes!.length;
+    bytes[offset++] = 0x0D;
+    bytes[offset++] = 0x0A;
+  }
+
   // ESC (s0P (Monospace selection)
-  bytes[2] = 0x1B;
-  bytes[3] = 0x28;
-  bytes[4] = 0x73;
-  bytes[5] = 0x30;
-  bytes[6] = 0x50;
+  bytes[offset++] = 0x1B;
+  bytes[offset++] = 0x28;
+  bytes[offset++] = 0x73;
+  bytes[offset++] = 0x30;
+  bytes[offset++] = 0x50;
 
   // ESC (s3B (Bold selection)
-  bytes[7] = 0x1B;
-  bytes[8] = 0x28;
-  bytes[9] = 0x73;
-  bytes[10] = 0x33;
-  bytes[11] = 0x42;
+  bytes[offset++] = 0x1B;
+  bytes[offset++] = 0x28;
+  bytes[offset++] = 0x73;
+  bytes[offset++] = 0x33;
+  bytes[offset++] = 0x42;
   
   // Text Data
-  bytes.set(textBytes, 12);
+  bytes.set(textBytes, offset);
+  offset += textBytes.length;
   
-  const offset = 12 + textBytes.length;
   // Form Feed (0x0C) to trigger printing of buffer
-  bytes[offset] = 0x0C;
+  bytes[offset++] = 0x0C;
   
   // ESC E (End)
-  bytes[offset + 1] = 0x1B;
-  bytes[offset + 2] = 0x45;
+  bytes[offset++] = 0x1B;
+  bytes[offset++] = 0x45;
 
   return bytes;
 }
@@ -450,12 +465,14 @@ function centerAlignWrapped(text: string, width = 20): string {
 export function generatePlainTextReceipt(data: ReceiptData, width = 20): string {
   let receipt = "";
 
-  receipt += centerAlignWrapped(data.storeName, width) + "%0A";
+  if (data.storeName) {
+    receipt += centerAlignWrapped(data.storeName, width) + "%0A";
+  }
   if (data.storeAddress) {
     receipt += centerAlignWrapped(data.storeAddress, width) + "%0A";
   }
   if (data.storePhone) {
-    receipt += centerAlignWrapped(`Telp: ${data.storePhone}`, width) + "%0A";
+    receipt += centerAlignWrapped(`Telp/WA: ${data.storePhone}`, width) + "%0A";
   }
 
   receipt += "-".repeat(width) + "%0A";
@@ -610,7 +627,10 @@ export function printViaRawBT(text: string): void {
   } else {
     // Pada Windows / Desktop Browser, panggil window.print() untuk cetak via Windows Print Spooler (POS-58)
     console.log("Pencetakan Desktop: Menggunakan Browser Print (window.print())");
-    window.print();
+    // Beri jeda 250ms agar browser selesai me-render DOM dan men-decode gambar logo pada pencetakan pertama
+    setTimeout(() => {
+      window.print();
+    }, 250);
   }
 }
 
@@ -654,6 +674,13 @@ export async function setPreferredPrinterDevice(vendorId: number, productId: num
   }
 }
 
+export const DEFAULT_SHOP_NAME = "KURNIA TELUR";
+export const DEFAULT_SHOP_ADDRESS =
+  "Jl. Perumnas Raya No.7 4, RT.4/RW.2, Malaka Sari, Kec. Duren Sawit, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta";
+export const DEFAULT_SHOP_PHONE = "08128303200";
+export const DEFAULT_SHOP_FOOTER = "Terima Kasih";
+export const DEFAULT_SHOP_LOGO = "/logos.png";
+
 export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ success: boolean; isNative: boolean; message?: string }> {
   const { transaction, cashierName = "Kasir" } = params;
   if (!transaction) {
@@ -666,7 +693,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   let localShopPhone = "";
   let localShopFooter = "";
   let localPaperSize = "58mm";
-  let localLogo = "";
+  let localLogo = DEFAULT_SHOP_LOGO;
 
   if (typeof window !== "undefined") {
     try {
@@ -675,7 +702,7 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       localShopPhone = localStorage.getItem("gopos_shop_phone") || "";
       localShopFooter = localStorage.getItem("gopos_shop_footer") || "";
       localPaperSize = localStorage.getItem("gopos_paper_size") || "58mm";
-      localLogo = localStorage.getItem("gopos_shop_logo") || "";
+      localLogo = localStorage.getItem("gopos_shop_logo") || DEFAULT_SHOP_LOGO;
     } catch (e) {
       console.error("Gagal membaca settings dari localStorage:", e);
     }
@@ -685,11 +712,11 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
   const paperSize = params.paperSize || localPaperSize || "58mm";
   const cols = paperSize === "37mm" ? 20 : paperSize === "58mm" ? 44 : 48;
 
-  const storeName = params.shopSettings?.name || params.shopName || localShopName || "KURNIA TELUR";
-  const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || "Jl. Perumnas Raya Blok X No.7, Jakarta";
-  const storePhone = params.shopSettings?.phone || params.shopPhone || localShopPhone || "";
-  const footerText = params.shopSettings?.footer || localShopFooter || "Terima Kasih";
-  const logoSrc = params.shopSettings?.logo || localLogo || "";
+  const storeName = params.shopSettings?.name ?? (params.shopName || localShopName || DEFAULT_SHOP_NAME);
+  const storeAddress = params.shopSettings?.address || params.shopAddress || localShopAddress || DEFAULT_SHOP_ADDRESS;
+  const storePhone = params.shopSettings?.phone || params.shopPhone || localShopPhone || DEFAULT_SHOP_PHONE;
+  const footerText = params.shopSettings?.footer || localShopFooter || DEFAULT_SHOP_FOOTER;
+  const logoSrc = params.shopSettings?.logo || localLogo || DEFAULT_SHOP_LOGO;
 
   // Process logo asynchronously if present
   let logoBytes: Uint8Array | undefined = undefined;
