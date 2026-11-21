@@ -44,6 +44,12 @@ interface PrintableReceiptProps {
   paperSize?: "37mm" | "58mm" | "80mm";
 }
 
+const DEFAULT_SHOP_NAME = "";
+const DEFAULT_SHOP_ADDRESS =
+  "Jl. Perumnas Raya No.7 4, RT.4/RW.2, Malaka Sari, Kec. Duren Sawit, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta";
+const DEFAULT_SHOP_PHONE = "08128303200";
+const DEFAULT_SHOP_LOGO = "/logos.png";
+
 export const PrintableReceipt = ({
   transaction,
   shopName = "",
@@ -57,16 +63,37 @@ export const PrintableReceipt = ({
   const [printSuccess, setPrintSuccess] = useState(false);
 
   const [paperSize, setPaperSize] = useState<"37mm" | "58mm" | "80mm">("80mm");
+  const [shopSettings, setShopSettings] = useState({
+    name: shopName || DEFAULT_SHOP_NAME,
+    address: shopAddress || DEFAULT_SHOP_ADDRESS,
+    phone: shopPhone || DEFAULT_SHOP_PHONE,
+    logo: DEFAULT_SHOP_LOGO,
+  });
 
   React.useEffect(() => {
+    // Preload logo ke memory browser agar langsung siap saat window.print() pertama kali
     if (typeof window !== "undefined") {
+      const targetLogo = localStorage.getItem("gopos_shop_logo") || DEFAULT_SHOP_LOGO;
+      const img = new Image();
+      img.src = targetLogo;
+      if ("decode" in img) {
+        img.decode().catch(() => {});
+      }
+
       const saved = localStorage.getItem("gopos_paper_size") as
         | "37mm"
         | "58mm"
         | "80mm";
       if (saved) setPaperSize(saved);
+
+      setShopSettings({
+        name: shopName || localStorage.getItem("gopos_shop_name") || DEFAULT_SHOP_NAME,
+        address: shopAddress || localStorage.getItem("gopos_shop_address") || DEFAULT_SHOP_ADDRESS,
+        phone: shopPhone || localStorage.getItem("gopos_shop_phone") || DEFAULT_SHOP_PHONE,
+        logo: targetLogo,
+      });
     }
-  }, []);
+  }, [shopName, shopAddress, shopPhone]);
 
   const activePaperSize = propPaperSize || paperSize || "80mm";
   const widthClass =
@@ -82,7 +109,18 @@ export const PrintableReceipt = ({
         ? "52mm"
         : "70mm";
 
-  if (!transaction) return null;
+  if (!transaction) {
+    return (
+      <div className="hidden" aria-hidden="true">
+        <img
+          src={shopSettings.logo || DEFAULT_SHOP_LOGO}
+          alt="Preload Logo"
+          loading="eager"
+          decoding="sync"
+        />
+      </div>
+    );
+  }
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return new Date().toLocaleString("id-ID");
@@ -111,16 +149,22 @@ export const PrintableReceipt = ({
         if (!status.connected) {
           throw new Error(
             status.message ||
-              "Printer thermal/USB tidak terhubung atau tidak siap.",
+            "Printer thermal/USB tidak terhubung atau tidak siap.",
           );
         }
       }
 
       const res = await handleReceiptPrint({
         transaction,
-        shopName,
-        shopAddress,
-        shopPhone,
+        shopName: shopSettings.name,
+        shopAddress: shopSettings.address,
+        shopPhone: shopSettings.phone,
+        shopSettings: {
+          name: shopSettings.name,
+          address: shopSettings.address,
+          phone: shopSettings.phone,
+          logo: shopSettings.logo || DEFAULT_SHOP_LOGO,
+        },
       });
 
       if (res && res.success === false) {
@@ -142,7 +186,7 @@ export const PrintableReceipt = ({
         @media print {
           @page {
             margin: 0 !important;
-            size: ${activePaperSize === "80mm" ? "80mm auto" : activePaperSize === "58mm" ? "58mm auto" : "37mm auto"} !important;
+            size: auto !important;
           }
           html, body {
             margin: 0 !important;
@@ -237,22 +281,26 @@ export const PrintableReceipt = ({
       >
         <div className="text-center mb-2">
           <img
-            src="/logos.png"
+            src={shopSettings.logo || DEFAULT_SHOP_LOGO}
             alt="Logo Toko"
+            loading="eager"
+            decoding="sync"
             className="mx-auto mb-1.5 max-h-18 max-w-[160px] object-contain grayscale"
             style={{ display: "block", margin: "0 auto 6px auto" }}
           />
-          <h2 className="font-black text-[10.5pt] uppercase tracking-wider text-black break-words">
-            {shopName}
-          </h2>
-          <p className="text-[8pt] font-bold leading-tight text-black mt-0.5 break-words">
-            {shopAddress}
+          {shopSettings.name ? (
+            <h2 className="font-black text-[10.5pt] uppercase tracking-wider text-black break-words">
+              {shopSettings.name}
+            </h2>
+          ) : null}
+          <p className="text-[8pt] font-bold leading-tight text-black mt-1 break-words">
+            {shopSettings.address}
           </p>
-          {shopPhone && (
-            <p className="text-[8pt] font-bold text-black break-words">
-              Telp: {shopPhone}
+          {shopSettings.phone ? (
+            <p className="text-[8pt] font-bold text-black break-words mt-0.5">
+              Telp / WA: {shopSettings.phone}
             </p>
-          )}
+          ) : null}
         </div>
 
         <div className="border-t-2 border-dashed border-black my-1.5" />
@@ -366,10 +414,10 @@ export const PrintableReceipt = ({
                   s.method === "cash"
                     ? "Tunai"
                     : s.method === "qris"
-                    ? "QRIS"
-                    : s.method === "transfer"
-                    ? `Transfer ${s.bank_info ? `(${s.bank_info})` : ""}`
-                    : "Kasbon";
+                      ? "QRIS"
+                      : s.method === "transfer"
+                        ? `Transfer ${s.bank_info ? `(${s.bank_info})` : ""}`
+                        : "Kasbon";
                 return (
                   <div
                     key={idx}

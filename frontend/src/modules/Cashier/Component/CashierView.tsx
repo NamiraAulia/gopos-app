@@ -205,6 +205,18 @@ export function CashierView({
   const cartContainerRef = useRef<HTMLDivElement>(null);
   const prevCartLengthRef = useRef(cart.length);
 
+  // Preload logo struk belanja ke GPU/memory browser saat halaman kasir dibuka
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const logoSrc = localStorage.getItem("gopos_shop_logo") || "/logos.png";
+      const img = new Image();
+      img.src = logoSrc;
+      if ("decode" in img) {
+        img.decode().catch(() => {});
+      }
+    }
+  }, []);
+
   // Auto-scroll cart to bottom when new item is added
   useEffect(() => {
     if (cart.length > prevCartLengthRef.current) {

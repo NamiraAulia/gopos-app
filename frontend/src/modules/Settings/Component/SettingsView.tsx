@@ -574,7 +574,7 @@ export function SettingsView({
                         type="text"
                         value={shopName}
                         onChange={(e) => setShopName(e.target.value)}
-                        placeholder="GoPOS STORE"
+                        placeholder="KURNIA TELUR"
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
@@ -585,7 +585,7 @@ export function SettingsView({
                       <textarea
                         value={shopAddress}
                         onChange={(e) => setShopAddress(e.target.value)}
-                        placeholder="Jl. Raya Utama No. 123, Jakarta"
+                        placeholder="Jl. Perumnas Raya No.7 4, RT.4/RW.2, Malaka Sari, Kec. Duren Sawit, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta"
                         rows={2}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"
                       />
@@ -593,12 +593,12 @@ export function SettingsView({
 
                     {/* Nomor Telepon */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">No. Telepon Toko</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">No. Telepon / WA Toko</label>
                       <input
                         type="text"
                         value={shopPhone}
                         onChange={(e) => setShopPhone(e.target.value)}
-                        placeholder="0812-3456-7890"
+                        placeholder="08128303200"
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
@@ -610,7 +610,7 @@ export function SettingsView({
                         type="text"
                         value={footerText}
                         onChange={(e) => setFooterText(e.target.value)}
-                        placeholder="Terima Kasih - Barang yang sudah dibeli..."
+                        placeholder="Terima Kasih"
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
@@ -624,7 +624,7 @@ export function SettingsView({
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
                       >
                         <option value="37mm">37mm (Sangat Kecil - 20 Kolom)</option>
-                        <option value="58mm">58mm (Kecil - 32 Kolom)</option>
+                        <option value="58mm">58mm (Kecil - 32/44 Kolom)</option>
                         <option value="80mm">80mm (Lebar - 48 Kolom)</option>
                       </select>
                     </div>
