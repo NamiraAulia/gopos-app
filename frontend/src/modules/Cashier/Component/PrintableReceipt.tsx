@@ -73,8 +73,12 @@ export const PrintableReceipt = ({
   React.useEffect(() => {
     // Preload logo ke memory browser agar langsung siap saat window.print() pertama kali
     if (typeof window !== "undefined") {
+      const targetLogo = localStorage.getItem("gopos_shop_logo") || DEFAULT_SHOP_LOGO;
       const img = new Image();
-      img.src = DEFAULT_SHOP_LOGO;
+      img.src = targetLogo;
+      if ("decode" in img) {
+        img.decode().catch(() => {});
+      }
 
       const saved = localStorage.getItem("gopos_paper_size") as
         | "37mm"
@@ -86,7 +90,7 @@ export const PrintableReceipt = ({
         name: shopName || localStorage.getItem("gopos_shop_name") || DEFAULT_SHOP_NAME,
         address: shopAddress || localStorage.getItem("gopos_shop_address") || DEFAULT_SHOP_ADDRESS,
         phone: shopPhone || localStorage.getItem("gopos_shop_phone") || DEFAULT_SHOP_PHONE,
-        logo: localStorage.getItem("gopos_shop_logo") || DEFAULT_SHOP_LOGO,
+        logo: targetLogo,
       });
     }
   }, [shopName, shopAddress, shopPhone]);
@@ -105,7 +109,18 @@ export const PrintableReceipt = ({
         ? "52mm"
         : "70mm";
 
-  if (!transaction) return null;
+  if (!transaction) {
+    return (
+      <div className="hidden" aria-hidden="true">
+        <img
+          src={shopSettings.logo || DEFAULT_SHOP_LOGO}
+          alt="Preload Logo"
+          loading="eager"
+          decoding="sync"
+        />
+      </div>
+    );
+  }
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return new Date().toLocaleString("id-ID");

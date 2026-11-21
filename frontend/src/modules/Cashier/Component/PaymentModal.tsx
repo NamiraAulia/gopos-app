@@ -264,11 +264,12 @@ export const PaymentModal = ({
     if (result.success && result.data) {
       clearCart();
 
+      // Panggil onSuccess terlebih dahulu agar state lastTransaction di CashierView langsung terisi dan PrintableReceipt termount di DOM
+      onSuccess(result.data);
+
       handleReceiptPrint({ transaction: result.data }).catch((err) => {
         console.error("Auto-print gagal:", err);
       });
-
-      onSuccess(result.data);
     } else {
       alert(result.message || "Transaksi gagal.");
     }

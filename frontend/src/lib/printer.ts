@@ -592,6 +592,46 @@ function uint8ArrayToBase64(uint8: Uint8Array): string {
   return window.btoa(binary);
 }
 
+export async function waitForImageDecode(src: string, timeoutMs = 2500): Promise<void> {
+  if (typeof window === "undefined" || !src) return;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+
+    const timer = setTimeout(finish, timeoutMs);
+
+    const img = new Image();
+    img.src = src;
+
+    if (typeof (img as any).decode === "function") {
+      (img as any)
+        .decode()
+        .then(() => {
+          clearTimeout(timer);
+          finish();
+        })
+        .catch(() => {
+          clearTimeout(timer);
+          finish();
+        });
+    } else {
+      img.onload = () => {
+        clearTimeout(timer);
+        finish();
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        finish();
+      };
+    }
+  });
+}
+
 export function printViaRawBT(text: string): void {
   if (typeof window === "undefined") return;
 
@@ -627,10 +667,7 @@ export function printViaRawBT(text: string): void {
   } else {
     // Pada Windows / Desktop Browser, panggil window.print() untuk cetak via Windows Print Spooler (POS-58)
     console.log("Pencetakan Desktop: Menggunakan Browser Print (window.print())");
-    // Beri jeda 250ms agar browser selesai me-render DOM dan men-decode gambar logo pada pencetakan pertama
-    setTimeout(() => {
-      window.print();
-    }, 250);
+    window.print();
   }
 }
 
@@ -791,6 +828,13 @@ export async function handleReceiptPrint(params: HandlePrintParams): Promise<{ s
       return { success: true, isNative: true, message: "Gagal cetak native, dialihkan ke RawBT: " + (err.message || err) };
     }
   } else {
+    // Pastikan gambar logo ter-decode sempurna ke memori browser sebelum window.print()
+    if (logoSrc) {
+      await waitForImageDecode(logoSrc);
+    }
+    // Beri jeda 300ms agar React selesai me-render PrintableReceipt ke DOM sebelum dialog print terbuka
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
     const plainText = generatePlainTextReceipt(receiptPayload, cols).replace(/%0A/g, "\n");
     printViaRawBT(plainText);
     return { success: true, isNative: false, message: "Pencetakan diproses via Browser / Windows Print Spooler" };
