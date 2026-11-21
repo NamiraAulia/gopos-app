@@ -118,22 +118,22 @@ export const MemberImportModal = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-5">
           {errorMsg && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-700 text-xs font-semibold">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div className="p-4 bg-rose-50 border-2 border-rose-200 rounded-xl flex items-center gap-3 text-rose-700 text-sm font-bold">
+              <AlertCircle className="h-5 w-5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-700 text-xs font-semibold">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
-          <div className="p-4 border-2 border-dashed border-slate-200 hover:border-blue-500 rounded-2xl bg-slate-50/50 text-center transition-colors">
+          <div className="p-6 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl bg-slate-50/50 text-center transition-colors">
             <input
               type="file"
               accept=".csv"
@@ -143,19 +143,19 @@ export const MemberImportModal = ({
             />
             <label
               htmlFor="member-csv-input"
-              className="cursor-pointer flex flex-col items-center justify-center gap-2 py-4"
+              className="cursor-pointer flex flex-col items-center justify-center gap-2.5 py-4"
             >
-              <div className="p-3 bg-white text-slate-600 rounded-xl shadow-xs border border-slate-200">
-                <FileText className="h-6 w-6" />
+              <div className="p-4 bg-white text-slate-700 rounded-2xl shadow-xs border-2 border-slate-200">
+                <FileText className="h-8 w-8 stroke-[2.5]" />
               </div>
               <div>
-                <span className="text-xs font-bold text-blue-600 hover:underline">
+                <span className="text-sm sm:text-base font-black text-blue-600 hover:underline">
                   Klik untuk unggah file CSV
                 </span>
-                <p className="text-[11px] text-slate-400 mt-1">Format kolom: Nama, Nomor HP (Opsional)</p>
+                <p className="text-xs sm:text-sm text-slate-500 font-bold mt-1">Format kolom: Nama, Nomor HP (Opsional)</p>
               </div>
               {file && (
-                <span className="mt-2 text-xs font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                <span className="mt-3 text-sm font-black text-emerald-700 bg-emerald-50 px-4 py-1.5 rounded-full border-2 border-emerald-200">
                   📄 {file.name} ({parsedData.length} baris)
                 </span>
               )}
@@ -164,16 +164,16 @@ export const MemberImportModal = ({
 
           {parsedData.length > 0 && (
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-700">Preview Data ({parsedData.length} baris):</span>
-              <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-white text-xs space-y-1 divide-y divide-slate-100">
+              <span className="text-sm font-black text-slate-800">Preview Data ({parsedData.length} baris):</span>
+              <div className="max-h-40 overflow-y-auto border-2 border-slate-200 rounded-xl p-3 bg-white text-sm space-y-1.5 divide-y divide-slate-100">
                 {parsedData.slice(0, 10).map((item, idx) => (
-                  <div key={idx} className="pt-1.5 flex justify-between text-slate-700 font-medium">
+                  <div key={idx} className="pt-2 flex justify-between text-slate-800 font-bold">
                     <span>{idx + 1}. {item.name}</span>
-                    <span className="text-slate-400 font-mono">{item.phone || "(Tanpa No HP)"}</span>
+                    <span className="text-slate-500 font-mono text-xs">{item.phone || "(Tanpa No HP)"}</span>
                   </div>
                 ))}
                 {parsedData.length > 10 && (
-                  <div className="text-[11px] text-slate-400 text-center pt-2 italic">
+                  <div className="text-xs text-slate-400 font-bold text-center pt-2 italic">
                     ... dan {parsedData.length - 10} baris lainnya
                   </div>
                 )}
@@ -183,11 +183,11 @@ export const MemberImportModal = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t-2 border-slate-100 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors"
+            className="h-12 px-5 text-sm sm:text-base font-black text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer border border-slate-200 bg-white"
           >
             Batal
           </button>
@@ -195,11 +195,11 @@ export const MemberImportModal = ({
             type="button"
             onClick={handleImport}
             disabled={loading || parsedData.length === 0}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
+            className="h-12 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm sm:text-base font-black rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
                 Mengimpor...
               </>
             ) : (

@@ -14,6 +14,7 @@ import {
   Inbox,
   Pencil,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { PaymentModal } from "./PaymentModal";
 import { ReceiptModal } from "./ReceiptModal";
@@ -98,6 +99,7 @@ interface CashierViewProps {
   products: any[];
   loading: boolean;
   searchQuery: string;
+  setSearchQuery: (q: string) => void;
   triggerSearch: (q: string) => void;
   refetch: () => void;
   isShiftActive: boolean;
@@ -158,6 +160,7 @@ export function CashierView({
   products,
   loading,
   searchQuery,
+  setSearchQuery,
   triggerSearch,
   refetch,
   isShiftActive,
@@ -317,9 +320,10 @@ export function CashierView({
                   ref={searchInputRef}
                   type="text"
                   autoFocus
-                  defaultValue={searchQuery}
+                  value={searchQuery}
                   onChange={(e) => {
                     const val = e.target.value;
+                    setSearchQuery(val);
                     if (debounceTimer.current)
                       clearTimeout(debounceTimer.current);
                     (debounceTimer as any).current = setTimeout(
@@ -463,9 +467,9 @@ export function CashierView({
                     </div>
 
                     {/* Right Price & Actions */}
-                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                      <div className="text-left sm:text-right">
-                        <p className="text-base sm:text-xl font-black text-blue-700 tracking-tight">
+                    <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 sm:w-64">
+                      <div className="flex-1 text-left sm:text-right">
+                        <p className="text-base sm:text-lg font-black font-mono text-blue-700 tracking-tight">
                           Rp {product.price.toLocaleString("id-ID")}
                         </p>
                         {grosirPrice ? (
@@ -475,43 +479,45 @@ export function CashierView({
                         ) : null}
                       </div>
 
-                      {inCartQty > 0 ? (
-                        <div
-                          className="flex items-center border-2 border-blue-600 rounded-xl overflow-hidden bg-white shadow-2xs"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                      <div className="shrink-0 flex justify-end">
+                        {inCartQty > 0 ? (
+                          <div
+                            className="flex items-center border-2 border-blue-600 rounded-xl overflow-hidden bg-white shadow-2xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => decreaseQty(product.id)}
+                              className="h-10 w-10 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-blue-200"
+                              title="Kurangi Qty"
+                            >
+                              <Minus className="h-4 w-4 stroke-[3]" />
+                            </button>
+                            <span className="w-9 text-center font-mono font-black text-base text-slate-900">
+                              {inCartQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => addToCart(product, "small")}
+                              className="h-10 w-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
+                              title="Tambah Qty"
+                            >
+                              <Plus className="h-4 w-4 stroke-[3]" />
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => decreaseQty(product.id)}
-                            className="h-10 w-10 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-black flex items-center justify-center transition-colors cursor-pointer border-r border-blue-200"
-                            title="Kurangi Qty"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(product, "small");
+                            }}
+                            className="h-10 px-4.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
                           >
-                            <Minus className="h-4 w-4 stroke-[3]" />
+                            <Plus className="h-4 w-4 stroke-[3]" /> TAMBAH
                           </button>
-                          <span className="w-9 text-center font-mono font-black text-base text-slate-900">
-                            {inCartQty}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => addToCart(product, "small")}
-                            className="h-10 w-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black flex items-center justify-center transition-colors cursor-pointer"
-                            title="Tambah Qty"
-                          >
-                            <Plus className="h-4 w-4 stroke-[3]" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product, "small");
-                          }}
-                          className="h-10 px-4.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
-                        >
-                          <Plus className="h-4 w-4 stroke-[3]" /> TAMBAH
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -542,7 +548,7 @@ export function CashierView({
         </section>
 
         {/* RIGHT COLUMN: Cart Panel (Optimized for 1280x800 Tablets & Elderly Readability) */}
-        <section className="w-full lg:w-[480px] xl:w-[560px] flex flex-col bg-white border-l border-slate-200 shrink-0 relative z-20">
+        <section className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white border-l border-slate-200 shrink-0 relative z-20">
           {/* Header Cart */}
           <div className="px-4 py-3.5 border-b border-slate-200 flex justify-between items-center bg-white">
             <div className="flex items-center gap-2.5">
@@ -668,38 +674,51 @@ export function CashierView({
                       </div>
                     </div>
 
-                    {/* Line 2: Unit Toggle + Stepper + Unit Price + Subtotal */}
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                    {/* Line 2: Explicit Selling Unit Banner & Switch Action (Solusi 2) */}
+                    {item.unit_big && (
+                      <div className="flex items-center justify-between gap-2 py-1.5 px-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-800">
+                          <span className="text-slate-500 font-bold">Dijual per:</span>
+                          {isBig ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-black">
+                              📦 {(item.unit_big || "Dus").toUpperCase()}
+                              {item.conversion > 1 && (
+                                <span className="text-amber-800 font-bold">
+                                  (Isi {item.conversion} {item.unit || "pcs"})
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 font-black">
+                              🛍️ {(item.unit || "Pcs").toUpperCase()} (Eceran)
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleUnitChoice(item.id)}
+                          className={`h-8 px-3 rounded-lg border-2 text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer shrink-0 ${
+                            isBig
+                              ? "border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800"
+                              : "border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900"
+                          }`}
+                          title={`Ubah penjualan ke ${isBig ? item.unit || "Pcs" : item.unit_big || "Dus"}`}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 stroke-[2.5]" />
+                          <span>
+                            Ganti ke {isBig ? (item.unit || "Pcs").toUpperCase() : (item.unit_big || "Dus").toUpperCase()}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Line 3: Stepper + Unit Price + Subtotal */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {item.unit_big ? (
-                          <div className="flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => isBig && toggleUnitChoice(item.id)}
-                              className={`text-xs sm:text-sm font-black px-3 py-1.5 rounded transition-all cursor-pointer ${
-                                !isBig
-                                  ? "bg-blue-600 text-white shadow-2xs"
-                                  : "text-slate-700 hover:text-slate-900"
-                              }`}
-                            >
-                              {item.unit || "Pcs"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                !isBig && toggleUnitChoice(item.id)
-                              }
-                              className={`text-xs sm:text-sm font-black px-3 py-1.5 rounded transition-all cursor-pointer ${
-                                isBig
-                                  ? "bg-blue-600 text-white shadow-2xs"
-                                  : "text-slate-700 hover:text-slate-900"
-                              }`}
-                            >
-                              {item.unit_big || "Dus"}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs sm:text-sm font-black text-slate-800 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                        {/* If single unit (no unit_big), show simple badge */}
+                        {!item.unit_big && (
+                          <span className="text-xs sm:text-sm font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                             {item.unit || "Pcs"}
                           </span>
                         )}

@@ -43,6 +43,7 @@ export default function CashierContainer() {
       products={cashierData.products}
       loading={cashierData.loading}
       searchQuery={cashierData.searchQuery}
+      setSearchQuery={cashierData.setSearchQuery}
       triggerSearch={cashierData.triggerSearch}
       refetch={cashierData.refetch}
       isShiftActive={cashierData.isShiftActive}

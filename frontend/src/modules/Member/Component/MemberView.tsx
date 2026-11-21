@@ -67,48 +67,52 @@ export function MemberView({
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm relative z-30">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Users className="h-4 w-4" />
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Data Member Toko</span>
+        <header className="h-16 sm:h-18 bg-white border-b-2 border-slate-200 flex items-center justify-between px-6 sm:px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <Users className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <ChevronRight className="h-4 w-4 stroke-[2.5]" />
+              <span className="text-base sm:text-lg font-black text-slate-900">Data Member Toko</span>
+            </div>
           </div>
         </header>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50">
           <div className="max-w-6xl mx-auto space-y-6">
 
             {/* Header Title & Button */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Daftar Member & Pedagang</h2>
-                <p className="text-slate-500 text-sm mt-1">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Daftar Member & Pedagang</h2>
+                <p className="text-slate-600 text-sm sm:text-base font-bold mt-1">
                   Kelola profil pelanggan tetap Anda untuk memberikan penawaran harga khusus pedagang.
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-3 shrink-0 flex-wrap">
                 <button
                   onClick={() => memberDAO.exportMembersCsv(filteredMembers)}
-                  className="h-11 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-2xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="h-12 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-emerald-300 rounded-xl text-sm sm:text-base font-black shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                   title="Ekspor CSV Data Member"
                 >
-                  <Download className="h-4 w-4" />
+                  <Download className="h-5 w-5 stroke-[2.5]" />
                   Export CSV
                 </button>
                 <button
                   onClick={() => setImportModalOpen(true)}
-                  className="h-11 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="h-12 px-4 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 rounded-xl text-sm sm:text-base font-black shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                   title="Import Data Member dari CSV"
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-5 w-5 stroke-[2.5]" />
                   Import CSV
                 </button>
                 <button
                   onClick={handleCreateClick}
-                  className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base font-black shadow-md shadow-blue-600/20 transition-all flex items-center gap-2 cursor-pointer shrink-0"
                 >
-                  <Plus className="h-4.5 w-4.5" />
+                  <Plus className="h-5 w-5 stroke-[2.5]" />
                   Tambah Member Baru
                 </button>
               </div>
@@ -123,66 +127,66 @@ export function MemberView({
             )}
 
             {/* Action Bar (Search) */}
-            <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-4.5 w-4.5" />
+            <div className="bg-white border-2 border-slate-200 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-lg">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-6 w-6 stroke-[2.5]" />
                 <input
                   type="text"
                   placeholder="Cari member berdasarkan Nama, HP, atau Kode..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-11 pl-11 pr-4 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all placeholder:text-slate-400 bg-white text-slate-900"
+                  className="w-full h-12 pl-12 pr-4 text-base font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none transition-all placeholder:text-slate-400 bg-white text-slate-900"
                 />
               </div>
             </div>
 
             {/* Table Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-sm overflow-hidden">
               {loading ? (
-                <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-sm font-medium gap-2">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                <div className="py-24 flex flex-col items-center justify-center text-slate-500 text-base font-bold gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                   <span>Memuat data member...</span>
                 </div>
               ) : filteredMembers.length === 0 ? (
-                <div className="py-24 text-center text-slate-400 text-sm font-medium">
+                <div className="py-24 text-center text-slate-500 text-base font-bold">
                   {searchQuery ? "Tidak ditemukan member yang cocok dengan pencarian Anda." : "Belum ada member yang terdaftar."}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
-                    <thead className="bg-slate-50/80 border-b border-slate-200">
+                  <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
+                    <thead className="bg-slate-100 border-b-2 border-slate-200">
                       <tr>
-                        <th className="w-16 px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">No</th>
-                        <th className="w-64 px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Kode Member</th>
-                        <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Nama Lengkap</th>
-                        <th className="w-56 px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Nomor Telepon</th>
-                        <th className="w-44 px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Tanggal Bergabung</th>
-                        <th className="w-32 px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">Aksi</th>
+                        <th className="w-16 px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider text-center">No</th>
+                        <th className="w-64 px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider">Kode Member</th>
+                        <th className="px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider">Nama Lengkap</th>
+                        <th className="w-56 px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider">Nomor Telepon</th>
+                        <th className="w-48 px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider">Tanggal Bergabung</th>
+                        <th className="w-32 px-6 py-4 text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider text-center">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200 text-base">
                       {filteredMembers.map((member: MemberDTO, index: number) => (
-                        <tr key={member.id} className="hover:bg-slate-50/30 transition-colors">
+                        <tr key={member.id} className="hover:bg-slate-50/80 transition-colors">
                           {/* No */}
-                          <td className="px-6 py-4 text-xs font-bold text-slate-400 text-center">
+                          <td className="px-6 py-4 text-sm sm:text-base font-black text-slate-600 text-center">
                             {index + 1}
                           </td>
 
                           {/* Kode Member */}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                              <span className="font-mono text-sm sm:text-base font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
                                 {member.member_code}
                               </span>
                               <button
                                 onClick={() => handleCopyCode(member.member_code, member.id)}
-                                className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
                                 title="Salin Kode"
                               >
                                 {copiedId === member.id ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                  <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" />
                                 ) : (
-                                  <Copy className="h-3.5 w-3.5" />
+                                  <Copy className="h-4 w-4 stroke-[2.5]" />
                                 )}
                               </button>
                             </div>
@@ -190,21 +194,21 @@ export function MemberView({
 
                           {/* Nama Lengkap */}
                           <td className="px-6 py-4">
-                            <div className="font-bold text-xs text-slate-900">{member.name}</div>
+                            <div className="font-black text-base sm:text-lg text-slate-900">{member.name}</div>
                           </td>
 
                           {/* Nomor Telepon */}
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-bold">
-                              <Phone className="h-3.5 w-3.5 text-slate-400" />
+                            <div className="flex items-center gap-2 text-sm sm:text-base text-slate-800 font-bold">
+                              <Phone className="h-4 w-4 text-slate-400 stroke-[2.5]" />
                               <span>{member.phone || "-"}</span>
                             </div>
                           </td>
 
                           {/* Tanggal Bergabung */}
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            <div className="flex items-center gap-2 text-sm sm:text-base text-slate-600 font-bold">
+                              <Calendar className="h-4 w-4 text-slate-400 stroke-[2.5]" />
                               <span>{formatDate(member.created_at)}</span>
                             </div>
                           </td>
@@ -214,17 +218,17 @@ export function MemberView({
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handleEditClick(member)}
-                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                className="h-10 w-10 flex items-center justify-center text-slate-600 hover:text-blue-600 rounded-xl border border-slate-200 hover:bg-blue-50 transition-colors cursor-pointer"
                                 title="Edit Member"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="h-4 w-4 stroke-[2.5]" />
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(member)}
-                                className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                className="h-10 w-10 flex items-center justify-center text-slate-600 hover:text-red-600 rounded-xl border border-slate-200 hover:bg-red-50 transition-colors cursor-pointer"
                                 title="Hapus Member"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4 stroke-[2.5]" />
                               </button>
                             </div>
                           </td>

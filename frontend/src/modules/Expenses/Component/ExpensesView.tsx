@@ -72,38 +72,36 @@ export function ExpensesView({
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm relative z-30">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Wallet className="h-4 w-4" />
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Manajemen Pengeluaran</span>
+        <header className="h-16 sm:h-18 bg-white border-b-2 border-slate-200 flex items-center justify-between px-6 sm:px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <Wallet className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <ChevronRight className="h-4 w-4 stroke-[2.5]" />
+              <span className="text-base sm:text-lg font-black text-slate-900">Manajemen Pengeluaran</span>
+            </div>
           </div>
         </header>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50">
           <div className="max-w-6xl mx-auto space-y-6">
 
             {/* Action Bar */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Manajemen Pengeluaran</h2>
-                <p className="text-slate-500 text-sm mt-1">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Manajemen Pengeluaran</h2>
+                <p className="text-slate-600 text-sm sm:text-base font-bold mt-1">
                   Pantau kas keluar, pengeluaran operasional toko, suplai barang, gaji, dan restock logistik.
                 </p>
               </div>
-              {/* <button
-                onClick={handleOpenAddModal}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-md shadow-red-600/10 hover:shadow-lg hover:shadow-red-600/20 transition-all cursor-pointer self-start sm:self-auto"
-              >
-                <Plus className="h-4 w-4" /> Catat Pengeluaran
-              </button> */}
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-semibold px-4 py-3 rounded-xl flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+              <div className="bg-red-50 border-2 border-red-200 text-red-600 text-sm font-bold px-4 py-3 rounded-xl flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
@@ -112,60 +110,60 @@ export function ExpensesView({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Today's Expense */}
-              <div className="bg-white border border-red-100 rounded-3xl p-6 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
-                <div className="absolute top-0 left-0 h-full w-2 bg-red-500" />
-                <div className="space-y-1 pl-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Pengeluaran Hari Ini</span>
-                  <h3 className="text-2xl font-black text-slate-900">
+              <div className="bg-white border-2 border-red-200 rounded-3xl p-6 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 left-0 h-full w-2.5 bg-red-500" />
+                <div className="space-y-1 pl-3">
+                  <span className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-widest block">Pengeluaran Hari Ini</span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900">
                     Rp {todayTotal.toLocaleString("id-ID")}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium">Berdasarkan pencatatan kas keluar hari ini</p>
+                  <p className="text-xs text-slate-500 font-bold">Berdasarkan pencatatan kas keluar hari ini</p>
                 </div>
-                <div className="size-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <TrendingDown className="h-6 w-6" />
+                <div className="size-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <TrendingDown className="h-7 w-7 stroke-[2.5]" />
                 </div>
               </div>
 
               {/* Month's Expense */}
-              <div className="bg-white border border-purple-100 rounded-3xl p-6 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
-                <div className="absolute top-0 left-0 h-full w-2 bg-purple-500" />
-                <div className="space-y-1 pl-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Pengeluaran Bulan Ini</span>
-                  <h3 className="text-2xl font-black text-slate-900">
+              <div className="bg-white border-2 border-purple-200 rounded-3xl p-6 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 left-0 h-full w-2.5 bg-purple-500" />
+                <div className="space-y-1 pl-3">
+                  <span className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-widest block">Pengeluaran Bulan Ini</span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900">
                     Rp {monthTotal.toLocaleString("id-ID")}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium">Akumulasi pengeluaran pada bulan berjalan</p>
+                  <p className="text-xs text-slate-500 font-bold">Akumulasi pengeluaran pada bulan berjalan</p>
                 </div>
-                <div className="size-12 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <CalendarDays className="h-6 w-6" />
+                <div className="size-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <CalendarDays className="h-7 w-7 stroke-[2.5]" />
                 </div>
               </div>
 
             </div>
 
             {/* Table Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-sm overflow-hidden">
               {loading ? (
-                <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-sm font-medium gap-2">
-                  <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+                <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-base font-bold gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                   <span>Memuat data pengeluaran...</span>
                 </div>
               ) : paginatedExpenses.length === 0 ? (
-                <div className="py-24 text-center text-slate-400 text-sm font-medium flex flex-col items-center gap-2">
-                  <Wallet className="h-8 w-8 text-slate-300" />
+                <div className="py-24 text-center text-slate-400 text-base font-bold flex flex-col items-center gap-2">
+                  <Wallet className="h-10 w-10 text-slate-300 stroke-[2.5]" />
                   <span>Belum ada catatan pengeluaran yang terdaftar.</span>
                 </div>
               ) : (
                 <div className="flex flex-col">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-50/80 border-b border-slate-200">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                      <thead className="bg-slate-100 border-b-2 border-slate-200">
                         <tr>
-                          <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Tanggal & Jam</th>
-                          <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Nama Staf</th>
-                          <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Kategori</th>
-                          <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Nominal</th>
-                          <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Catatan Pengeluaran</th>
+                          <th className="px-6 py-4 text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Tanggal & Jam</th>
+                          <th className="px-6 py-4 text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Nama Staf</th>
+                          <th className="px-6 py-4 text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Kategori</th>
+                          <th className="px-6 py-4 text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Nominal</th>
+                          <th className="px-6 py-4 text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Catatan Pengeluaran</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -182,27 +180,27 @@ export function ExpensesView({
                             <tr
                               key={e.id}
                               onClick={() => handleOpenEditModal(e)}
-                              className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                              className="hover:bg-slate-50/70 cursor-pointer transition-colors"
                               title="Klik untuk mengubah atau menghapus"
                             >
-                              <td className="px-6 py-4 text-xs text-slate-500 font-semibold">
+                              <td className="px-6 py-4 text-xs sm:text-sm text-slate-600 font-bold">
                                 {formattedDate}
                               </td>
-                              <td className="px-6 py-4 text-xs font-bold text-slate-900">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="size-3.5 text-slate-400" />
+                              <td className="px-6 py-4 text-sm sm:text-base font-black text-slate-900">
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-slate-400 stroke-[2.5]" />
                                   <span>{e.user?.name || `Staf ID: ${e.user_id || "?"}`}</span>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <span className={`inline-flex px-2.5 py-0.5 rounded-lg text-[10px] font-black border uppercase tracking-wider ${categoryStyle}`}>
+                                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-black border uppercase tracking-wider ${categoryStyle}`}>
                                   {e.category}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-xs font-black text-red-600">
+                              <td className="px-6 py-4 text-base sm:text-lg font-black text-red-600">
                                 Rp {e.amount.toLocaleString("id-ID")}
                               </td>
-                              <td className="px-6 py-4 text-xs text-slate-700 font-medium max-w-xs truncate">
+                              <td className="px-6 py-4 text-sm sm:text-base text-slate-800 font-bold max-w-xs truncate">
                                 {e.name}
                               </td>
                             </tr>

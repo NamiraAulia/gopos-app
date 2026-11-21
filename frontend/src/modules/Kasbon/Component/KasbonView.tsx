@@ -60,111 +60,115 @@ export function KasbonView({
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header Breadcrumb */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm relative z-30">
-          <div className="flex items-center gap-2 text-slate-500">
-            <CreditCard className="h-4 w-4" />
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-sm font-bold text-slate-900">Manajemen Kasbon Pelanggan</span>
+        <header className="h-16 sm:h-18 bg-white border-b-2 border-slate-200 flex items-center justify-between px-6 sm:px-8 shrink-0 shadow-sm relative z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <CreditCard className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <ChevronRight className="h-4 w-4 stroke-[2.5]" />
+              <span className="text-base sm:text-lg font-black text-slate-900">Manajemen Kasbon Pelanggan</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => loadData()}
-              className="h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="h-12 px-5 rounded-xl border-2 border-slate-200 bg-white text-sm sm:text-base font-black text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+              <RefreshCw className={`h-4.5 w-4.5 stroke-[2.5] ${loading ? "animate-spin" : ""}`} /> Refresh Data
             </button>
           </div>
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Title Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Pencatatan Utang & Piutang Kasbon</h2>
-                <p className="text-slate-500 text-sm mt-1">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Pencatatan Utang & Piutang Kasbon</h2>
+                <p className="text-slate-600 text-sm sm:text-base font-bold mt-1">
                   Pencatatan saldo piutang member, cicilan pelunasan, dan monitoring jatuh tempo toko.
                 </p>
               </div>
             </div>
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div className="p-6 rounded-2xl bg-white border-2 border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black uppercase text-slate-400 tracking-wider">
+                  <span className="text-xs sm:text-sm font-black uppercase text-slate-500 tracking-wider">
                     Total Piutang Toko
                   </span>
-                  <h2 className="text-2xl font-black text-red-600 mt-1">
+                  <h2 className="text-2xl sm:text-3xl font-black text-red-600 mt-1">
                     Rp {summary.total_receivables.toLocaleString("id-ID")}
                   </h2>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500">
-                  <TrendingDown className="h-6 w-6" />
+                <div className="h-14 w-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
+                  <TrendingDown className="h-7 w-7 stroke-[2.5]" />
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="p-6 rounded-2xl bg-white border-2 border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black uppercase text-slate-400 tracking-wider">
+                  <span className="text-xs sm:text-sm font-black uppercase text-slate-500 tracking-wider">
                     Member Berutang
                   </span>
-                  <h2 className="text-2xl font-black text-slate-900 mt-1">
-                    {summary.total_debtors} <span className="text-sm font-medium text-slate-400">Orang</span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                    {summary.total_debtors} <span className="text-base font-bold text-slate-500">Orang</span>
                   </h2>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                  <Users className="h-6 w-6" />
+                <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                  <Users className="h-7 w-7 stroke-[2.5]" />
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="p-6 rounded-2xl bg-white border-2 border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black uppercase text-slate-400 tracking-wider">
+                  <span className="text-xs sm:text-sm font-black uppercase text-slate-500 tracking-wider">
                     Jatuh Tempo (&gt; 30 Hari)
                   </span>
-                  <h2 className="text-2xl font-black text-amber-600 mt-1">
-                    {summary.overdue_debtors} <span className="text-sm font-medium text-slate-400">Member</span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">
+                    {summary.overdue_debtors} <span className="text-base font-bold text-slate-500">Member</span>
                   </h2>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
-                  <AlertCircle className="h-6 w-6" />
+                <div className="h-14 w-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                  <AlertCircle className="h-7 w-7 stroke-[2.5]" />
                 </div>
               </div>
             </div>
 
             {/* Filter Bar & Search */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm">
               {/* Tabs */}
-              <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+              <div className="flex bg-slate-100 p-1.5 rounded-xl w-full sm:w-auto gap-1">
                 <button
                   onClick={() => setActiveTab("has_debt")}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`px-5 py-2.5 rounded-lg text-sm font-black transition-all cursor-pointer ${
                     activeTab === "has_debt"
                       ? "bg-white text-blue-600 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   Ada Utang ({summary.total_debtors})
                 </button>
                 <button
                   onClick={() => setActiveTab("overdue")}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`px-5 py-2.5 rounded-lg text-sm font-black transition-all cursor-pointer ${
                     activeTab === "overdue"
                       ? "bg-white text-red-600 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   Jatuh Tempo ({summary.overdue_debtors})
                 </button>
                 <button
                   onClick={() => setActiveTab("all")}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`px-5 py-2.5 rounded-lg text-sm font-black transition-all cursor-pointer ${
                     activeTab === "all"
                       ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   Semua Member ({members.length})
@@ -172,29 +176,29 @@ export function KasbonView({
               </div>
 
               {/* Search Box */}
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 stroke-[2.5]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama, kode, no hp..."
-                  className="h-10 w-full rounded-xl border border-slate-200 pl-10 pr-4 text-xs font-bold focus:border-blue-600 outline-none bg-slate-50 focus:bg-white transition-all"
+                  className="h-12 w-full rounded-xl border-2 border-slate-200 pl-12 pr-4 text-sm sm:text-base font-bold focus:border-blue-600 outline-none bg-slate-50 focus:bg-white transition-all text-slate-900"
                 />
               </div>
             </div>
 
             {/* Member Debt Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden">
               {loading ? (
-                <div className="flex justify-center py-16">
-                  <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <div className="flex justify-center py-20">
+                  <div className="h-8 w-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredMembers.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 space-y-2">
-                  <Users className="h-10 w-10 mx-auto text-slate-300" />
-                  <p className="font-bold text-sm text-slate-600">Tidak ada member ditemukan</p>
-                  <p className="text-xs text-slate-400">
+                <div className="text-center py-20 text-slate-400 space-y-2">
+                  <Users className="h-12 w-12 mx-auto text-slate-300 stroke-[2.5]" />
+                  <p className="font-black text-base text-slate-700">Tidak ada member ditemukan</p>
+                  <p className="text-sm font-bold text-slate-500">
                     {activeTab === "has_debt"
                       ? "Saat ini tidak ada member yang memiliki utang aktif"
                       : "Coba ubah kata kunci pencarian atau filter tab"}
@@ -202,18 +206,18 @@ export function KasbonView({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[920px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[10px] font-black">
-                        <th className="py-3.5 px-4">Member / Kode</th>
-                        <th className="py-3.5 px-4">Kontak (No HP)</th>
-                        <th className="py-3.5 px-4">Total Utang</th>
-                        <th className="py-3.5 px-4">Utang Terakhir</th>
-                        <th className="py-3.5 px-4">Status Jatuh Tempo</th>
-                        <th className="py-3.5 px-4 text-right">Aksi</th>
+                      <tr className="bg-slate-100 border-b-2 border-slate-200 text-slate-800 uppercase tracking-wider text-xs sm:text-sm font-black">
+                        <th className="py-4 px-6">Member / Kode</th>
+                        <th className="py-4 px-6">Kontak (No HP)</th>
+                        <th className="py-4 px-6">Total Utang</th>
+                        <th className="py-4 px-6">Utang Terakhir</th>
+                        <th className="py-4 px-6 whitespace-nowrap">Status Jatuh Tempo</th>
+                        <th className="py-4 px-6 text-right whitespace-nowrap">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredMembers.map((m) => {
                         const debt = m.total_debt || 0;
                         const isOverdue =
@@ -226,31 +230,31 @@ export function KasbonView({
                             key={m.id}
                             className="hover:bg-slate-50/80 transition-colors"
                           >
-                            <td className="py-3.5 px-4">
-                              <span className="font-black text-slate-900 block">
+                            <td className="py-4 px-6">
+                              <span className="font-black text-base sm:text-lg text-slate-900 block">
                                 {m.name}
                               </span>
-                              <span className="text-[10px] font-mono text-slate-400">
+                              <span className="text-xs font-bold font-mono text-slate-500">
                                 {m.member_code}
                               </span>
                             </td>
-                            <td className="py-3.5 px-4 text-slate-600">
+                            <td className="py-4 px-6 text-slate-700 font-bold text-sm sm:text-base">
                               {m.phone ? (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="h-3 w-3 text-slate-400" /> {m.phone}
+                                <span className="flex items-center gap-1.5">
+                                  <Phone className="h-4 w-4 text-slate-400 stroke-[2.5]" /> {m.phone}
                                 </span>
                               ) : (
-                                <span className="text-slate-300">-</span>
+                                <span className="text-slate-400">-</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4">
+                            <td className="py-4 px-6">
                               <span
-                                className={`font-black text-sm ${debt > 0 ? "text-red-600" : "text-emerald-600"}`}
+                                className={`font-black text-base sm:text-lg ${debt > 0 ? "text-red-600" : "text-emerald-600"}`}
                               >
                                 Rp {debt.toLocaleString("id-ID")}
                               </span>
                             </td>
-                            <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                            <td className="py-4 px-6 text-slate-600 font-bold font-mono text-xs sm:text-sm">
                               {m.last_debt_at
                                 ? new Date(m.last_debt_at).toLocaleDateString(
                                     "id-ID",
@@ -262,36 +266,36 @@ export function KasbonView({
                                   )
                                 : "-"}
                             </td>
-                            <td className="py-3.5 px-4">
+                            <td className="py-4 px-6 whitespace-nowrap">
                               {debt <= 0 ? (
-                                <span className="px-2.5 py-1 text-[10px] font-black bg-emerald-50 text-emerald-600 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                                  <CheckCircle2 className="h-3 w-3" /> LUNAS
+                                <span className="px-3 py-1.5 text-xs sm:text-sm font-black bg-emerald-50 text-emerald-700 rounded-full border-2 border-emerald-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                  <CheckCircle2 className="h-4 w-4 stroke-[2.5]" /> LUNAS
                                 </span>
                               ) : isOverdue ? (
-                                <span className="px-2.5 py-1 text-[10px] font-black bg-red-100 text-red-700 rounded-full border border-red-200 inline-flex items-center gap-1 animate-pulse">
-                                  <AlertCircle className="h-3 w-3" /> JATUH TEMPO (&gt;30 Hari)
+                                <span className="px-3 py-1.5 text-xs sm:text-sm font-black bg-red-100 text-red-700 rounded-full border-2 border-red-300 inline-flex items-center gap-1.5 animate-pulse whitespace-nowrap shrink-0">
+                                  <AlertCircle className="h-4 w-4 stroke-[2.5]" /> JATUH TEMPO (&gt;30 Hari)
                                 </span>
                               ) : (
-                                <span className="px-2.5 py-1 text-[10px] font-black bg-amber-50 text-amber-700 rounded-full border border-amber-200 inline-flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> BELUM LUNAS
+                                <span className="px-3 py-1.5 text-xs sm:text-sm font-black bg-amber-50 text-amber-700 rounded-full border-2 border-amber-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                  <Clock className="h-4 w-4 stroke-[2.5]" /> BELUM LUNAS
                                 </span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                            <td className="py-4 px-6 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-2.5">
                                 {debt > 0 && (
                                   <button
                                     onClick={() => setSelectedMemberForRepay(m)}
-                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1"
+                                    className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
                                   >
-                                    <CreditCard className="h-3.5 w-3.5" /> Cicil / Bayar
+                                    <CreditCard className="h-4 w-4 stroke-[2.5]" /> Cicil / Bayar
                                   </button>
                                 )}
                                 <button
                                   onClick={() => setSelectedMemberForHistory(m)}
-                                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1"
+                                  className="h-10 px-4 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-black text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-1.5"
                                 >
-                                  <History className="h-3.5 w-3.5" /> Riwayat
+                                  <History className="h-4 w-4 stroke-[2.5]" /> Riwayat
                                 </button>
                               </div>
                             </td>

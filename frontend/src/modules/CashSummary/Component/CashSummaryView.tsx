@@ -38,14 +38,14 @@ const PaymentRow = ({
   amount: number;
   color: string;
 }) => (
-  <div className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
-    <div className="flex items-center gap-2.5">
-      <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${color}`}>
+  <div className="flex items-center justify-between py-3.5 border-b-2 border-slate-100 last:border-0">
+    <div className="flex items-center gap-3">
+      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${color}`}>
         {icon}
       </div>
-      <span className="text-xs font-bold text-slate-600">{label}</span>
+      <span className="text-sm sm:text-base font-black text-slate-700">{label}</span>
     </div>
-    <span className="text-sm font-black text-slate-800">{formatRp(amount)}</span>
+    <span className="text-base sm:text-lg font-black text-slate-900 font-mono">{formatRp(amount)}</span>
   </div>
 );
 

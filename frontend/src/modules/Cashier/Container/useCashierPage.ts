@@ -194,6 +194,12 @@ export function useCashierPage() {
     if (!barcode || !barcode.trim()) return;
     const cleanBarcode = barcode.trim();
 
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    if (searchInputRef.current) searchInputRef.current.value = "";
+    setSearchQuery("");
+
     cashierDAO
       .getProductByBarcode(cleanBarcode)
       .then((res) => {
@@ -201,13 +207,13 @@ export function useCashierPage() {
           addToCart(res.data, "small");
           if (searchInputRef.current) searchInputRef.current.value = "";
           setSearchQuery("");
-          fetchProducts();
+          fetchProducts("");
         } else {
           setScanAlert(`Produk dengan barcode "${cleanBarcode}" tidak ditemukan!`);
           setTimeout(() => setScanAlert(null), 3500);
           if (searchInputRef.current) searchInputRef.current.value = "";
           setSearchQuery("");
-          fetchProducts();
+          fetchProducts("");
         }
       })
       .catch(() => {
@@ -215,7 +221,7 @@ export function useCashierPage() {
         setTimeout(() => setScanAlert(null), 3500);
         if (searchInputRef.current) searchInputRef.current.value = "";
         setSearchQuery("");
-        fetchProducts();
+        fetchProducts("");
       });
   }, [addToCart, fetchProducts]);
 
@@ -226,8 +232,14 @@ export function useCashierPage() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      const query = searchInputRef.current?.value?.trim() || searchQuery;
+      e.preventDefault();
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      const query = (searchInputRef.current?.value || searchQuery)?.trim();
       if (!query) return;
+      if (searchInputRef.current) searchInputRef.current.value = "";
+      setSearchQuery("");
       handleBarcodeScan(query);
     }
   };
